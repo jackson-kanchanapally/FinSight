@@ -88,7 +88,7 @@ def get_positions(db: Session, symbol: str | None = None) -> list[Position]:
     companies = db.scalars(stmt).all()
     if symbol and not companies:
         raise UnknownCompanyError(symbol)
-    return [p for company in companies if (p := calculate_position(db, company)).quantity > 0 or p.realised_pnl != 0]
+    return [calculate_position(db, company) for company in companies]
 
 
 def transaction_history(db: Session, symbol: str | None = None) -> list[Transaction]:

@@ -29,6 +29,9 @@ def test_weighted_average_buy_partial_and_full_sell(client):
     closed = client.get("/api/portfolio/ESDS").json()
     assert Decimal(closed["quantity"]) == 0
     assert Decimal(closed["cost_basis"]) == 0
+    summary = client.get("/api/portfolio").json()
+    assert summary["holdings"] == []
+    assert Decimal(summary["realised_pnl"]) == 500
 
 
 def test_oversell_unknown_company_and_bad_inputs(client):

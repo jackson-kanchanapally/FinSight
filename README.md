@@ -1,21 +1,23 @@
 # FinSight
 
-FinSight is a personal investment research and portfolio monitoring project. Phase 1 provides the backend foundation and transaction-based portfolio accounting. Transactions are the source of truth; there is no separately maintained holdings table.
+FinSight is a personal investment research and portfolio monitoring project. Phase 1 provides transaction-based portfolio accounting; Phase 2 adds a React dashboard. Transactions are the source of truth; there is no separately maintained holdings table.
 
-## Phase 1 functionality
+## Current functionality
 
 - Create and list companies, with case-insensitive symbol normalization to uppercase.
 - Record BUY and SELL transactions and retrieve dated transaction history.
 - Calculate open positions, weighted average acquisition price, remaining cost basis, and realised P&L.
 - Reject a sale when its quantity exceeds the available shares.
 - Use PostgreSQL, SQLAlchemy 2, Pydantic 2, and Alembic migrations.
+- View holdings, cost basis, realised P&L, allocation, transaction history, and registered companies in a dark-themed React dashboard.
+- Add companies and record BUY/SELL transactions through the dashboard.
 
 Accounting uses weighted average cost. BUY charges are added to acquisition cost. SELL charges are deducted from proceeds and therefore reduce realised P&L. A SELL removes cost basis at the current weighted average; it does not change the per-share cost of remaining shares. Values use decimal numeric types, never binary floating point.
 
 ## Architecture
 
 ```text
-FastAPI routes -> portfolio service -> SQLAlchemy models -> PostgreSQL
+React dashboard -> FastAPI routes -> portfolio service -> SQLAlchemy models -> PostgreSQL
 ```
 
 The service contains portfolio calculations and SELL validation. Alembic owns schema changes; the application does not call `create_all()` at startup.
@@ -24,6 +26,7 @@ The service contains portfolio calculations and SELL validation. Alembic owns sc
 
 - Python 3.11 or newer
 - Docker with Docker Compose
+- Node.js 20.19+ or 22.12+ and npm
 
 ## Local setup
 
@@ -49,6 +52,20 @@ uvicorn app.main:app --reload
 
 Swagger UI: <http://127.0.0.1:8000/docs>. Health check: <http://127.0.0.1:8000/health>.
 
+## Start the dashboard
+
+Leave FastAPI running on port 8000. In a second terminal from the project root:
+
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+Open <http://localhost:5173>. The Vite development server forwards `/api` requests to FastAPI on `127.0.0.1:8000`, so no browser CORS change is needed for local development. For a production build, run `npm run build`; serve `frontend/dist` and route `/api` to FastAPI on the same origin.
+
+Start by adding a company, then record a BUY. Current holdings and allocation are based on remaining cost basis. Realised P&L includes charges and closed positions; no live market values are shown.
+
 ## Tests
 
 The automated tests use an isolated in-memory SQLite database, so PostgreSQL does not need to be running for them.
@@ -56,6 +73,13 @@ The automated tests use an isolated in-memory SQLite database, so PostgreSQL doe
 ```sh
 cd backend
 pytest
+```
+
+The frontend type and production build check is:
+
+```sh
+cd frontend
+npm run build
 ```
 
 ## API examples
@@ -93,7 +117,7 @@ After buying 34 shares at ₹429 and selling 24 at ₹1,191, with no charges:
 
 ## Roadmap
 
-- Phase 2 — React dashboard
+- Phase 2 — React dashboard (implemented)
 - Phase 3 — Telegram integration
 - Phase 4 — Company event monitoring
 - Phase 5 — Financial analysis engine
