@@ -2,9 +2,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    database_name: str = "portfolioai"
-    database_user: str = "portfolioai"
-    database_password: str = "portfolioai_dev"
+    database_name: str = "finsight"
+    database_user: str = "finsight"
+    database_password: str = "finsight_dev"
     database_host: str = "localhost"
     database_port: int = 5432
 

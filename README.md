@@ -1,6 +1,6 @@
-# PortfolioAI
+# FinSight
 
-PortfolioAI is a personal investment research and portfolio monitoring project. Phase 1 provides the backend foundation and transaction-based portfolio accounting. Transactions are the source of truth; there is no separately maintained holdings table.
+FinSight is a personal investment research and portfolio monitoring project. Phase 1 provides the backend foundation and transaction-based portfolio accounting. Transactions are the source of truth; there is no separately maintained holdings table.
 
 ## Phase 1 functionality
 
