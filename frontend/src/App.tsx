@@ -9,13 +9,17 @@ import {
 import {
   api,
   type Company,
+  type CompanyEvent,
   type CompanyInput,
+  type EventCheckSummary,
   type Holding,
   type Portfolio,
   type Transaction,
   type TransactionInput,
 } from "./api";
 import { displayDate, money, quantity, todayLocal } from "./format";
+import { EventDetails, EventsSection } from "./EventsView";
+import { FinancialsSection } from "./FinancialsView";
 
 type DashboardData = {
   companies: Company[];
@@ -40,7 +44,8 @@ function Icon({
     | "wallet"
     | "trend"
     | "receipt"
-    | "search";
+    | "search"
+    | "trash";
   size?: number;
 }) {
   const paths: Record<typeof name, ReactNode> = {
@@ -95,6 +100,11 @@ function Icon({
         <path d="m16 16 5 5" />
       </>
     ),
+    trash: (
+      <>
+        <path d="M4 7h16M10 4h4M6 7l1 13h10l1-13M10 11v5M14 11v5" />
+      </>
+    ),
   };
   return (
     <svg
@@ -118,11 +128,13 @@ function Modal({
   subtitle,
   children,
   onClose,
+  eyebrow = "FIN SIGHT / NEW ENTRY",
 }: {
   title: string;
   subtitle: string;
   children: ReactNode;
   onClose: () => void;
+  eyebrow?: string;
 }) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -147,7 +159,7 @@ function Modal({
       >
         <div className="modal-top">
           <div>
-            <p className="eyebrow">FIN SIGHT / NEW ENTRY</p>
+            <p className="eyebrow">{eyebrow}</p>
             <h2>{title}</h2>
             <p className="muted">{subtitle}</p>
           </div>
@@ -205,7 +217,7 @@ function CompanyDialog({
   return (
     <Modal
       title="Add a company"
-      subtitle="Register a company before recording its trades."
+      subtitle="Register a company for trades. NSE-listed companies are monitored automatically in live mode."
       onClose={onClose}
     >
       <form className="entry-form" onSubmit={submit}>
@@ -294,6 +306,66 @@ function CompanyDialog({
           </button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function DeleteCompanyDialog({
+  company,
+  transactionCount,
+  onClose,
+  onDelete,
+}: {
+  company: Company;
+  transactionCount: number;
+  onClose: () => void;
+  onDelete: (symbol: string) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function confirm() {
+    setBusy(true);
+    setError("");
+    try {
+      await onDelete(company.symbol);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not delete company.");
+      setBusy(false);
+    }
+  }
+
+  const close = () => {
+    if (!busy) onClose();
+  };
+
+  return (
+    <Modal
+      title={`Delete ${company.symbol}?`}
+      subtitle={company.name}
+      eyebrow="FIN SIGHT / DELETE COMPANY"
+      onClose={close}
+    >
+      <div className="delete-company-copy">
+        <p>
+          This permanently deletes {company.symbol} and its source mappings,
+          events, financial results, and AI analyses.
+        </p>
+        <p>
+          It also removes {transactionCount} recorded
+          {transactionCount === 1 ? " trade" : " trades"}. Portfolio totals will change.
+        </p>
+        <p>Stored PDFs used only by this company will also be removed.</p>
+      </div>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div className="modal-actions">
+        <button className="button button-quiet" type="button" onClick={close} disabled={busy}>
+          Cancel
+        </button>
+        <button className="button button-danger" type="button" onClick={() => void confirm()} disabled={busy}>
+          <Icon name="trash" size={16} /> {busy ? "Deleting…" : "Delete company"}
+        </button>
+      </div>
     </Modal>
   );
 }
@@ -564,7 +636,14 @@ function App() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [events, setEvents] = useState<CompanyEvent[]>([]);
+  const [eventsError, setEventsError] = useState("");
+  const [navHash, setNavHash] = useState(window.location.hash);
+  const selectedEventId = /^#event-(\d+)$/.test(navHash)
+    ? Number(navHash.slice("#event-".length))
+    : null;
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
   const [notice, setNotice] = useState("");
   const [query, setQuery] = useState("");
   const [activityFilter, setActivityFilter] = useState<"ALL" | "BUY" | "SELL">(
@@ -590,9 +669,26 @@ function App() {
     }
   }, []);
 
+  const loadEvents = useCallback(async () => {
+    try {
+      setEvents(await api.events());
+      setEventsError("");
+    } catch (cause) {
+      setEventsError(
+        cause instanceof Error ? cause.message : "Could not load events.",
+      );
+    }
+  }, []);
+
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void loadEvents();
+  }, [refresh, loadEvents]);
+  useEffect(() => {
+    const onHashChange = () => setNavHash(window.location.hash);
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
   useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(""), 4500);
@@ -606,6 +702,13 @@ function App() {
     await refresh();
   }
 
+  async function deleteCompany(symbol: string) {
+    await api.deleteCompany(symbol);
+    setCompanyToDelete(null);
+    await Promise.all([refresh(), loadEvents()]);
+    setNotice(`${symbol} deleted.`);
+  }
+
   async function saveTransaction(value: TransactionInput) {
     await api.createTransaction(value);
     setDialog(null);
@@ -613,6 +716,23 @@ function App() {
       `${value.transaction_type} transaction recorded for ${value.symbol}.`,
     );
     await refresh();
+  }
+
+  async function checkEvents(): Promise<EventCheckSummary> {
+    const summary = await api.checkEvents();
+    await loadEvents();
+    return summary;
+  }
+
+  function openEvent(id: number) {
+    window.location.hash = `event-${id}`;
+    setNavHash(`#event-${id}`);
+    window.scrollTo(0, 0);
+  }
+
+  function closeEvent() {
+    window.location.hash = "events";
+    setNavHash("#events");
   }
 
   const companies = data?.companies ?? [];
@@ -658,16 +778,39 @@ function App() {
         </a>
         <div className="sidebar-group-label">WORKSPACE</div>
         <nav className="side-nav" aria-label="Main navigation">
-          <a href="#overview">
+          <a
+            href="#overview"
+            className={!navHash || navHash === "#overview" ? "active" : ""}
+          >
             <Icon name="grid" /> Overview
           </a>
-          <a href="#holdings">
+          <a
+            href="#holdings"
+            className={navHash === "#holdings" ? "active" : ""}
+          >
             <Icon name="layers" /> Holdings
           </a>
-          <a href="#activity">
+          <a
+            href="#activity"
+            className={navHash === "#activity" ? "active" : ""}
+          >
             <Icon name="activity" /> Activity
           </a>
-          <a href="#companies">
+          <a
+            href="#events"
+            className={
+              navHash === "#events" || selectedEventId !== null ? "active" : ""
+            }
+          >
+            <Icon name="receipt" /> Events
+          </a>
+          <a href="#financials" className={navHash === "#financials" ? "active" : ""}>
+            <Icon name="trend" /> Financials
+          </a>
+          <a
+            href="#companies"
+            className={navHash === "#companies" ? "active" : ""}
+          >
             <Icon name="wallet" /> Companies
           </a>
         </nav>
@@ -678,14 +821,17 @@ function App() {
           <p>Every position starts with a well-recorded transaction.</p>
         </div>
         <div className="sidebar-footer">
-          <span className="status-dot" /> LOCAL WORKSPACE <span>PHASE 02</span>
+          <span className="status-dot" /> LOCAL WORKSPACE <span>PHASE 04</span>
         </div>
       </aside>
 
       <main id="overview" className="main-content">
         <header className="topbar">
           <span className="breadcrumb">
-            Workspace <span>/</span> <strong>Overview</strong>
+            Workspace <span>/</span>{" "}
+            <strong>
+              {selectedEventId !== null ? "Event details" : "Overview"}
+            </strong>
           </span>
           <div className="topbar-right">
             <span className="today-label">{displayDate(todayLocal())}</span>
@@ -700,441 +846,483 @@ function App() {
           </div>
         </header>
         <div className="page-content">
-          <div className="hero">
-            <div>
-              <p className="eyebrow">
-                YOUR INVESTMENT DESK <span className="eyebrow-line" />
-              </p>
-              <h1>
-                Your portfolio,
-                <br />
-                <em>in focus.</em>
-              </h1>
-              <p className="hero-copy">
-                A clear view of what you own, what you paid, and what you have
-                realised.
-              </p>
-            </div>
-            <div className="hero-actions">
-              <button
-                className="button button-primary"
-                disabled={companies.length === 0}
-                onClick={() => setDialog("transaction")}
-              >
-                <Icon name="plus" size={17} /> Record transaction
-              </button>
-              <button
-                className="button button-outline"
-                onClick={() => setDialog("company")}
-              >
-                <Icon name="plus" size={17} /> Add company
-              </button>
-            </div>
-          </div>
-
-          {loadError && (
-            <div className="load-error" role="alert">
-              <span>{loadError}</span>
-              <button
-                className="button button-outline"
-                onClick={() => void refresh()}
-              >
-                Try again
-              </button>
-            </div>
-          )}
-          {loading && !data && (
-            <div className="loading-state">Loading your portfolio…</div>
-          )}
-
-          {data && (
+          {selectedEventId !== null ? (
+            <EventDetails eventId={selectedEventId} onBack={closeEvent} />
+          ) : (
             <>
-              <div className="section-heading">
+              <div className="hero">
                 <div>
-                  <p className="eyebrow">AT A GLANCE</p>
-                  <h2>Portfolio snapshot</h2>
+                  <p className="eyebrow">
+                    YOUR INVESTMENT DESK <span className="eyebrow-line" />
+                  </p>
+                  <h1>
+                    Your portfolio,
+                    <br />
+                    <em>in focus.</em>
+                  </h1>
+                  <p className="hero-copy">
+                    A clear view of what you own, what you paid, and what you
+                    have realised.
+                  </p>
                 </div>
-                <span className="section-aside">
-                  Based on recorded transactions
-                </span>
+                <div className="hero-actions">
+                  <button
+                    className="button button-primary"
+                    disabled={companies.length === 0}
+                    onClick={() => setDialog("transaction")}
+                  >
+                    <Icon name="plus" size={17} /> Record transaction
+                  </button>
+                  <button
+                    className="button button-outline"
+                    onClick={() => setDialog("company")}
+                  >
+                    <Icon name="plus" size={17} /> Add company
+                  </button>
+                </div>
               </div>
-              <section className="stats-grid" aria-label="Portfolio summary">
-                <StatCard
-                  label="Open positions"
-                  value={String(holdings.length).padStart(2, "0")}
-                  detail={`${companies.length} registered ${companies.length === 1 ? "company" : "companies"}`}
-                  icon="layers"
-                />
-                <StatCard
-                  label="Remaining cost basis"
-                  value={money(totalCost)}
-                  detail="Capital tied to current holdings"
-                  icon="wallet"
-                  tone="green"
-                />
-                <StatCard
-                  label="Realised P&L"
-                  value={money(realised)}
-                  detail="After transaction charges"
-                  icon="trend"
-                />
-                <StatCard
-                  label="Transactions"
-                  value={String(transactions.length).padStart(2, "0")}
-                  detail="Buys and sells recorded"
-                  icon="receipt"
-                />
-              </section>
 
-              <section className="overview-grid" aria-label="Portfolio detail">
-                <div className="panel allocation-panel">
-                  <div className="panel-heading">
+              {loadError && (
+                <div className="load-error" role="alert">
+                  <span>{loadError}</span>
+                  <button
+                    className="button button-outline"
+                    onClick={() => void refresh()}
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+              {loading && !data && (
+                <div className="loading-state">Loading your portfolio…</div>
+              )}
+
+              {data && (
+                <>
+                  <div className="section-heading">
                     <div>
-                      <p className="eyebrow">THE BIG PICTURE</p>
-                      <h2>Capital allocation</h2>
+                      <p className="eyebrow">AT A GLANCE</p>
+                      <h2>Portfolio snapshot</h2>
                     </div>
-                    <span className="panel-caption">BY COST BASIS</span>
+                    <span className="section-aside">
+                      Based on recorded transactions
+                    </span>
                   </div>
-                  {allocated.length ? (
-                    <>
-                      <div className="allocation-total">
-                        <span>Remaining invested capital</span>
-                        <strong>{money(totalCost)}</strong>
+                  <section
+                    className="stats-grid"
+                    aria-label="Portfolio summary"
+                  >
+                    <StatCard
+                      label="Open positions"
+                      value={String(holdings.length).padStart(2, "0")}
+                      detail={`${companies.length} registered ${companies.length === 1 ? "company" : "companies"}`}
+                      icon="layers"
+                    />
+                    <StatCard
+                      label="Remaining cost basis"
+                      value={money(totalCost)}
+                      detail="Capital tied to current holdings"
+                      icon="wallet"
+                      tone="green"
+                    />
+                    <StatCard
+                      label="Realised P&L"
+                      value={money(realised)}
+                      detail="After transaction charges"
+                      icon="trend"
+                    />
+                    <StatCard
+                      label="Transactions"
+                      value={String(transactions.length).padStart(2, "0")}
+                      detail="Buys and sells recorded"
+                      icon="receipt"
+                    />
+                  </section>
+
+                  <section
+                    className="overview-grid"
+                    aria-label="Portfolio detail"
+                  >
+                    <div className="panel allocation-panel">
+                      <div className="panel-heading">
+                        <div>
+                          <p className="eyebrow">THE BIG PICTURE</p>
+                          <h2>Capital allocation</h2>
+                        </div>
+                        <span className="panel-caption">BY COST BASIS</span>
                       </div>
-                      <div className="allocation-list">
-                        {allocated.map((holding, index) => {
-                          const percent = totalCost
-                            ? (Number(holding.cost_basis) / totalCost) * 100
-                            : 0;
-                          return (
-                            <div
-                              className="allocation-item"
-                              key={holding.symbol}
-                            >
-                              <div className="allocation-info">
-                                <span>
-                                  <i
-                                    className={`allocation-dot dot-${index}`}
-                                  />
-                                  {holding.symbol}
-                                  <small>{holding.name}</small>
-                                </span>
-                                <strong>{percent.toFixed(1)}%</strong>
-                              </div>
-                              <div className="allocation-track">
+                      {allocated.length ? (
+                        <>
+                          <div className="allocation-total">
+                            <span>Remaining invested capital</span>
+                            <strong>{money(totalCost)}</strong>
+                          </div>
+                          <div className="allocation-list">
+                            {allocated.map((holding, index) => {
+                              const percent = totalCost
+                                ? (Number(holding.cost_basis) / totalCost) * 100
+                                : 0;
+                              return (
                                 <div
-                                  className={`allocation-fill fill-${index}`}
-                                  style={{ width: `${percent}%` }}
+                                  className="allocation-item"
+                                  key={holding.symbol}
+                                >
+                                  <div className="allocation-info">
+                                    <span>
+                                      <i
+                                        className={`allocation-dot dot-${index}`}
+                                      />
+                                      {holding.symbol}
+                                      <small>{holding.name}</small>
+                                    </span>
+                                    <strong>{percent.toFixed(1)}%</strong>
+                                  </div>
+                                  <div className="allocation-track">
+                                    <div
+                                      className={`allocation-fill fill-${index}`}
+                                      style={{ width: `${percent}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="empty-panel">
+                          <span className="empty-symbol">
+                            <Icon name="layers" size={25} />
+                          </span>
+                          <h3>No open positions yet</h3>
+                          <p>
+                            Add a company and record a buy to see your
+                            allocation.
+                          </p>
+                          <button
+                            className="text-link"
+                            onClick={() =>
+                              setDialog(
+                                companies.length ? "transaction" : "company",
+                              )
+                            }
+                          >
+                            Get started <Icon name="arrow" size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="panel recent-panel">
+                      <div className="panel-heading">
+                        <div>
+                          <p className="eyebrow">LATEST MOVES</p>
+                          <h2>Recent activity</h2>
+                        </div>
+                        <a className="text-link" href="#activity">
+                          View all <Icon name="arrow" size={16} />
+                        </a>
+                      </div>
+                      {sortedTransactions.length ? (
+                        <div className="recent-list">
+                          {sortedTransactions.slice(0, 4).map((transaction) => (
+                            <div className="recent-row" key={transaction.id}>
+                              <span
+                                className={`trade-icon ${transaction.transaction_type === "BUY" ? "buy-icon" : "sell-icon"}`}
+                              >
+                                <Icon
+                                  name={
+                                    transaction.transaction_type === "BUY"
+                                      ? "plus"
+                                      : "arrow"
+                                  }
+                                  size={17}
                                 />
+                              </span>
+                              <span className="recent-text">
+                                <strong>
+                                  {transaction.symbol}{" "}
+                                  <small>
+                                    {transaction.transaction_type === "BUY"
+                                      ? "bought"
+                                      : "sold"}
+                                  </small>
+                                </strong>
+                                <small>
+                                  {displayDate(transaction.transaction_date)} ·{" "}
+                                  {quantity(transaction.quantity)} shares
+                                </small>
+                              </span>
+                              <strong className="recent-value">
+                                {cashFlow(transaction) < 0 ? "−" : "+"}
+                                {money(Math.abs(cashFlow(transaction)))}
+                              </strong>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="empty-panel">
+                          <span className="empty-symbol">
+                            <Icon name="receipt" size={25} />
+                          </span>
+                          <h3>No transactions yet</h3>
+                          <p>Your latest buys and sells will appear here.</p>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <EventsSection
+                    events={events}
+                    error={eventsError}
+                    onCheck={checkEvents}
+                    onOpen={openEvent}
+                  />
+                  <FinancialsSection companies={companies} />
+
+                  <section id="holdings" className="section-block">
+                    <div className="section-heading">
+                      <div>
+                        <p className="eyebrow">WHAT YOU OWN</p>
+                        <h2>Current holdings</h2>
+                      </div>
+                      <span className="section-aside">
+                        Weighted average cost method
+                      </span>
+                    </div>
+                    <div className="table-card">
+                      <div className="table-overline">
+                        <span>OPEN POSITIONS</span>
+                        <span>
+                          {holdings.length}{" "}
+                          {holdings.length === 1 ? "POSITION" : "POSITIONS"}
+                        </span>
+                      </div>
+                      {holdings.length ? (
+                        <div className="table-scroll">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Company</th>
+                                <th>Quantity</th>
+                                <th>Avg. purchase</th>
+                                <th>Cost basis</th>
+                                <th>Realised P&L</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {holdings.map((holding) => (
+                                <tr key={holding.symbol}>
+                                  <td>
+                                    <div className="company-cell">
+                                      <span className="ticker-avatar">
+                                        {holding.symbol.slice(0, 2)}
+                                      </span>
+                                      <span>
+                                        <strong>{holding.symbol}</strong>
+                                        <small>{holding.name}</small>
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td>{quantity(holding.quantity)}</td>
+                                  <td>
+                                    {money(holding.average_purchase_price)}
+                                  </td>
+                                  <td className="cell-strong">
+                                    {money(holding.cost_basis)}
+                                  </td>
+                                  <td
+                                    className={
+                                      Number(holding.realised_pnl) >= 0
+                                        ? "positive-value"
+                                        : "negative-value"
+                                    }
+                                  >
+                                    {money(holding.realised_pnl)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="table-empty">
+                          No open positions. Record a BUY transaction to begin.
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <section id="activity" className="section-block">
+                    <div className="section-heading">
+                      <div>
+                        <p className="eyebrow">YOUR LEDGER</p>
+                        <h2>Transaction history</h2>
+                      </div>
+                      <button
+                        className="button button-outline button-small"
+                        disabled={companies.length === 0}
+                        onClick={() => setDialog("transaction")}
+                      >
+                        <Icon name="plus" size={16} /> New transaction
+                      </button>
+                    </div>
+                    <div className="table-card">
+                      <div className="table-toolbar">
+                        <div className="search-box">
+                          <Icon name="search" size={17} />
+                          <input
+                            aria-label="Search transactions"
+                            placeholder="Search by company or symbol"
+                            value={query}
+                            onChange={(event) => setQuery(event.target.value)}
+                          />
+                        </div>
+                        <div
+                          className="filter-group"
+                          role="group"
+                          aria-label="Filter transactions"
+                        >
+                          {(["ALL", "BUY", "SELL"] as const).map((filter) => (
+                            <button
+                              key={filter}
+                              className={
+                                activityFilter === filter ? "active" : ""
+                              }
+                              onClick={() => setActivityFilter(filter)}
+                            >
+                              {filter === "ALL" ? "All trades" : filter}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {filteredTransactions.length ? (
+                        <div className="table-scroll">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Date</th>
+                                <th>Company</th>
+                                <th>Type</th>
+                                <th>Quantity</th>
+                                <th>Price / share</th>
+                                <th>Charges</th>
+                                <th>Cash flow</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredTransactions.map((transaction) => (
+                                <tr key={transaction.id}>
+                                  <td>
+                                    {displayDate(transaction.transaction_date)}
+                                  </td>
+                                  <td>
+                                    <strong>{transaction.symbol}</strong>
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={`type-pill ${transaction.transaction_type === "BUY" ? "buy-pill" : "sell-pill"}`}
+                                    >
+                                      {transaction.transaction_type}
+                                    </span>
+                                  </td>
+                                  <td>{quantity(transaction.quantity)}</td>
+                                  <td>{money(transaction.price)}</td>
+                                  <td>{money(transaction.charges)}</td>
+                                  <td className="cell-strong">
+                                    {cashFlow(transaction) < 0 ? "−" : "+"}
+                                    {money(Math.abs(cashFlow(transaction)))}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="table-empty">
+                          {transactions.length
+                            ? "No transactions match this filter."
+                            : "No transactions recorded yet."}
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <section
+                    id="companies"
+                    className="section-block companies-block"
+                  >
+                    <div className="section-heading">
+                      <div>
+                        <p className="eyebrow">YOUR COVERAGE</p>
+                        <h2>Companies</h2>
+                      </div>
+                      <button
+                        className="button button-outline button-small"
+                        onClick={() => setDialog("company")}
+                      >
+                        <Icon name="plus" size={16} /> Add company
+                      </button>
+                    </div>
+                    {companies.length ? (
+                      <div className="company-grid">
+                        {companies.map((company) => {
+                          const holding = holdings.find(
+                            (item) => item.symbol === company.symbol,
+                          );
+                          return (
+                            <div className="company-card" key={company.id}>
+                              <div className="company-card-top">
+                                <span className="ticker-avatar large">
+                                  {company.symbol.slice(0, 2)}
+                                </span>
+                                <div className="company-card-actions">
+                                  <span
+                                    className={`company-state ${holding ? "state-held" : ""}`}
+                                  >
+                                    {holding ? "OPEN POSITION" : "NO POSITION"}
+                                  </span>
+                                  <button
+                                    className="company-delete"
+                                    type="button"
+                                    aria-label={`Delete ${company.symbol}`}
+                                    title={`Delete ${company.symbol}`}
+                                    onClick={() => setCompanyToDelete(company)}
+                                  >
+                                    <Icon name="trash" size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                              <strong>{company.symbol}</strong>
+                              <span className="company-card-name">
+                                {company.name}
+                              </span>
+                              <div className="company-card-meta">
+                                <span>{company.exchange}</span>
+                                <span>
+                                  {company.sector || "Sector not set"}
+                                </span>
                               </div>
                             </div>
                           );
                         })}
                       </div>
-                    </>
-                  ) : (
-                    <div className="empty-panel">
-                      <span className="empty-symbol">
-                        <Icon name="layers" size={25} />
-                      </span>
-                      <h3>No open positions yet</h3>
-                      <p>
-                        Add a company and record a buy to see your allocation.
-                      </p>
-                      <button
-                        className="text-link"
-                        onClick={() =>
-                          setDialog(
-                            companies.length ? "transaction" : "company",
-                          )
-                        }
-                      >
-                        Get started <Icon name="arrow" size={16} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="panel recent-panel">
-                  <div className="panel-heading">
-                    <div>
-                      <p className="eyebrow">LATEST MOVES</p>
-                      <h2>Recent activity</h2>
-                    </div>
-                    <a className="text-link" href="#activity">
-                      View all <Icon name="arrow" size={16} />
-                    </a>
-                  </div>
-                  {sortedTransactions.length ? (
-                    <div className="recent-list">
-                      {sortedTransactions.slice(0, 4).map((transaction) => (
-                        <div className="recent-row" key={transaction.id}>
-                          <span
-                            className={`trade-icon ${transaction.transaction_type === "BUY" ? "buy-icon" : "sell-icon"}`}
-                          >
-                            <Icon
-                              name={
-                                transaction.transaction_type === "BUY"
-                                  ? "plus"
-                                  : "arrow"
-                              }
-                              size={17}
-                            />
-                          </span>
-                          <span className="recent-text">
-                            <strong>
-                              {transaction.symbol}{" "}
-                              <small>
-                                {transaction.transaction_type === "BUY"
-                                  ? "bought"
-                                  : "sold"}
-                              </small>
-                            </strong>
-                            <small>
-                              {displayDate(transaction.transaction_date)} ·{" "}
-                              {quantity(transaction.quantity)} shares
-                            </small>
-                          </span>
-                          <strong className="recent-value">
-                            {cashFlow(transaction) < 0 ? "−" : "+"}
-                            {money(Math.abs(cashFlow(transaction)))}
-                          </strong>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="empty-panel">
-                      <span className="empty-symbol">
-                        <Icon name="receipt" size={25} />
-                      </span>
-                      <h3>No transactions yet</h3>
-                      <p>Your latest buys and sells will appear here.</p>
-                    </div>
-                  )}
-                </div>
-              </section>
+                    ) : (
+                      <div className="table-card table-empty">
+                        No companies added yet. Add one to start recording
+                        trades.
+                      </div>
+                    )}
+                  </section>
 
-              <section id="holdings" className="section-block">
-                <div className="section-heading">
-                  <div>
-                    <p className="eyebrow">WHAT YOU OWN</p>
-                    <h2>Current holdings</h2>
-                  </div>
-                  <span className="section-aside">
-                    Weighted average cost method
-                  </span>
-                </div>
-                <div className="table-card">
-                  <div className="table-overline">
-                    <span>OPEN POSITIONS</span>
+                  <footer className="footer">
                     <span>
-                      {holdings.length}{" "}
-                      {holdings.length === 1 ? "POSITION" : "POSITIONS"}
+                      FinSight <i>·</i> Portfolio clarity, one trade at a time.
                     </span>
-                  </div>
-                  {holdings.length ? (
-                    <div className="table-scroll">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Company</th>
-                            <th>Quantity</th>
-                            <th>Avg. purchase</th>
-                            <th>Cost basis</th>
-                            <th>Realised P&L</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {holdings.map((holding) => (
-                            <tr key={holding.symbol}>
-                              <td>
-                                <div className="company-cell">
-                                  <span className="ticker-avatar">
-                                    {holding.symbol.slice(0, 2)}
-                                  </span>
-                                  <span>
-                                    <strong>{holding.symbol}</strong>
-                                    <small>{holding.name}</small>
-                                  </span>
-                                </div>
-                              </td>
-                              <td>{quantity(holding.quantity)}</td>
-                              <td>{money(holding.average_purchase_price)}</td>
-                              <td className="cell-strong">
-                                {money(holding.cost_basis)}
-                              </td>
-                              <td
-                                className={
-                                  Number(holding.realised_pnl) >= 0
-                                    ? "positive-value"
-                                    : "negative-value"
-                                }
-                              >
-                                {money(holding.realised_pnl)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="table-empty">
-                      No open positions. Record a BUY transaction to begin.
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              <section id="activity" className="section-block">
-                <div className="section-heading">
-                  <div>
-                    <p className="eyebrow">YOUR LEDGER</p>
-                    <h2>Transaction history</h2>
-                  </div>
-                  <button
-                    className="button button-outline button-small"
-                    disabled={companies.length === 0}
-                    onClick={() => setDialog("transaction")}
-                  >
-                    <Icon name="plus" size={16} /> New transaction
-                  </button>
-                </div>
-                <div className="table-card">
-                  <div className="table-toolbar">
-                    <div className="search-box">
-                      <Icon name="search" size={17} />
-                      <input
-                        aria-label="Search transactions"
-                        placeholder="Search by company or symbol"
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
-                      />
-                    </div>
-                    <div
-                      className="filter-group"
-                      role="group"
-                      aria-label="Filter transactions"
-                    >
-                      {(["ALL", "BUY", "SELL"] as const).map((filter) => (
-                        <button
-                          key={filter}
-                          className={activityFilter === filter ? "active" : ""}
-                          onClick={() => setActivityFilter(filter)}
-                        >
-                          {filter === "ALL" ? "All trades" : filter}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {filteredTransactions.length ? (
-                    <div className="table-scroll">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Date</th>
-                            <th>Company</th>
-                            <th>Type</th>
-                            <th>Quantity</th>
-                            <th>Price / share</th>
-                            <th>Charges</th>
-                            <th>Cash flow</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredTransactions.map((transaction) => (
-                            <tr key={transaction.id}>
-                              <td>
-                                {displayDate(transaction.transaction_date)}
-                              </td>
-                              <td>
-                                <strong>{transaction.symbol}</strong>
-                              </td>
-                              <td>
-                                <span
-                                  className={`type-pill ${transaction.transaction_type === "BUY" ? "buy-pill" : "sell-pill"}`}
-                                >
-                                  {transaction.transaction_type}
-                                </span>
-                              </td>
-                              <td>{quantity(transaction.quantity)}</td>
-                              <td>{money(transaction.price)}</td>
-                              <td>{money(transaction.charges)}</td>
-                              <td className="cell-strong">
-                                {cashFlow(transaction) < 0 ? "−" : "+"}
-                                {money(Math.abs(cashFlow(transaction)))}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="table-empty">
-                      {transactions.length
-                        ? "No transactions match this filter."
-                        : "No transactions recorded yet."}
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              <section id="companies" className="section-block companies-block">
-                <div className="section-heading">
-                  <div>
-                    <p className="eyebrow">YOUR COVERAGE</p>
-                    <h2>Companies</h2>
-                  </div>
-                  <button
-                    className="button button-outline button-small"
-                    onClick={() => setDialog("company")}
-                  >
-                    <Icon name="plus" size={16} /> Add company
-                  </button>
-                </div>
-                {companies.length ? (
-                  <div className="company-grid">
-                    {companies.map((company) => {
-                      const holding = holdings.find(
-                        (item) => item.symbol === company.symbol,
-                      );
-                      return (
-                        <div className="company-card" key={company.id}>
-                          <div className="company-card-top">
-                            <span className="ticker-avatar large">
-                              {company.symbol.slice(0, 2)}
-                            </span>
-                            <span
-                              className={`company-state ${holding ? "state-held" : ""}`}
-                            >
-                              {holding ? "OPEN POSITION" : "NO POSITION"}
-                            </span>
-                          </div>
-                          <strong>{company.symbol}</strong>
-                          <span className="company-card-name">
-                            {company.name}
-                          </span>
-                          <div className="company-card-meta">
-                            <span>{company.exchange}</span>
-                            <span>{company.sector || "Sector not set"}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="table-card table-empty">
-                    No companies added yet. Add one to start recording trades.
-                  </div>
-                )}
-              </section>
-
-              <footer className="footer">
-                <span>
-                  FinSight <i>·</i> Portfolio clarity, one trade at a time.
-                </span>
-                <span>
-                  Values shown in INR <i>·</i> No live market prices
-                </span>
-              </footer>
+                    <span>
+                      Values shown in INR <i>·</i> Market snapshots are dated, not live
+                    </span>
+                  </footer>
+                </>
+              )}
             </>
           )}
         </div>
@@ -1153,6 +1341,14 @@ function App() {
       )}
       {dialog === "company" && (
         <CompanyDialog onClose={() => setDialog(null)} onSave={saveCompany} />
+      )}
+      {companyToDelete && (
+        <DeleteCompanyDialog
+          company={companyToDelete}
+          transactionCount={transactions.filter((item) => item.symbol === companyToDelete.symbol).length}
+          onClose={() => setCompanyToDelete(null)}
+          onDelete={deleteCompany}
+        />
       )}
       {dialog === "transaction" && (
         <TransactionDialog

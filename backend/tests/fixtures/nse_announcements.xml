@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>NSE News - Latest Announcements</title>
+    <lastBuildDate>Sun, 27 Sep 2026 18:26:41 +0530</lastBuildDate>
+    <item>
+      <title>ESDS Software Solution Limited</title>
+      <link>https://nsearchives.nseindia.com/corporate/ESDS_results.pdf</link>
+      <description>ESDS Software Solution Limited has informed the Exchange about Financial Results |SUBJECT: Financial Results</description>
+      <pubDate>24-Sep-2026 20:25:00</pubDate>
+    </item>
+    <item>
+      <title>ESDS Software Solution Limited</title>
+      <link>https://nsearchives.nseindia.com/corporate/xbrl/ESDS_results.xml</link>
+      <description>ESDS Software Solution Limited has informed the Exchange about Financial Results |SUBJECT: Financial Results-XBRL</description>
+      <pubDate>24-Sep-2026 20:26:00</pubDate>
+    </item>
+    <item>
+      <title>Another Company Limited</title>
+      <link>https://nsearchives.nseindia.com/corporate/OTHER_results.pdf</link>
+      <description>Other company filing |SUBJECT: Financial Results</description>
+      <pubDate>24-Sep-2026 20:27:00</pubDate>
+    </item>
+  </channel>
+</rss>

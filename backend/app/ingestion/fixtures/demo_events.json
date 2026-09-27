@@ -1,0 +1,39 @@
+[
+  {
+    "external_symbol": "ESDS",
+    "title": "Unaudited Financial Results for the quarter ended June 2026",
+    "description": "Fixture disclosure for exercising the FinSight event pipeline. This is not a real ESDS filing.",
+    "published_at": "2026-09-24T10:30:00+05:30",
+    "external_id": "fixture-esds-results-2026q2",
+    "source_url": "fixture://esds/results",
+    "document_url": "fixture://esds/results.pdf",
+    "raw_payload": {"fixture": true, "category": "results"}
+  },
+  {
+    "external_symbol": "ESDS",
+    "title": "Board Meeting Intimation",
+    "description": "Fixture board meeting announcement. No real meeting date is implied.",
+    "published_at": "2026-09-23T09:00:00+05:30",
+    "external_id": "fixture-esds-board-20260923",
+    "source_url": "fixture://esds/board-meeting",
+    "raw_payload": {"fixture": true, "category": "board_meeting"}
+  },
+  {
+    "external_symbol": "ESDS",
+    "title": "Investor Presentation",
+    "description": "Fixture investor presentation announcement.",
+    "published_at": "2026-09-22T09:00:00+05:30",
+    "external_id": "fixture-esds-presentation-20260922",
+    "source_url": "fixture://esds/presentation",
+    "raw_payload": {"fixture": true, "category": "presentation"}
+  },
+  {
+    "external_symbol": "ESDS",
+    "title": "Trading Window Closure Compliance Notice",
+    "description": "Fixture compliance announcement.",
+    "published_at": "2026-09-21T09:00:00+05:30",
+    "external_id": "fixture-esds-compliance-20260921",
+    "source_url": "fixture://esds/compliance",
+    "raw_payload": {"fixture": true, "category": "compliance"}
+  }
+]

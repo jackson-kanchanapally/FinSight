@@ -1,0 +1,10 @@
+{
+  "financial_results": {"external_symbol": "ESDS", "title": "Unaudited Financial Results", "published_at": "2026-09-24T10:30:00+05:30", "external_id": "results-1", "source_url": "https://source-a.example/results", "document_url": "https://source-a.example/results.pdf"},
+  "board_meeting": {"external_symbol": "ESDS", "title": "Board Meeting Intimation", "published_at": "2026-09-23T10:30:00+05:30", "external_id": "board-1", "source_url": "https://source-a.example/board"},
+  "investor_presentation": {"external_symbol": "ESDS", "title": "Investor Presentation", "published_at": "2026-09-22T10:30:00+05:30", "external_id": "presentation-1", "source_url": "https://source-a.example/presentation"},
+  "compliance": {"external_symbol": "ESDS", "title": "Trading Window Closure Compliance Notice", "published_at": "2026-09-21T10:30:00+05:30", "external_id": "compliance-1", "source_url": "https://source-a.example/compliance"},
+  "duplicate_event": {"external_symbol": "ESDS", "title": "Unaudited Financial Results", "published_at": "2026-09-24T10:30:00+05:30", "external_id": "results-1", "source_url": "https://source-a.example/results", "document_url": "https://source-a.example/results.pdf"},
+  "duplicate_pdf_other_source": {"external_symbol": "ESDS", "title": "Quarterly Performance Update", "published_at": "2026-09-24T11:00:00+05:30", "external_id": "bse-results-99", "source_url": "https://source-b.example/filing", "document_url": "https://source-b.example/filing.pdf"},
+  "unknown": {"external_symbol": "ESDS", "title": "General Corporate Update", "published_at": "2026-09-20T10:30:00+05:30", "external_id": "unknown-1", "source_url": "https://source-a.example/other"},
+  "broken_document": {"external_symbol": "ESDS", "title": "Annual Report", "published_at": "2026-09-19T10:30:00+05:30", "external_id": "broken-1", "source_url": "https://source-a.example/annual", "document_url": "https://source-a.example/missing.pdf"}
+}

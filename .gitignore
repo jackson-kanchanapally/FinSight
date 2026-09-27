@@ -11,3 +11,5 @@ venv/
 htmlcov/
 frontend/node_modules/
 frontend/dist/
+frontend/e2e-artifacts/
+backend/data/documents/

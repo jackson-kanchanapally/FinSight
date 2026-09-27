@@ -1,0 +1,88 @@
+from datetime import datetime
+from typing import Literal
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class StrictText(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    @field_validator("*", mode="after")
+    @classmethod
+    def safe_text(cls, value):
+        if isinstance(value, str) and ("<" in value or ">" in value or "http://" in value.lower()
+                                       or "https://" in value.lower()):
+            raise ValueError("HTML or links are not allowed in analyst text")
+        return value
+
+
+class Claim(StrictText):
+    title: str = Field(min_length=1, max_length=180)
+    explanation: str = Field(min_length=1, max_length=1000)
+    evidence_ids: list[str] = Field(min_length=1, max_length=8)
+
+
+class MaterialChange(StrictText):
+    metric: str = Field(min_length=1, max_length=100)
+    change: str = Field(min_length=1, max_length=220)
+    interpretation: str = Field(min_length=1, max_length=1000)
+    evidence_ids: list[str] = Field(min_length=1, max_length=8)
+
+
+class AnalystNote(StrictText):
+    text: str = Field(min_length=1, max_length=900)
+    evidence_ids: list[str] = Field(min_length=1, max_length=8)
+
+
+class ValuationView(StrictText):
+    status: Literal["ASSESSED", "INSUFFICIENT_DATA"]
+    text: str = Field(min_length=1, max_length=900)
+    evidence_ids: list[str] = Field(max_length=8)
+
+
+class ResearchAction(StrictText):
+    action: Literal["WATCH", "INVESTIGATE", "NO_ACTION", "INSUFFICIENT_EVIDENCE"]
+    reason: str = Field(min_length=1, max_length=500)
+    evidence_ids: list[str] = Field(min_length=1, max_length=8)
+
+
+class AnalystOutput(StrictText):
+    summary: str = Field(min_length=1, max_length=1500)
+    summary_evidence_ids: list[str] = Field(min_length=1, max_length=8)
+    positives: list[Claim] = Field(max_length=8)
+    concerns: list[Claim] = Field(max_length=8)
+    material_changes: list[MaterialChange] = Field(max_length=10)
+    questions: list[str] = Field(max_length=8)
+    data_quality_notes: list[str] = Field(max_length=8)
+    management_commentary: AnalystNote | None = None
+    what_might_happen: AnalystNote | None = None
+    valuation_assessment: ValuationView | None = None
+    research_action: ResearchAction | None = None
+
+    @field_validator("questions", "data_quality_notes")
+    @classmethod
+    def bounded_notes(cls, values: list[str]) -> list[str]:
+        if any(len(value) > 500 or "<" in value or ">" in value or "http://" in value.lower()
+               or "https://" in value.lower() for value in values):
+            raise ValueError("Invalid note text")
+        return values
+
+
+class AnalysisRead(BaseModel):
+    id: int
+    company_id: int
+    financial_period_id: int
+    analysis_type: str
+    model_provider: str
+    model_name: str
+    prompt_version: str
+    context_hash: str
+    context_chars: int
+    evidence_registry: dict
+    summary: str | None
+    structured_output: AnalystOutput | None
+    status: str
+    failure_reason: str | None
+    attempt_count: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
