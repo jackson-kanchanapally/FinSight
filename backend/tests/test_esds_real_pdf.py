@@ -1,6 +1,6 @@
 """Optional offline integration check against a previously downloaded official PDF.
 
-Set FINSIGHT_ESDS_PDF to the local document path. The PDF is never fetched by
+Set ALMONDS_ESDS_PDF to the local document path. The PDF is never fetched by
 the test suite and is not committed to the repository.
 """
 
@@ -16,12 +16,12 @@ from app.services.financials.extractor import extract_pdf_tables
 
 
 def test_real_esds_q1_fy27_against_manually_read_table():
-    location = os.environ.get("FINSIGHT_ESDS_PDF")
+    location = os.environ.get("ALMONDS_ESDS_PDF") or os.environ.get("FINSIGHT_ESDS_PDF")
     if not location:
-        pytest.skip("Set FINSIGHT_ESDS_PDF for the optional local official-PDF check")
+        pytest.skip("Set ALMONDS_ESDS_PDF for the optional local official-PDF check")
     path = Path(location)
     if not path.is_file():
-        pytest.fail(f"FINSIGHT_ESDS_PDF does not exist: {path}")
+        pytest.fail(f"ALMONDS_ESDS_PDF does not exist: {path}")
     periods = extract_pdf_tables(path)
     expected = {
         (FinancialScope.CONSOLIDATED, date(2026, 6, 30)):

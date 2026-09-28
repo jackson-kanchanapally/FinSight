@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">almonds logo</title>
+  <rect width="64" height="64" rx="15" fill="#E8BF78"/>
+  <path d="M32 8C43.5 18.5 50 28.8 50 38.1 50 49.1 42.5 55 32 57c-10.5-2-18-7.9-18-18.9C14 28.8 20.5 18.5 32 8Z" fill="#173C33"/>
+  <path d="M31.7 15.5c-5 8.6-7.4 18-5.1 27.3 1 4 2.8 7.2 5.4 10.2" fill="none" stroke="#E8BF78" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M35.2 17.6c5 8.2 6.9 16.8 5.3 24.6-.8 3.6-2.1 6.5-4.3 9" fill="none" stroke="#E8BF78" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M32 20c1.4 6.8 1.7 13.8.7 20.5" fill="none" stroke="#E8BF78" stroke-width="1.6" stroke-linecap="round" opacity=".85"/>
+</svg>

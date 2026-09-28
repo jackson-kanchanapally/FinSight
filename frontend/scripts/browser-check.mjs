@@ -14,6 +14,7 @@ const frontendDir = path.resolve(
 const projectDir = path.resolve(frontendDir, "..");
 const backendDir = path.join(projectDir, "backend");
 const backendPython =
+  process.env.ALMONDS_BACKEND_PYTHON ||
   process.env.FINSIGHT_BACKEND_PYTHON ||
   path.join(backendDir, ".venv", "bin", "python");
 const artifactDir = path.join(frontendDir, "e2e-artifacts");
@@ -100,14 +101,21 @@ async function run() {
       waitUntil: "networkidle",
     });
     await page.getByText("Portfolio snapshot").waitFor();
+    assert.equal(await page.title(), "almonds — Portfolio overview");
+    assert.match(
+      await page.locator('.brand[aria-label="almonds overview"]').innerText(),
+      /almonds/,
+    );
+    assert.equal(await page.locator(".brand-mark").evaluate((img) => img.naturalWidth), 64);
+    assert.equal(await page.locator('link[rel="icon"]').getAttribute("href"), "/almonds-mark.svg");
     const theme = await page.evaluate(() => ({
       page: getComputedStyle(document.documentElement).backgroundColor,
       panel: getComputedStyle(document.querySelector(".stat-card"))
         .backgroundColor,
     }));
     assert.deepEqual(theme, {
-      page: "rgb(11, 21, 19)",
-      panel: "rgb(20, 35, 30)",
+      page: "rgb(8, 8, 8)",
+      panel: "rgb(22, 22, 22)",
     });
 
     await page.getByRole("button", { name: "Add company" }).first().click();

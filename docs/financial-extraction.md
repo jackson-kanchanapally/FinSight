@@ -31,7 +31,7 @@ VALIDATED means the extracted cells reconciled with the PDF table; it does **not
 
 Money totals use canonical INR_CRORE; EPS uses INR_PER_SHARE. Printed source values preserve their original unit and amount. Conversion: ₹1 crore = ₹10 million = ₹100 lakh. A calculated PBT row has no original PDF value/unit and is marked CALCULATED.
 
-EBITDA is **not directly reported** in the ESDS statement. FinSight calculates it as PBT + finance costs + depreciation and amortisation from validated facts; the UI labels it calculated. ADJUSTED_EBITDA is a separate code and is never treated as unadjusted EBITDA. Other controlled codes include revenue from operations, total/other income, PAT, expenses, basic/diluted EPS, margins, growth, and margin change.
+EBITDA is **not directly reported** in the ESDS statement. almonds calculates it as PBT + finance costs + depreciation and amortisation from validated facts; the UI labels it calculated. ADJUSTED_EBITDA is a separate code and is never treated as unadjusted EBITDA. Other controlled codes include revenue from operations, total/other income, PAT, expenses, basic/diluted EPS, margins, growth, and margin change.
 
 Formulas use Python Decimal:
 
@@ -56,7 +56,7 @@ These source values were read directly from the printed statement pages and chec
 
 The current consolidated quarter gives revenue YoY **7.280053%**, QoQ **−20.204776%**, PAT YoY **13.984816%**, and PAT QoQ **−56.739465%**. Calculated EBITDA is ₹57.511 crore and its margin is **43.028798%**. These are Python calculations, not values reported by the issuer.
 
-The filing also has columns that its text layer does not read reliably: standalone comparison cells and the consolidated annual FY2026 column. The annual total-expenses text, for example, appeared as “3” instead of the printed “3,132.29”. They remain NEEDS_REVIEW; their partial facts do not enter growth calculations or the main financial table. The standalone current-quarter printed PBT is ₹242.86 million; its PDF text was damaged, so FinSight obtains ₹242.86 million from validated total income minus expenses and marks the fact CALCULATED. These are known extraction limits, not silently repaired OCR.
+The filing also has columns that its text layer does not read reliably: standalone comparison cells and the consolidated annual FY2026 column. The annual total-expenses text, for example, appeared as “3” instead of the printed “3,132.29”. They remain NEEDS_REVIEW; their partial facts do not enter growth calculations or the main financial table. The standalone current-quarter printed PBT is ₹242.86 million; its PDF text was damaged, so almonds obtains ₹242.86 million from validated total income minus expenses and marks the fact CALCULATED. These are known extraction limits, not silently repaired OCR.
 
 ## Run and inspect
 
@@ -72,4 +72,4 @@ Event/document IDs can differ after a database reset. The processing POST is ide
 An optional real-PDF test uses a previously downloaded local official PDF. It makes no network request:
 
     cd backend
-    FINSIGHT_ESDS_PDF=data/documents/6f/6fffc199c424ce799f656041afa5a4b5e9897104fe769565e5da4c6449e222fa.pdf .venv/bin/python -m pytest -q tests/test_esds_real_pdf.py
+    ALMONDS_ESDS_PDF=data/documents/6f/6fffc199c424ce799f656041afa5a4b5e9897104fe769565e5da4c6449e222fa.pdf .venv/bin/python -m pytest -q tests/test_esds_real_pdf.py

@@ -4,9 +4,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.ai.analyst.context_builder import build_context
-from app.ai.analyst.prompts import PROMPT_VERSION, SYSTEM_PROMPT, user_prompt
-from app.ai.analyst.schemas import AnalystOutput
-from app.ai.analyst.validator import InvalidAnalysis, validate_output
+from app.ai.analyst.fallback import complete_comparison_claims, verified_fallback
+from app.ai.analyst.prompts import PROMPT_VERSION, SYSTEM_PROMPT, evidence_guide, user_prompt
+from app.ai.analyst.schemas import GeneratedAnalystOutput
+from app.ai.analyst.validator import InvalidAnalysis, citation_feedback, validate_output
 from app.ai.providers.base import LLMError, LLMProvider
 from app.ai.providers.ollama import OllamaProvider
 from app.config import settings
@@ -19,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 def configured_provider() -> LLMProvider:
     return OllamaProvider(settings.ollama_base_url, settings.ollama_model,
-                          settings.ollama_timeout_seconds, settings.ai_temperature)
+                          settings.ollama_timeout_seconds, settings.ai_temperature,
+                          settings.ollama_num_ctx)
 
 
 def analyze_period(db: Session, company: Company, period: FinancialPeriod,
@@ -28,14 +30,13 @@ def analyze_period(db: Session, company: Company, period: FinancialPeriod,
         raise ValueError("PERIOD_COMPANY_MISMATCH")
     if period.status != FinancialStatus.VALIDATED:
         raise ValueError("PERIOD_NOT_VALIDATED")
-    require_extended = provider is None
     provider = provider or configured_provider()
     db.refresh(period, ["metrics"])
     context = build_context(db, company.name, company.symbol, period)
     if not context.fact_count:
         raise ValueError("NO_VERIFIED_FACTS")
     existing = db.scalar(select(AIAnalysis).where(AIAnalysis.financial_period_id == period.id,
-        AIAnalysis.status == "SUCCESS", AIAnalysis.context_hash == context.hash,
+        AIAnalysis.status.in_(("SUCCESS", "VERIFIED_FALLBACK")), AIAnalysis.context_hash == context.hash,
         AIAnalysis.model_provider == provider.name, AIAnalysis.model_name == provider.model,
         AIAnalysis.prompt_version == PROMPT_VERSION).order_by(AIAnalysis.id.desc()))
     if existing and not regenerate:
@@ -53,22 +54,39 @@ def analyze_period(db: Session, company: Company, period: FinancialPeriod,
                 company.symbol, period.quarter or "FY", period.fiscal_year, period.scope.value,
                 provider.name, provider.model, context.fact_count, context.metric_count,
                 len(context.registry), len(context.text))
+    schema = GeneratedAnalystOutput.model_json_schema()
+    guide = evidence_guide(context.registry, period.id)
     feedback = None
     for attempt in (1, 2):
         record.attempt_count = attempt
         try:
-            raw = provider.generate(SYSTEM_PROMPT, user_prompt(context.text, repair_feedback=feedback),
-                                    AnalystOutput.model_json_schema())
+            raw = provider.generate(SYSTEM_PROMPT,
+                                    user_prompt(context.text, repair_feedback=feedback,
+                                                citation_guide=guide), schema)
             output = validate_output(raw, context.registry, period.period_end.year,
-                                     require_extended=require_extended)
+                                     require_extended=True)
+            output = complete_comparison_claims(output, context.registry, period)
             record.status = "SUCCESS"
             record.summary = output.summary
             record.structured_output = output.model_dump()
             record.failure_reason = None
             break
         except InvalidAnalysis as exc:
-            logger.warning("[ai] rejected_model_output reason=%s token=%s", exc.reason, exc.token)
-            feedback = exc.reason + (f" (unsupported numeric token: {exc.token})" if exc.token else "")
+            logger.warning("[ai] rejected_model_output reason=%s token=%s field=%s",
+                           exc.reason, exc.token, exc.field)
+            token_label = "unsupported numeric token" if exc.reason == "UNSUPPORTED_NUMBER" else "token"
+            feedback = exc.reason + (f" ({token_label}: {exc.token})" if exc.token else "")
+            if exc.field:
+                feedback += f" in {exc.field}"
+            if exc.hint:
+                feedback += f". {exc.hint}"
+            elif exc.reason == "UNSUPPORTED_MARGIN_COMPARISON":
+                feedback += (". A margin level is not a margin change. Keep margin levels separate from "
+                             "revenue or PAT trends. Remove margin comparisons without their exact "
+                             "margin-change metric; never infer a QoQ margin change from a YoY metric")
+            issues = citation_feedback(raw, context.registry, period.period_end.year)
+            if len(issues) > 1:
+                feedback += ". Also correct every field: " + "; ".join(issues)
             record.status = "INVALID"
             record.failure_reason = exc.reason
         except LLMError as exc:
@@ -80,6 +98,14 @@ def analyze_period(db: Session, company: Company, period: FinancialPeriod,
             record.status = "FAILED"
             record.failure_reason = "ANALYSIS_ERROR"
             break
+    if record.status == "INVALID":
+        try:
+            output = verified_fallback(context.registry, period)
+            record.status = "VERIFIED_FALLBACK"
+            record.summary = output.summary
+            record.structured_output = output.model_dump()
+        except Exception:
+            logger.exception("[ai] verified fallback failed")
     db.commit()
     db.refresh(record)
     logger.info("[ai] company=%s period_id=%s analysis_status=%s reason=%s",

@@ -181,6 +181,8 @@ export type MarketSnapshotInput = {
   close_price: string;
   pe_ratio: string | null;
   market_cap_crore: string | null;
+  forward_eps_growth_pct: string | null;
+  growth_source_url: string | null;
   as_of_date: string;
   source_url: string;
 };
@@ -188,6 +190,7 @@ export type MarketSnapshot = MarketSnapshotInput & {
   id: number;
   company_id: number;
   updated_at: string;
+  peg_ratio: string | null;
 };
 
 export type AIClaim = {title: string; explanation: string; evidence_ids: string[]};
@@ -223,14 +226,17 @@ export type AIAnalysis = {
   model_provider: string;
   model_name: string;
   prompt_version: string;
+  current_prompt_version: string;
   created_at: string;
-  status: "PENDING" | "SUCCESS" | "FAILED" | "INVALID";
+  status: "PENDING" | "SUCCESS" | "VERIFIED_FALLBACK" | "FAILED" | "INVALID";
   failure_reason: string | null;
   evidence_registry: Record<string, {
     kind: string; metric_code?: string; value?: string; unit?: string;
     document_id?: number; page?: number | null; document_url?: string;
     period_end?: string; source_label?: string; source_url?: string;
     as_of_date?: string; price?: string; pe_ratio?: string | null;
+    market_cap_crore?: string | null; forward_eps_growth_pct?: string | null;
+    growth_source_url?: string | null; peg_ratio?: string | null;
   }>;
   structured_output: {
     summary: string;
@@ -242,7 +248,11 @@ export type AIAnalysis = {
     data_quality_notes: string[];
     management_commentary?: {text: string; evidence_ids: string[]} | null;
     what_might_happen?: {text: string; evidence_ids: string[]} | null;
-    valuation_assessment?: {status: "ASSESSED" | "INSUFFICIENT_DATA"; text: string; evidence_ids: string[]} | null;
+    result_view?: {sentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL"; reason: string;
+      evidence_ids: string[]} | null;
+    valuation_assessment?: {status: "ASSESSED" | "INSUFFICIENT_DATA";
+      verdict: "SUPPORTIVE" | "NOT_SUPPORTIVE" | "INCONCLUSIVE";
+      text: string; evidence_ids: string[]} | null;
     research_action?: {action: "WATCH" | "INVESTIGATE" | "NO_ACTION" | "INSUFFICIENT_EVIDENCE";
       reason: string; evidence_ids: string[]} | null;
   } | null;

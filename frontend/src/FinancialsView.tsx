@@ -14,6 +14,19 @@ function marketSnapshotAge(snapshot: MarketSnapshot) {
     Date.parse(`${snapshot.as_of_date}T00:00:00Z`)) / 86_400_000);
 }
 
+function matchesMarketSnapshot(analysis: AIAnalysis, snapshot: MarketSnapshot | null) {
+  if (!snapshot) return !Object.values(analysis.evidence_registry).some((source) => source.kind === "MARKET_SNAPSHOT");
+  const quote = analysis.evidence_registry[`Q${snapshot.id}`];
+  const sameNumber = (left: string | null | undefined, right: string | null | undefined) =>
+    left == null && right == null || left != null && right != null && Number(left) === Number(right);
+  return quote?.kind === "MARKET_SNAPSHOT" && quote.as_of_date === snapshot.as_of_date &&
+    sameNumber(quote.price, snapshot.close_price) && sameNumber(quote.pe_ratio, snapshot.pe_ratio) &&
+    sameNumber(quote.market_cap_crore, snapshot.market_cap_crore) &&
+    sameNumber(quote.forward_eps_growth_pct, snapshot.forward_eps_growth_pct) &&
+    sameNumber(quote.peg_ratio, snapshot.peg_ratio) &&
+    quote.source_url === snapshot.source_url && quote.growth_source_url === snapshot.growth_source_url;
+}
+
 function periodName(period: FinancialPeriod) {
   return period.period_type === "ANNUAL"
     ? period.fiscal_year
@@ -53,7 +66,7 @@ function financialValue(period: FinancialPeriod, code: string, calculated = fals
     <details className="financial-value">
       <summary>{valueText(entry.value, entry.unit)}</summary>
       <div className="financial-provenance">
-        <strong>{calculated ? "Calculated by FinSight" : "Source fact"}</strong>
+        <strong>{calculated ? "Calculated by almonds" : "Source fact"}</strong>
         <span>{calculated ? metric?.formula : fact?.source_label}</span>
         <span>{period.source_title}</span>
         <span>{period.source_name} · source document date {indiaDate(period.published_at)}</span>
@@ -96,6 +109,8 @@ function MarketSnapshotPanel({symbol, onSaved}: {symbol: string; onSaved: (value
   const [price, setPrice] = useState("");
   const [pe, setPe] = useState("");
   const [marketCap, setMarketCap] = useState("");
+  const [growth, setGrowth] = useState("");
+  const [growthSourceUrl, setGrowthSourceUrl] = useState("");
   const [date, setDate] = useState(indiaToday());
   const [sourceUrl, setSourceUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -110,6 +125,8 @@ function MarketSnapshotPanel({symbol, onSaved}: {symbol: string; onSaved: (value
         setPrice(value.close_price);
         setPe(value.pe_ratio || "");
         setMarketCap(value.market_cap_crore || "");
+        setGrowth(value.forward_eps_growth_pct || "");
+        setGrowthSourceUrl(value.growth_source_url || "");
         setDate(value.as_of_date);
         setSourceUrl(value.source_url);
       }
@@ -126,6 +143,7 @@ function MarketSnapshotPanel({symbol, onSaved}: {symbol: string; onSaved: (value
     try {
       const value = await api.saveMarketSnapshot(symbol, {
         close_price: price, pe_ratio: pe || null, market_cap_crore: marketCap || null,
+        forward_eps_growth_pct: growth || null, growth_source_url: growthSourceUrl.trim() || null,
         as_of_date: date, source_url: sourceUrl.trim(),
       });
       setSnapshot(value);
@@ -140,17 +158,21 @@ function MarketSnapshotPanel({symbol, onSaved}: {symbol: string; onSaved: (value
   const daysOld = snapshot ? marketSnapshotAge(snapshot) : null;
   return <div className="market-panel">
     <div><p className="eyebrow">DATED MARKET CONTEXT</p><h3>Share price and valuation</h3>
-      <p className="financial-footnote">Enter the latest closing price and a source link. P/E and market cap are optional. FinSight never treats this entry as a live quote. <a href={`https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(symbol)}`} target="_blank" rel="noreferrer">Open NSE quote ↗</a></p></div>
+      <p className="financial-footnote">Enter a dated closing price and source. Add sourced P/E and a forward annual EPS growth estimate to calculate PEG. These are user-entered observations, not live quotes. <a href={`https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(symbol)}`} target="_blank" rel="noreferrer">Open NSE quote ↗</a></p></div>
     {snapshot && <p className="market-current">Last entered close: ₹{Number(snapshot.close_price).toLocaleString("en-IN")} · {snapshot.as_of_date}
       {snapshot.pe_ratio ? ` · P/E ${Number(snapshot.pe_ratio).toLocaleString("en-IN")}` : " · P/E unavailable"}
+      {snapshot.peg_ratio ? ` · PEG ${Number(snapshot.peg_ratio).toLocaleString("en-IN", {maximumFractionDigits: 2})}` : " · PEG unavailable"}
       {snapshot.market_cap_crore ? ` · Market cap ₹${Number(snapshot.market_cap_crore).toLocaleString("en-IN")} Cr` : ""}
       {daysOld !== null && daysOld > 7 ? " · Stale for analysis" : ""}
-      {" · "}<a href={snapshot.source_url} target="_blank" rel="noreferrer">Source ↗</a></p>}
+      {" · "}<a href={snapshot.source_url} target="_blank" rel="noreferrer">Price and P/E source ↗</a>
+      {snapshot.growth_source_url && <> · <a href={snapshot.growth_source_url} target="_blank" rel="noreferrer">Growth estimate source ↗</a></>}</p>}
     <form className="market-form" onSubmit={(event) => void save(event)}>
       <label>Close price (₹)<input required type="number" min="0.0001" step="0.0001" value={price} onChange={(event) => setPrice(event.target.value)} /></label>
       <label>P/E ratio<input type="number" min="0.0001" step="0.0001" value={pe} onChange={(event) => setPe(event.target.value)} /></label>
       <label>Market cap (₹ crore)<input type="number" min="0.0001" step="0.0001" value={marketCap} onChange={(event) => setMarketCap(event.target.value)} /></label>
       <label>As of<input required type="date" max={indiaToday()} value={date} onChange={(event) => setDate(event.target.value)} /></label>
+      <label>Forward annual EPS growth estimate (%)<input type="number" min="-1000" max="1000" step="0.0001" value={growth} onChange={(event) => setGrowth(event.target.value)} /></label>
+      <label className="market-growth-source">Growth estimate source URL<input type="url" pattern="https://.*" required={Boolean(growth)} placeholder="https://…" value={growthSourceUrl} onChange={(event) => setGrowthSourceUrl(event.target.value)} /></label>
       <label className="market-source">Source URL<input required type="url" pattern="https://.*" placeholder="https://…" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} /></label>
       <button className="button button-outline button-small" type="submit" disabled={busy}>{busy ? "Saving…" : "Save market snapshot"}</button>
     </form>
@@ -168,11 +190,10 @@ function AnalysisPanel({symbol, period, snapshot}: {symbol: string; period: Fina
     setError("");
     api.companyAnalyses(symbol).then((items) => {
       if (active) setAnalysis(items.find((item) => item.financial_period_id === period.id &&
-        item.status === "SUCCESS" && item.analysis_type === "FINANCIAL_RESULTS" &&
-        item.prompt_version === "FINANCIAL_ANALYST_V3" &&
-        (snapshot ? Date.parse(item.created_at) >= Date.parse(snapshot.updated_at) &&
-          item.evidence_registry[`Q${snapshot.id}`]?.as_of_date === snapshot.as_of_date
-          : !Object.values(item.evidence_registry).some((source) => source.kind === "MARKET_SNAPSHOT"))) || null);
+        (item.status === "SUCCESS" || item.status === "VERIFIED_FALLBACK") &&
+        item.analysis_type === "FINANCIAL_RESULTS" &&
+        item.prompt_version === item.current_prompt_version &&
+        matchesMarketSnapshot(item, snapshot)) || null);
     }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Analysis could not load."); });
     return () => { active = false; };
   }, [symbol, period.id, snapshot]);
@@ -184,33 +205,63 @@ function AnalysisPanel({symbol, period, snapshot}: {symbol: string; period: Fina
     finally { setLoading(false); }
   }
   const output = analysis?.structured_output;
-  const claimList = (title: string, claims: AIClaim[]) => claims.length > 0 &&
-    <div className="ai-group"><h4>{title}</h4>{claims.map((claim, index) =>
-      <article key={index}><strong>{claim.title}</strong><p>{claim.explanation}</p>
-        <EvidenceLinks analysis={analysis!} ids={claim.evidence_ids} /></article>)}</div>;
+  const claimList = (title: string, claims: AIClaim[], empty: string) =>
+    <div className={`ai-group${title === "Concerns" ? " ai-concerns" : ""}`}><h4>{title}</h4>
+      {claims.length ? claims.map((claim, index) =>
+        <article key={index}><strong>{claim.title}</strong><p>{claim.explanation}</p>
+          <EvidenceLinks analysis={analysis!} ids={claim.evidence_ids} /></article>)
+        : <p>{empty}</p>}</div>;
   return <div className="ai-panel">
-    <div className="ai-header"><div><p className="eyebrow">LOCAL MODEL · EVIDENCE CHECKED</p><h3>AI Analysis · {periodName(period)}</h3></div>
+    <div className="ai-header"><div><p className="eyebrow">{analysis?.status === "VERIFIED_FALLBACK" ?
+      "VERIFIED FACTS · MODEL RESPONSE REJECTED" : "LOCAL MODEL · EVIDENCE CHECKED"}</p>
+      <h3>AI Analysis · {periodName(period)}</h3></div>
       <button className="button button-outline button-small" disabled={loading} onClick={() => run(Boolean(analysis))}>
-        {loading ? "Analyzing…" : analysis?.status === "SUCCESS" ? "Regenerate" : "Analyze Results"}</button></div>
-    <p className="financial-footnote">Interpretation of verified results, not an investment recommendation. Financial values come from FinSight calculations.</p>
+        {loading ? "Analyzing…" : analysis?.status === "VERIFIED_FALLBACK" ? "Retry AI analysis" :
+          analysis?.status === "SUCCESS" ? "Regenerate" : "Analyze Results"}</button></div>
+    <p className="financial-footnote">Interpretation of verified results, not an investment recommendation. Financial values come from almonds calculations.</p>
     {error && <p className="event-error" role="alert">{error}</p>}
-    {analysis && analysis.status !== "SUCCESS" && <p className="event-error" role="alert">Analysis {analysis.status.toLowerCase()}: {analysis.failure_reason}</p>}
-    {output && <><p className="ai-summary">{output.summary}</p><EvidenceLinks analysis={analysis!} ids={output.summary_evidence_ids} />
+    {analysis?.status === "VERIFIED_FALLBACK" && <p className="financial-footnote" role="status">
+      The model response did not pass validation. Showing a summary built from verified results.
+    </p>}
+    {analysis && analysis.status !== "SUCCESS" && analysis.status !== "VERIFIED_FALLBACK" &&
+      <p className="event-error" role="alert">Analysis {analysis.status.toLowerCase()}: {analysis.failure_reason}</p>}
+    {output && <><div className="ai-group"><h4>Summary</h4><p className="ai-summary">{output.summary}</p>
+      <EvidenceLinks analysis={analysis!} ids={output.summary_evidence_ids} /></div>
+      {claimList("Positives", output.positives, "No supported positive result changes were identified.")}
+      {claimList("Concerns", output.concerns, "No supported negative result changes were identified.")}
+      {output.result_view && <div className="ai-group ai-result-view"><h4>Results view</h4>
+        <span className={`ai-sentiment ai-sentiment-${output.result_view.sentiment.toLowerCase()}`}>
+          {output.result_view.sentiment}</span>
+        <p>{output.result_view.reason}</p><EvidenceLinks analysis={analysis!} ids={output.result_view.evidence_ids} /></div>}
       {output.material_changes.length > 0 && <div className="ai-group"><h4>Material changes</h4>{output.material_changes.map((change, index) =>
         <article key={index}><strong>{change.metric}: {change.change}</strong><p>{change.interpretation}</p>
           <EvidenceLinks analysis={analysis!} ids={change.evidence_ids} /></article>)}</div>}
-      {claimList("Positives", output.positives)}{claimList("Concerns", output.concerns)}
       {output.management_commentary && <div className="ai-group"><h4>What management said</h4>
         <p>{output.management_commentary.text}</p><EvidenceLinks analysis={analysis!} ids={output.management_commentary.evidence_ids} /></div>}
       {output.what_might_happen && <div className="ai-group"><h4>What might happen next</h4>
         <p>{output.what_might_happen.text}</p><EvidenceLinks analysis={analysis!} ids={output.what_might_happen.evidence_ids} /></div>}
-      {output.valuation_assessment && <div className="ai-group"><h4>Do the results support the valuation? · {output.valuation_assessment.status.replaceAll("_", " ")}</h4>
-        <p>{output.valuation_assessment.text}</p><EvidenceLinks analysis={analysis!} ids={output.valuation_assessment.evidence_ids} /></div>}
+      {output.valuation_assessment && <div className="ai-group ai-valuation"><h4>Do the results support the current valuation?</h4>
+        <div className="ai-valuation-grid">
+          <div><span>Dated share price</span><strong>{snapshot ? `₹${Number(snapshot.close_price).toLocaleString("en-IN", {maximumFractionDigits: 2})}` : "Unavailable"}</strong>
+            <small>{snapshot?.as_of_date || "Enter a recent sourced close"}</small></div>
+          <div><span>P/E</span><strong>{snapshot?.pe_ratio ? Number(snapshot.pe_ratio).toLocaleString("en-IN", {maximumFractionDigits: 2}) : "Unavailable"}</strong>
+            <small>User-entered sourced ratio</small></div>
+          <div><span>PEG</span><strong>{snapshot?.peg_ratio ? Number(snapshot.peg_ratio).toLocaleString("en-IN", {maximumFractionDigits: 2}) : "Unavailable"}</strong>
+            <small>{snapshot?.peg_ratio ? `P/E ÷ ${snapshot.forward_eps_growth_pct}% forward EPS growth` :
+              !snapshot?.pe_ratio ? "Needs sourced P/E" :
+              snapshot.forward_eps_growth_pct !== null && Number(snapshot.forward_eps_growth_pct) <= 0
+                ? "Unavailable for nonpositive growth" : "Needs a sourced forward EPS growth estimate"}</small></div>
+        </div>
+        <p><strong>View: {output.valuation_assessment.verdict.replaceAll("_", " ")}</strong> · {output.valuation_assessment.text}</p>
+        {snapshot && <p className="ai-valuation-sources"><a href={snapshot.source_url} target="_blank" rel="noreferrer">Price and P/E source ↗</a>
+          {snapshot.growth_source_url && <> · <a href={snapshot.growth_source_url} target="_blank" rel="noreferrer">Growth estimate source ↗</a></>}</p>}
+        <EvidenceLinks analysis={analysis!} ids={output.valuation_assessment.evidence_ids} /></div>}
       {output.research_action && <div className="ai-group"><h4>Research recommendation · {output.research_action.action.replaceAll("_", " ")}</h4>
         <p>{output.research_action.reason}</p><EvidenceLinks analysis={analysis!} ids={output.research_action.evidence_ids} /></div>}
       {output.questions.length > 0 && <div className="ai-group"><h4>Questions to watch</h4><ul>{output.questions.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
       {output.data_quality_notes.length > 0 && <div className="ai-group"><h4>Data quality notes</h4><ul>{output.data_quality_notes.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
-      <p className="ai-metadata">Model: {analysis!.model_provider} / {analysis!.model_name} · Generated: {indiaDate(analysis!.created_at)} · Prompt: {analysis!.prompt_version}</p></>}
+      <p className="ai-metadata">{analysis!.status === "VERIFIED_FALLBACK" ? "Verified facts summary" :
+        `Model: ${analysis!.model_provider} / ${analysis!.model_name}`} · Generated: {indiaDate(analysis!.created_at)} · Prompt: {analysis!.prompt_version}</p></>}
   </div>;
 }
 

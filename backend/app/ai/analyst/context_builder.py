@@ -50,6 +50,10 @@ def build_context(db: Session, company_name: str, symbol: str, period: Financial
             "kind": "MARKET_SNAPSHOT", "price": str(fresh_snapshot.close_price),
             "pe_ratio": str(fresh_snapshot.pe_ratio) if fresh_snapshot.pe_ratio is not None else None,
             "market_cap_crore": str(fresh_snapshot.market_cap_crore) if fresh_snapshot.market_cap_crore is not None else None,
+            "forward_eps_growth_pct": (str(fresh_snapshot.forward_eps_growth_pct)
+                                       if fresh_snapshot.forward_eps_growth_pct is not None else None),
+            "growth_source_url": fresh_snapshot.growth_source_url,
+            "peg_ratio": str(fresh_snapshot.peg_ratio) if fresh_snapshot.peg_ratio is not None else None,
             "as_of_date": fresh_snapshot.as_of_date.isoformat(), "source_url": fresh_snapshot.source_url,
             "entered_by_user": True,
         }
@@ -116,17 +120,21 @@ def build_context(db: Session, company_name: str, symbol: str, period: Financial
                    "scope": period.scope.value, "status": period.status.value},
         "source": {"title": event.title, "origin": event.data_origin.value,
                    "document_id": document.id, "sha256": document.sha256_hash},
-        "verified_facts": [{"evidence_id": f"F{fact.id}", **registry[f"F{fact.id}"]}
+        "verified_facts": [{"evidence_id": f"F{fact.id}",
+                            **_prompt_evidence(registry[f"F{fact.id}"])}
                            for fact in current_facts],
-        "deterministic_metrics": [{"evidence_id": f"M{metric.id}", **registry[f"M{metric.id}"]}
+        "deterministic_metrics": [{"evidence_id": f"M{metric.id}",
+                                   **_prompt_evidence(registry[f"M{metric.id}"])}
                                   for metric in sorted(period.metrics, key=lambda item: item.id)
                                   if f"M{metric.id}" in registry],
-        "comparison_facts": [{"evidence_id": key, **item} for key, item in registry.items()
+        "comparison_facts": [{"evidence_id": key, **_prompt_evidence(item)} for key, item in registry.items()
                              if key.startswith("F") and item["period_id"] != period.id],
         "source_excerpts": excerpts,
         "market_snapshot": ({"evidence_id": f"Q{fresh_snapshot.id}",
             **registry[f"Q{fresh_snapshot.id}"]} if fresh_snapshot else None),
-        "market_data_note": ("User entered close and optional source P/E, not a live quote. P/E methodology is not independently verified. Compare as-of dates."
+        "market_data_note": ("User entered close, optional source P/E, and optional sourced forward annual EPS growth. "
+                             "PEG is P/E divided by that growth rate in percentage points when both are present. "
+                             "These observations are not live quotes or independently verified forecasts. Compare as-of dates."
                              if fresh_snapshot else "No fresh sourced price and valuation observation is available."),
         "data_quality": "Only VALIDATED periods and verified facts are included. PDF excerpt numbers are omitted; other periods may need review."}
     text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
@@ -150,3 +158,10 @@ def _fact_item(fact: FinancialFact, period: FinancialPeriod) -> dict:
             "source_label": fact.source_label,
             "document_url": f"/api/documents/{fact.source_document_id}/file"
                             + (f"#page={fact.source_page}" if fact.source_page else "")}
+
+
+def _prompt_evidence(item: dict) -> dict:
+    """The model needs the value and provenance IDs, not repeated database metadata."""
+    keys = ("kind", "metric_code", "value", "unit", "period_end", "scope",
+            "comparison_period_id", "input_evidence_ids")
+    return {key: item[key] for key in keys if key in item}

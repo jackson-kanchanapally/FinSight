@@ -1,6 +1,6 @@
-# FinSight
+# almonds
 
-FinSight is a personal investment research and portfolio monitor. Phase 1 provides transaction-based portfolio accounting, Phase 2 adds a React dashboard, Phase 3 adds company event monitoring, Phase 3.5 adds live primary-source ingestion, Phase 4 adds deterministic financial-result extraction and calculations, and Phase 5 adds an optional local AI analyst. Transactions remain the source of truth; there is no separately maintained holdings table.
+almonds is a personal investment research and portfolio monitor. Phase 1 provides transaction-based portfolio accounting, Phase 2 adds a React dashboard, Phase 3 adds company event monitoring, Phase 3.5 adds live primary-source ingestion, Phase 4 adds deterministic financial-result extraction and calculations, and Phase 5 adds an optional local AI analyst. Transactions remain the source of truth; there is no separately maintained holdings table.
 
 ## Current functionality
 
@@ -49,7 +49,7 @@ validated period + verified facts + Python metrics + relevant stored PDF lines
   -> Financials AI Analysis panel
 ```
 
-`EventSource` isolates feed formats and document retrieval from the rest of FinSight. The monitor records the last attempt, last successful check, last external ID, error, and failure count per source. A failed source does not stop other sources. Each source observation retains its URL, external ID, origin, and raw payload in `event_references`; matching PDFs merge into one company event while retaining both source references. Different PDFs remain separate even when titles and dates match. Local PDF storage uses content-addressed paths behind a replaceable storage interface.
+`EventSource` isolates feed formats and document retrieval from the rest of almonds. The monitor records the last attempt, last successful check, last external ID, error, and failure count per source. A failed source does not stop other sources. Each source observation retains its URL, external ID, origin, and raw payload in `event_references`; matching PDFs merge into one company event while retaining both source references. Different PDFs remain separate even when titles and dates match. Local PDF storage uses content-addressed paths behind a replaceable storage interface.
 
 Portfolio calculations and SELL validation remain in the portfolio service. Alembic owns schema changes; the application does not call `create_all()` at startup.
 
@@ -86,7 +86,7 @@ uvicorn app.main:app --reload
 
 Swagger UI: <http://127.0.0.1:8000/docs>. Health check: <http://127.0.0.1:8000/health>.
 
-The event migrations are 0002 and 0003; Phase 4 adds 0004_financial_reporting and 0005_calculated_fact_provenance; Phase 5 adds 0006_local_ai_analyst. Event briefs and dated market snapshots add 0007 and 0008. Run `alembic upgrade head` against the configured PostgreSQL database before starting the API.
+The event migrations are 0002 and 0003; Phase 4 adds 0004_financial_reporting and 0005_calculated_fact_provenance; Phase 5 adds 0006_local_ai_analyst. Event briefs and dated market snapshots add 0007 and 0008; sourced forward EPS growth for PEG adds 0009. Run `alembic upgrade head` against the configured PostgreSQL database before starting the API.
 
 ## Start the dashboard
 
@@ -184,7 +184,7 @@ The event ID can differ on a fresh database. Processing the same event again ret
 
 The database has separate `financial_periods`, `financial_facts`, `financial_metrics` and `financial_processing_runs` tables. Period identity includes company, end date, period type and scope. Facts use controlled metric codes and `Decimal` values. Currency totals are normalized to INR crore while original printed values and units are preserved; EPS stays INR per share. Calculated EBITDA is PBT + finance costs + depreciation and amortisation, explicitly labeled calculated because ESDS does not report EBITDA directly. YoY compares the same period last fiscal year, QoQ the immediately prior quarter, always with the same scope and period type. Growth is (current − prior) / abs(prior) × 100; margins divide by revenue; margin differences multiply percentage-point changes by 100 for basis points. Missing comparisons and zero denominators remain unavailable, never 0%.
 
-The ESDS Q1 FY2027 consolidated PDF table on page 7 shows revenue ₹1,336.57 million, PAT ₹292.77 million and basic EPS ₹2.92. FinSight stores ₹133.657 crore revenue and ₹29.277 crore PAT, with the PDF page and original values. Current-quarter consolidated revenue YoY is 7.28% and QoQ is −20.20%. The current standalone table is on page 3. Some comparison and annual columns have damaged PDF text and remain `NEEDS_REVIEW`; questionable values are excluded from the displayed history and calculations. `VALIDATED` means table extraction checks passed, **not** that the company statements were audited. See [financial-extraction.md](docs/financial-extraction.md) for the field model, source comparison, formulas, and known limits.
+The ESDS Q1 FY2027 consolidated PDF table on page 7 shows revenue ₹1,336.57 million, PAT ₹292.77 million and basic EPS ₹2.92. almonds stores ₹133.657 crore revenue and ₹29.277 crore PAT, with the PDF page and original values. Current-quarter consolidated revenue YoY is 7.28% and QoQ is −20.20%. The current standalone table is on page 3. Some comparison and annual columns have damaged PDF text and remain `NEEDS_REVIEW`; questionable values are excluded from the displayed history and calculations. `VALIDATED` means table extraction checks passed, **not** that the company statements were audited. See [financial-extraction.md](docs/financial-extraction.md) for the field model, source comparison, formulas, and known limits.
 
 The financial processing endpoint, like the event check, has no authentication and is intended for trusted local use.
 
@@ -250,7 +250,7 @@ The optional official-PDF integration check uses a previously downloaded local E
 
 ```sh
 cd backend
-FINSIGHT_ESDS_PDF=data/documents/6f/6fffc199c424ce799f656041afa5a4b5e9897104fe769565e5da4c6449e222fa.pdf .venv/bin/python -m pytest -q tests/test_esds_real_pdf.py
+ALMONDS_ESDS_PDF=data/documents/6f/6fffc199c424ce799f656041afa5a4b5e9897104fe769565e5da4c6449e222fa.pdf .venv/bin/python -m pytest -q tests/test_esds_real_pdf.py
 ```
 
 ```sh
@@ -303,11 +303,11 @@ After buying 34 shares at ₹429 and selling 24 at ₹1,191, with no charges:
 
 ## Local AI analyst
 
-Install [Ollama](https://ollama.com/), run `ollama pull qwen3:8b`, and start its local server (`ollama serve` if it is not already running). The default model was chosen from the models installed on this development machine; set `OLLAMA_MODEL` to any compatible local model in `.env`. Set `OLLAMA_BASE_URL`, `OLLAMA_TIMEOUT_SECONDS`, `AI_TEMPERATURE`, `AI_MAX_CONTEXT_CHARS`, and `AI_MAX_DOCUMENT_CHARS` there as needed. No cloud model or paid API is used. The local Ollama HTTP endpoint is intended for a trusted local machine.
+Install [Ollama](https://ollama.com/), run `ollama pull qwen3:8b`, and start its local server (`ollama serve` if it is not already running). The default model was chosen from the models installed on this development machine; set `OLLAMA_MODEL` to any compatible local model in `.env`. Set `OLLAMA_BASE_URL`, `OLLAMA_TIMEOUT_SECONDS`, `OLLAMA_NUM_CTX`, `AI_TEMPERATURE`, `AI_MAX_CONTEXT_CHARS`, and `AI_MAX_DOCUMENT_CHARS` there as needed. `OLLAMA_NUM_CTX` defaults to 8192 so the model can see the full results context and citation guide. No cloud model or paid API is used. The local Ollama HTTP endpoint is intended for a trusted local machine.
 
-Open any event to request its short local AI brief automatically. Successful briefs are cached by event content, model, and prompt; **Regenerate** requests another. Open **Financial performance → AI Analysis** for a validated period and select **Analyze Results** for a deeper review. Financial analysis is manual. Results and failures are stored separately from financial facts. The deeper view covers changes, positives, concerns, management statements when found, conditional scenarios, valuation context, research action, and evidence links.
+Open any event to request its short local AI brief automatically. Successful briefs are cached by event content, model, and prompt; **Regenerate** requests another. Open **Financial performance → AI Analysis** for a validated period and select **Analyze Results** for a deeper review. Financial analysis is manual. Results and failures are stored separately from financial facts. The deeper view shows a summary, positives, concerns, a cited positive/negative/neutral view of the results, management statements when found, conditional scenarios, valuation context, research action, and evidence links.
 
-For a valuation comparison, enter a dated closing price, optional P/E and market cap, and an HTTPS source link in **Financial performance**. This is a user supplied observation, not a live quote. A snapshot over seven days old is excluded from new AI analysis. If price or valuation evidence is missing, the analyst should report insufficient data rather than claim that a result justifies the share price.
+For a valuation comparison, enter a dated closing price, optional P/E and market cap, and an HTTPS source link in **Financial performance**. You may also enter a sourced forward annual EPS growth estimate and its HTTPS source URL. almonds calculates PEG as P/E divided by the growth rate expressed in percentage points; it leaves PEG unavailable when P/E or sourced positive growth is missing. The quote and growth estimate are user supplied, not a live feed or verified forecast. A snapshot over seven days old is excluded from new AI analysis. The results report shows the input date and sources and treats the valuation conclusion as provisional because one reporting period cannot establish whether future earnings growth will be achieved.
 
 ```sh
 curl -X POST http://127.0.0.1:8000/api/companies/ESDS/financials/42/analyze
@@ -318,7 +318,7 @@ curl -X POST http://127.0.0.1:8000/api/events/1/analyze
 curl http://127.0.0.1:8000/api/companies/ESDS/market-snapshot
 ```
 
-Replace `42` with a real validated period ID from `GET /api/companies/ESDS/financials`. A failed call returns an analysis record with `status: FAILED` or `INVALID` and a reason such as `OLLAMA_UNAVAILABLE`, `OLLAMA_TIMEOUT`, or `UNKNOWN_EVIDENCE_ID`. Invalid model output is retried once; provider failures are not retried. See [the analyst design and evaluation](docs/local-ai-analyst.md) for the schema, provenance rules, and limitations.
+Replace `42` with a real validated period ID from `GET /api/companies/ESDS/financials`. Invalid model output is retried once. If both responses fail validation, the API returns `VERIFIED_FALLBACK` with a cited summary assembled from verified facts and calculated metrics; the dashboard labels it and offers **Retry AI analysis**. The last validation reason remains in `failure_reason`. Provider failures return `FAILED` with a reason such as `OLLAMA_UNAVAILABLE` or `OLLAMA_TIMEOUT`. See [the analyst design and evaluation](docs/local-ai-analyst.md) for the schema, provenance rules, and limitations.
 
 ## Next phase
 

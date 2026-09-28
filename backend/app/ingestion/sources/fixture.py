@@ -31,7 +31,7 @@ class FixtureSource(EventSource):
         with pymupdf.open() as pdf:
             first = pdf.new_page()
             first.insert_text((72, 72), f"{event.external_symbol} - {event.title}")
-            first.insert_text((72, 100), "Generated from a FinSight fixture disclosure.")
+            first.insert_text((72, 100), "Generated from a almonds fixture disclosure.")
             second = pdf.new_page()
             second.insert_text((72, 72), "Fixture document - page 2")
             second.insert_text((72, 100), "This is not a real filing.")

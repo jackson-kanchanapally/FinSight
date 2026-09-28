@@ -52,7 +52,7 @@ class SafePdfDownloader:
         self.validate_url(url)
         own_client = self.client is None
         client = self.client or httpx.AsyncClient(timeout=self.timeout_seconds, follow_redirects=False,
-                                                   trust_env=False, headers={"User-Agent": "FinSight/0.3 (personal portfolio monitor)"})
+                                                   trust_env=False, headers={"User-Agent": "almonds/0.3 (personal portfolio monitor)"})
         try:
             for attempt in range(self.retries + 1):
                 try:

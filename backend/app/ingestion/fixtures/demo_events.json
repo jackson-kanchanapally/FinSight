@@ -2,7 +2,7 @@
   {
     "external_symbol": "ESDS",
     "title": "Unaudited Financial Results for the quarter ended June 2026",
-    "description": "Fixture disclosure for exercising the FinSight event pipeline. This is not a real ESDS filing.",
+    "description": "Fixture disclosure for exercising the almonds event pipeline. This is not a real ESDS filing.",
     "published_at": "2026-09-24T10:30:00+05:30",
     "external_id": "fixture-esds-results-2026q2",
     "source_url": "fixture://esds/results",

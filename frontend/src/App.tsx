@@ -768,12 +768,10 @@ function App() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a className="brand" href="#overview" aria-label="FinSight overview">
-          <span className="brand-mark">
-            F<span>.</span>
-          </span>
+        <a className="brand" href="#overview" aria-label="almonds overview">
+          <img className="brand-mark" src="/almonds-mark.svg" alt="" />
           <span className="brand-name">
-            FinSight<small>PORTFOLIO INTELLIGENCE</small>
+            almonds<small>PORTFOLIO INTELLIGENCE</small>
           </span>
         </a>
         <div className="sidebar-group-label">WORKSPACE</div>
@@ -1315,7 +1313,7 @@ function App() {
 
                   <footer className="footer">
                     <span>
-                      FinSight <i>·</i> Portfolio clarity, one trade at a time.
+                      almonds <i>·</i> Portfolio clarity, one trade at a time.
                     </span>
                     <span>
                       Values shown in INR <i>·</i> Market snapshots are dated, not live

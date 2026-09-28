@@ -34,7 +34,7 @@ async def lifespan(_app: FastAPI):
         if scheduler:
             scheduler.shutdown(wait=False)
 
-app = FastAPI(title="FinSight", version="0.5.0", description="Portfolio, verified reporting, and local AI interpretation", lifespan=lifespan)
+app = FastAPI(title="almonds", version="0.5.0", description="Portfolio, verified reporting, and local AI interpretation", lifespan=lifespan)
 app.include_router(companies.router)
 app.include_router(transactions.router)
 app.include_router(portfolio.router)

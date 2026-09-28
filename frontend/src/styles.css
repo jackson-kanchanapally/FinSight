@@ -73,18 +73,8 @@ p {
 .brand-mark {
   width: 40px;
   height: 40px;
-  display: grid;
-  place-items: center;
+  display: block;
   border-radius: 12px;
-  background: #e5bc72;
-  color: #173c33;
-  font-family: Georgia, serif;
-  font-size: 28px;
-  font-weight: bold;
-  line-height: 1;
-}
-.brand-mark span {
-  color: #fff;
 }
 .brand-name {
   font-weight: 750;
@@ -1177,7 +1167,6 @@ td strong {
   .brand-mark {
     height: 33px;
     width: 33px;
-    font-size: 23px;
   }
   .brand-name {
     font-size: 17px;
@@ -1313,7 +1302,7 @@ td strong {
   }
 }
 
-/* FinSight black palette. Layout rules above remain shared across screen sizes. */
+/* almonds black palette. Layout rules above remain shared across screen sizes. */
 :root {
   color-scheme: dark;
   --page: #080808;

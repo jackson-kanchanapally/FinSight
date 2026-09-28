@@ -111,7 +111,7 @@ class ESDSIRSource(EventSource):
         own_client = self.client is None
         client = self.client or httpx.AsyncClient(timeout=settings.live_source_timeout_seconds,
                      follow_redirects=False, trust_env=False,
-                     headers={"User-Agent": "FinSight/0.35 (personal portfolio monitor)"})
+                     headers={"User-Agent": "almonds/0.35 (personal portfolio monitor)"})
         try:
             for attempt in range(3):
                 try:
