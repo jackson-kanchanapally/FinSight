@@ -190,6 +190,7 @@ function CompanyDialog({
   const [exchange, setExchange] = useState("NSE");
   const [sector, setSector] = useState("");
   const [isin, setIsin] = useState("");
+  const [bseCode, setBseCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -204,6 +205,7 @@ function CompanyDialog({
         exchange: exchange.trim(),
         sector: sector.trim() || null,
         isin: isin.trim() || null,
+        bse_code: bseCode.trim() || null,
       });
     } catch (cause) {
       setError(
@@ -282,6 +284,11 @@ function CompanyDialog({
               value={isin}
               onChange={(event) => setIsin(event.target.value.toUpperCase())}
             />
+          </label>
+          <label className="field">
+            <span>BSE code <small>Optional · for EOD provider</small></span>
+            <input pattern="[0-9]{6}" maxLength={6} placeholder="6 digit BSE code"
+              value={bseCode} onChange={(event) => setBseCode(event.target.value)} />
           </label>
         </div>
         {error && (
@@ -805,6 +812,9 @@ function App() {
           <a href="#financials" className={navHash === "#financials" ? "active" : ""}>
             <Icon name="trend" /> Financials
           </a>
+          <a href="#valuation" className={navHash === "#valuation" ? "active" : ""}>
+            <Icon name="trend" /> Valuation
+          </a>
           <a
             href="#companies"
             className={navHash === "#companies" ? "active" : ""}
@@ -819,7 +829,7 @@ function App() {
           <p>Every position starts with a well-recorded transaction.</p>
         </div>
         <div className="sidebar-footer">
-          <span className="status-dot" /> LOCAL WORKSPACE <span>PHASE 04</span>
+          <span className="status-dot" /> LOCAL WORKSPACE <span>PHASE 06</span>
         </div>
       </aside>
 
@@ -1261,18 +1271,27 @@ function App() {
                       </button>
                     </div>
                     {companies.length ? (
-                      <div className="company-grid">
+                      <div className="company-list" role="list">
                         {companies.map((company) => {
                           const holding = holdings.find(
                             (item) => item.symbol === company.symbol,
                           );
                           return (
-                            <div className="company-card" key={company.id}>
-                              <div className="company-card-top">
+                            <div className="company-row" role="listitem" key={company.id}>
+                              <div className="company-row-identity">
                                 <span className="ticker-avatar large">
                                   {company.symbol.slice(0, 2)}
                                 </span>
-                                <div className="company-card-actions">
+                                <div className="company-row-name">
+                                  <strong>{company.symbol}</strong>
+                                  <span>{company.name}</span>
+                                </div>
+                              </div>
+                              <div className="company-row-meta">
+                                <span>{company.exchange}</span>
+                                <span>{company.sector || "Sector not set"}</span>
+                              </div>
+                              <div className="company-card-actions">
                                   <span
                                     className={`company-state ${holding ? "state-held" : ""}`}
                                   >
@@ -1287,17 +1306,6 @@ function App() {
                                   >
                                     <Icon name="trash" size={16} />
                                   </button>
-                                </div>
-                              </div>
-                              <strong>{company.symbol}</strong>
-                              <span className="company-card-name">
-                                {company.name}
-                              </span>
-                              <div className="company-card-meta">
-                                <span>{company.exchange}</span>
-                                <span>
-                                  {company.sector || "Sector not set"}
-                                </span>
                               </div>
                             </div>
                           );

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from app.models.financial import FinancialScope, MetricCode
+from app.models.financial import FinancialScope, MetricCode, PeriodType
 from app.services.financials.extractor import extract_pdf_tables
 
 
@@ -41,4 +41,13 @@ def test_real_esds_q1_fy27_against_manually_read_table():
         assert period.facts[MetricCode.PAT].original_value == pat
         assert period.facts[MetricCode.BASIC_EPS].original_value == eps
         assert period.facts[MetricCode.REVENUE_FROM_OPERATIONS].page == page
+    annual = next(p for p in periods if p.scope == FinancialScope.CONSOLIDATED
+                  and p.identity.period_type == PeriodType.ANNUAL)
+    assert annual.issues == []
+    assert annual.facts[MetricCode.REVENUE_FROM_OPERATIONS].original_value == Decimal("4722.10")
+    assert annual.facts[MetricCode.TOTAL_EXPENSES].original_value == Decimal("3132.29")
+    assert annual.facts[MetricCode.TOTAL_EXPENSES].calculated
+    assert annual.facts[MetricCode.PAT].original_value == Decimal("1208.23")
+    assert annual.facts[MetricCode.PAT].calculated
+    assert annual.facts[MetricCode.DILUTED_EPS].original_value == Decimal("11.76")
     assert any(period.issues for period in periods)

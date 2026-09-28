@@ -32,14 +32,14 @@ def _company(db: Session, symbol: str) -> Company:
 
 
 @router.post("/api/companies/{symbol}/financials/{period_id}/analyze", response_model=AnalysisRead)
-def analyze(symbol: str, period_id: int, regenerate: bool = False,
+def analyze(symbol: str, period_id: int, regenerate: bool = False, force: bool = False,
             db: Session = Depends(get_db)) -> AIAnalysis:
     company = _company(db, symbol)
     period = db.get(FinancialPeriod, period_id)
     if period is None or period.company_id != company.id:
         raise HTTPException(status_code=404, detail="Financial period not found")
     try:
-        return analyze_period(db, company, period, regenerate=regenerate)
+        return analyze_period(db, company, period, regenerate=regenerate, force=force)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

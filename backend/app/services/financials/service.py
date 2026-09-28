@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.event import CompanyEvent, DataOrigin, Document, DocumentPage, EventType, ProcessingStatus
-from app.models.financial import (FactMethod, FactStatus, FinancialFact, FinancialMetric, FinancialPeriod,
+from app.models.financial import (FactMethod, FactStatus, FinancialFact, FinancialFactCorrection, FinancialMetric, FinancialPeriod,
                                   FinancialProcessingRun, FinancialStatus, FinancialUnit, MetricCode, OriginalUnit,
                                   PeriodType)
 from app.services.financials.calculator import growth, margin, margin_change_bps, normalize_currency
@@ -50,6 +50,39 @@ def _store_period(db: Session, event: CompanyEvent, document: Document, raw: Raw
         if existing.source_document_id != document.id:
             raise FinancialProcessingError(
                 f"{identity.end} {identity.period_type.value} {raw.scope.value} already has another source PDF; review revision")
+        if existing.status == FinancialStatus.NEEDS_REVIEW and not raw.issues:
+            db.refresh(existing, ["facts"])
+            by_code = {fact.metric_code: fact for fact in existing.facts}
+            for code, fact in by_code.items():
+                if code not in raw.facts:
+                    fact.status = FactStatus.NEEDS_REVIEW
+            for raw_fact in raw.facts.values():
+                unit = (FinancialUnit.INR_PER_SHARE if raw_fact.original_unit == OriginalUnit.INR_PER_SHARE
+                        else FinancialUnit.INR_CRORE)
+                value = (raw_fact.original_value if unit == FinancialUnit.INR_PER_SHARE else
+                         normalize_currency(raw_fact.original_value, raw_fact.original_unit))
+                fact = by_code.get(raw_fact.code)
+                if fact is None:
+                    fact = FinancialFact(financial_period_id=existing.id, metric_code=raw_fact.code,
+                                         source_document_id=document.id)
+                    db.add(fact)
+                elif fact.value != value:
+                    db.add(FinancialFactCorrection(fact_id=fact.id, previous_value=fact.value,
+                        corrected_value=value, reason="Same PDF re-extracted with reconciled component rows"))
+                fact.value = value
+                fact.unit = unit
+                fact.original_value = None if raw_fact.calculated else raw_fact.original_value
+                fact.original_unit = None if raw_fact.calculated else raw_fact.original_unit
+                fact.source_page = raw_fact.page
+                fact.source_label = raw_fact.label
+                fact.source_column_date = raw_fact.column_date
+                fact.extraction_method = FactMethod.CALCULATED if raw_fact.calculated else FactMethod.PDF_TABLE
+                fact.status = FactStatus.VERIFIED_PDF
+            existing.status = FinancialStatus.VALIDATED
+            existing.status_note = ("Previously unreadable cells calculated from reconciled PDF components"
+                                    if any(fact.calculated for fact in raw.facts.values()) else None)
+            db.commit()
+            db.refresh(existing, ["facts"])
         return existing, False
     status = FinancialStatus.NEEDS_REVIEW if raw.issues else FinancialStatus.VALIDATED
     period = FinancialPeriod(company_id=event.company_id, fiscal_year=identity.fiscal_year,
@@ -77,7 +110,9 @@ def _store_period(db: Session, event: CompanyEvent, document: Document, raw: Raw
 
 
 def _fact(period: FinancialPeriod, code: MetricCode) -> FinancialFact | None:
-    return next((fact for fact in period.facts if fact.metric_code == code), None)
+    return next((fact for fact in period.facts if fact.metric_code == code
+                 and fact.status in {FactStatus.VERIFIED_PDF, FactStatus.VERIFIED_STRUCTURED,
+                                     FactStatus.MANUALLY_VERIFIED}), None)
 
 
 def _put_metric(db: Session, period: FinancialPeriod, code: MetricCode, value: Decimal | None,

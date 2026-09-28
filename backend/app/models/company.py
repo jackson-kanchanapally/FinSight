@@ -14,6 +14,7 @@ class Company(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     exchange: Mapped[str] = mapped_column(String(50), nullable=False)
     isin: Mapped[str | None] = mapped_column(String(12))
+    bse_code: Mapped[str | None] = mapped_column(String(6))
     sector: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="company")

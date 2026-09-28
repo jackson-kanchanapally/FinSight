@@ -225,8 +225,20 @@ def test_provider_failure_does_not_modify_financial_data(financial_env, reason):
     _, db, company, period, _, _, _ = setup(financial_env)
     before = db.query(FinancialFact).count()
     record = analyze_period(db, company, period, FakeProvider(error=reason))
-    assert record.status == "FAILED" and record.failure_reason == reason
+    assert record.status == "VERIFIED_FALLBACK" and record.failure_reason == reason
+    assert record.summary and record.structured_output
     assert record.attempt_count == 1 and db.query(FinancialFact).count() == before
+
+
+def test_recent_fallback_prevents_repeated_model_attempts(financial_env):
+    _, db, company, period, _, revenue, yoy = setup(financial_env)
+    first = analyze_period(db, company, period, FakeProvider(error="OLLAMA_TIMEOUT"))
+    assert first.status == "VERIFIED_FALLBACK"
+    retry = FakeProvider([valid(revenue, yoy)])
+    cached = analyze_period(db, company, period, retry, regenerate=True)
+    assert cached.id == first.id and retry.calls == 0
+    forced = analyze_period(db, company, period, retry, regenerate=True, force=True)
+    assert forced.id != first.id and forced.status == "SUCCESS" and retry.calls == 1
 
 
 def test_unknown_evidence_unsupported_number_and_recommendation(financial_env):
@@ -276,6 +288,26 @@ def test_different_comparisons_in_one_summary_use_their_own_evidence(financial_e
     validate_output(json.dumps(data), context.registry, period.period_end.year)
 
 
+def test_comparison_marker_does_not_attach_to_later_subject(financial_env):
+    _, db, company, period, context, revenue, yoy = setup(financial_env)
+    data = json.loads(valid(revenue, yoy))
+    pat_yoy = next(key for key, item in context.registry.items()
+                   if item["kind"] == "METRIC" and item["metric_code"] == "PAT_YOY")
+    data["positives"][0] = {"title": "PAT growth", "explanation":
+        "PAT increased year over year despite revenue softness.", "evidence_ids": [pat_yoy]}
+    validate_output(json.dumps(data), context.registry, period.period_end.year)
+
+
+def test_both_subjects_need_evidence_when_compared_together(financial_env):
+    _, db, company, period, context, revenue, yoy = setup(financial_env)
+    data = json.loads(valid(revenue, yoy))
+    data["summary"] = "Revenue and PAT increased year over year."
+    data["summary_evidence_ids"] = [yoy]
+    with pytest.raises(InvalidAnalysis, match="MISSING_COMPARISON_EVIDENCE") as error:
+        validate_output(json.dumps(data), context.registry, period.period_end.year)
+    assert "PAT_YOY" in (error.value.hint or "")
+
+
 def test_supported_date_and_field_citation(financial_env):
     _, db, company, period, context, revenue, yoy = setup(financial_env)
     data = json.loads(valid(revenue, yoy))
@@ -286,6 +318,37 @@ def test_supported_date_and_field_citation(financial_env):
         validate_output(json.dumps(data), context.registry, period.period_end.year)
     assert exc.value.reason == "UNSUPPORTED_NUMBER"
     assert exc.value.field == "positives" and exc.value.token == "29.28"
+
+
+@pytest.mark.parametrize("claim", ["PAT fell -13.9% YoY.", "PAT fell -13.98% YoY."])
+def test_wrong_sign_pat_yoy_is_rejected_with_exact_metric_hint(financial_env, claim):
+    _, db, company, period, context, revenue, yoy = setup(financial_env)
+    pat_yoy = next(key for key, item in context.registry.items()
+                   if item["kind"] == "METRIC" and item["metric_code"] == "PAT_YOY")
+    output = json.loads(valid(revenue, yoy))
+    output["summary"] = claim
+    output["summary_evidence_ids"] = [pat_yoy]
+    with pytest.raises(InvalidAnalysis, match="UNSUPPORTED_NUMBER") as error:
+        validate_output(json.dumps(output), context.registry, period.period_end.year)
+    assert error.value.field == "summary"
+    assert pat_yoy in (error.value.hint or "")
+    assert "preserve its direction" in error.value.hint
+
+
+def test_identical_wrong_sign_model_response_uses_fallback_without_repeated_warning(financial_env, caplog):
+    _, db, company, period, context, revenue, yoy = setup(financial_env)
+    pat_yoy = next(key for key, item in context.registry.items()
+                   if item["kind"] == "METRIC" and item["metric_code"] == "PAT_YOY")
+    output = json.loads(valid(revenue, yoy))
+    output["summary"] = "PAT fell -13.9% YoY."
+    output["summary_evidence_ids"] = [pat_yoy]
+    raw = json.dumps(output)
+    provider = FakeProvider([raw, raw])
+    result = analyze_period(db, company, period, provider)
+    assert result.status == "VERIFIED_FALLBACK" and result.attempt_count == 2
+    assert provider.calls == 2
+    assert provider.prompts[1].count(f"{pat_yoy} PAT_YOY = +") == 1
+    assert caplog.text.count("rejected_model_output reason=UNSUPPORTED_NUMBER token=-13.9") == 1
 
 
 def test_review_facts_and_periods_cannot_enter_context(financial_env):
@@ -308,7 +371,7 @@ def test_api_scope_validation_and_failure_response(financial_env, monkeypatch):
     monkeypatch.setattr(service, "configured_provider", lambda: FakeProvider(error="OLLAMA_UNAVAILABLE"))
     response = client.post(f"/api/companies/ESDS/financials/{period.id}/analyze")
     assert response.status_code == 200
-    assert response.json()["status"] == "FAILED"
+    assert response.json()["status"] == "VERIFIED_FALLBACK"
     assert response.json()["failure_reason"] == "OLLAMA_UNAVAILABLE"
     assert client.post(f"/api/companies/OTHER/financials/{period.id}/analyze").status_code == 404
     assert client.get("/api/analysis/9999").status_code == 404
@@ -322,7 +385,9 @@ def test_api_success_and_cached_response(financial_env, monkeypatch):
     path = f"/api/companies/ESDS/financials/{period.id}/analyze"
     first = client.post(path)
     assert first.status_code == 200 and first.json()["status"] == "SUCCESS"
-    assert first.json()["structured_output"]["summary_evidence_ids"] == [yoy]
+    summary = first.json()["structured_output"]
+    assert yoy in summary["summary_evidence_ids"]
+    assert "sequential" in summary["summary"].lower()
     assert client.post(path).json()["id"] == first.json()["id"]
     assert provider.calls == 1
 
@@ -362,7 +427,8 @@ def test_sourced_forward_growth_calculates_peg_and_bounds_valuation(financial_en
     output["valuation_assessment"] = {"status": "ASSESSED", "verdict": "INCONCLUSIVE",
         "text": "At ₹100.00, P/E is 30.00 and PEG is 2.00 using 15% forward EPS growth.",
         "evidence_ids": [quote_id, revenue, yoy]}
-    validate_output(json.dumps(output), context.registry, period.period_end.year, require_extended=True)
+    with pytest.raises(InvalidAnalysis, match="VALUATION_EVIDENCE_MISSING"):
+        validate_output(json.dumps(output), context.registry, period.period_end.year, require_extended=True)
     output["valuation_assessment"]["evidence_ids"] = [output["summary_evidence_ids"][0]]
     with pytest.raises(InvalidAnalysis, match="UNSUPPORTED_NUMBER|VALUATION_EVIDENCE_MISSING"):
         validate_output(json.dumps(output), context.registry, period.period_end.year, require_extended=True)
@@ -374,7 +440,7 @@ def test_sourced_forward_growth_calculates_peg_and_bounds_valuation(financial_en
                                        "growth_source_url": "https://example.com/growth"})
     assert no_growth.status_code == 200 and no_growth.json()["peg_ratio"] is None
     context = build_context(db, company.name, company.symbol, period)
-    assert verified_fallback(context.registry, period).valuation_assessment.status == "INSUFFICIENT_DATA"
+    assert verified_fallback(context.registry, period).valuation_assessment.status == "ASSESSED"
 
 
 def test_result_view_cannot_reverse_the_only_cited_comparison(financial_env):

@@ -13,7 +13,8 @@ from sqlalchemy.orm import Session, selectinload
 from app.config import settings
 from app.models.event import CompanyEvent, Document, DocumentPage
 from app.models.financial import (FactStatus, FinancialFact, FinancialPeriod, FinancialStatus)
-from app.models.market import MarketSnapshot
+from app.market.valuation import calculate_valuation
+from app.market.service import latest_snapshot
 
 VERIFIED = {FactStatus.VERIFIED_PDF, FactStatus.VERIFIED_STRUCTURED, FactStatus.MANUALLY_VERIFIED}
 PAGE_KEYWORDS = ("revenue from operations", "profit for the period", "profit after tax",
@@ -42,7 +43,7 @@ def build_context(db: Session, company_name: str, symbol: str, period: Financial
         raise ValueError("SOURCE_MISSING")
 
     registry: dict[str, dict] = {}
-    snapshot = db.scalar(select(MarketSnapshot).where(MarketSnapshot.company_id == period.company_id))
+    snapshot = latest_snapshot(db, period.company_id)
     snapshot_age = (datetime.now(ZoneInfo("Asia/Kolkata")).date() - snapshot.as_of_date).days if snapshot else None
     fresh_snapshot = snapshot if snapshot_age is not None and 0 <= snapshot_age <= 7 else None
     if fresh_snapshot:
@@ -55,13 +56,31 @@ def build_context(db: Session, company_name: str, symbol: str, period: Financial
             "growth_source_url": fresh_snapshot.growth_source_url,
             "peg_ratio": str(fresh_snapshot.peg_ratio) if fresh_snapshot.peg_ratio is not None else None,
             "as_of_date": fresh_snapshot.as_of_date.isoformat(), "source_url": fresh_snapshot.source_url,
-            "entered_by_user": True,
+            "entered_by_user": fresh_snapshot.data_origin == "MANUAL",
+            "provider": fresh_snapshot.provider, "data_origin": fresh_snapshot.data_origin,
         }
     current_facts = list(db.scalars(select(FinancialFact).where(
         FinancialFact.financial_period_id == period.id,
         FinancialFact.status.in_(VERIFIED)).order_by(FinancialFact.id)))
     for fact in current_facts:
         registry[f"F{fact.id}"] = _fact_item(fact, period)
+
+    valuation_items = []
+    if fresh_snapshot:
+        _, calculated = calculate_valuation(db, fresh_snapshot, period.scope)
+        for code in ("ttm_revenue", "ttm_pat", "ttm_ebitda", "ttm_eps", "pe_ttm",
+                     "ps_ttm", "ev_ebitda_ttm", "earnings_yield_pct", "peg_forward"):
+            detail = calculated[code]
+            if detail["value"] is None:
+                continue
+            evidence_id = f"V{fresh_snapshot.id}_{code.upper()}"
+            item = {"kind": "VALUATION", "metric_code": code.upper(),
+                    "value": detail["value"], "status": detail["status"],
+                    "formula": detail["formula"], "as_of_date": fresh_snapshot.as_of_date.isoformat(),
+                    "scope": period.scope.value, "input_evidence_ids": detail["inputs"],
+                    "source_url": fresh_snapshot.source_url}
+            registry[evidence_id] = item
+            valuation_items.append({"evidence_id": evidence_id, **item})
 
     metric_items = []
     for metric in sorted(period.metrics, key=lambda item: item.id):
@@ -132,9 +151,10 @@ def build_context(db: Session, company_name: str, symbol: str, period: Financial
         "source_excerpts": excerpts,
         "market_snapshot": ({"evidence_id": f"Q{fresh_snapshot.id}",
             **registry[f"Q{fresh_snapshot.id}"]} if fresh_snapshot else None),
-        "market_data_note": ("User entered close, optional source P/E, and optional sourced forward annual EPS growth. "
-                             "PEG is P/E divided by that growth rate in percentage points when both are present. "
-                             "These observations are not live quotes or independently verified forecasts. Compare as-of dates."
+        "calculated_valuation": valuation_items,
+        "market_data_note": ("Use CALCULATED_VALUATION IDs for authoritative ratios. The quote's P/E and legacy PEG "
+                             "are third-party or user-entered references only. Forward growth is an assumption, not a result. "
+                             "The quote is dated; compare its date with today."
                              if fresh_snapshot else "No fresh sourced price and valuation observation is available."),
         "data_quality": "Only VALIDATED periods and verified facts are included. PDF excerpt numbers are omitted; other periods may need review."}
     text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
@@ -142,6 +162,12 @@ def build_context(db: Session, company_name: str, symbol: str, period: Financial
         # The structured facts and metrics are essential; trim document excerpts first.
         payload["source_excerpts"] = []
         registry = {key: value for key, value in registry.items() if not key.startswith("D")}
+        text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    if len(text) > max_chars:
+        payload["calculated_valuation"] = [item for item in valuation_items if item["metric_code"] in
+                                          {"PE_TTM", "PEG_FORWARD", "PS_TTM"}]
+        registry = {key: value for key, value in registry.items()
+                    if not key.startswith("V") or key in {item["evidence_id"] for item in payload["calculated_valuation"]}}
         text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if len(text) > max_chars:
         raise ValueError("CONTEXT_LIMIT_EXCEEDED")

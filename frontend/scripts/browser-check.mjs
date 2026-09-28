@@ -127,6 +127,9 @@ async function run() {
       .getByRole("status")
       .getByText(/ESDS added/)
       .waitFor();
+    await page.locator('a[href="#valuation"]').click();
+    await page.locator('#valuation').waitFor();
+    assert.match(await page.locator('#valuation').innerText(), /Valuation/);
 
     await page
       .getByRole("button", { name: "Record transaction" })
@@ -218,6 +221,19 @@ async function run() {
     await page.getByRole("button", { name: "Check for events" }).click();
     await page.getByRole("status").getByText(/0 new/).waitFor();
 
+    await page.getByRole("button", { name: "Add company" }).first().click();
+    dialog = page.getByRole("dialog");
+    await dialog.getByLabel(/Symbol/).fill("TESTCO");
+    await dialog.getByLabel(/Company name/).fill("Test Company");
+    await dialog.getByRole("button", { name: "Add company" }).click();
+    await page.getByRole("status").getByText(/TESTCO added/).waitFor();
+    const companyRows = page.locator("#companies .company-row");
+    assert.equal(await companyRows.count(), 2);
+    const firstRow = await companyRows.nth(0).boundingBox();
+    const secondRow = await companyRows.nth(1).boundingBox();
+    assert.ok(firstRow && secondRow && secondRow.y > firstRow.y,
+      "Companies should occupy separate full-width rows");
+
     await page.locator(".toast").waitFor({ state: "hidden" });
     await page.screenshot({
       path: path.join(artifactDir, "desktop.png"),
@@ -244,6 +260,7 @@ async function run() {
       mobile.navScrollWidth <= mobile.navWidth,
       `Navigation clips on mobile: ${JSON.stringify(mobile)}`,
     );
+    assert.equal(await companyRows.count(), 2);
     await page.screenshot({
       path: path.join(artifactDir, "mobile.png"),
       fullPage: true,

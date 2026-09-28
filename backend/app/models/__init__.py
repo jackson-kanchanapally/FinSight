@@ -6,9 +6,10 @@ from app.models.financial import (FinancialPeriod, FinancialFact, FinancialFactC
                                   FinancialMetric, FinancialProcessingRun)
 from app.models.analysis import AIAnalysis
 from app.models.event_analysis import EventAnalysis
-from app.models.market import MarketSnapshot
+from app.models.market import MarketSnapshot, ValuationSnapshot, ReferenceMetric
 
 __all__ = ["Company", "Transaction", "TransactionType", "CompanyEvent", "CompanySource",
            "Document", "DocumentPage", "EventReference", "EventType", "MonitoringState",
            "ProcessingStatus", "FinancialPeriod", "FinancialFact", "FinancialFactCorrection",
-           "FinancialMetric", "FinancialProcessingRun", "AIAnalysis", "EventAnalysis", "MarketSnapshot"]
+           "FinancialMetric", "FinancialProcessingRun", "AIAnalysis", "EventAnalysis", "MarketSnapshot",
+           "ValuationSnapshot", "ReferenceMetric"]

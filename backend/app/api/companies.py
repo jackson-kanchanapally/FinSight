@@ -11,7 +11,7 @@ from app.ingestion.storage import LocalDocumentStorage
 from app.models import (AIAnalysis, Company, CompanyEvent, CompanySource, Document,
                         DocumentPage, EventReference, FinancialFact, FinancialFactCorrection,
                         FinancialMetric, FinancialPeriod, FinancialProcessingRun, EventAnalysis,
-                        MarketSnapshot, Transaction)
+                        MarketSnapshot, ValuationSnapshot, Transaction)
 from app.schemas.company import CompanyCreate, CompanyRead
 
 router = APIRouter(prefix="/api/companies", tags=["companies"])
@@ -62,6 +62,7 @@ def delete_company(symbol: str, db: Session = Depends(get_db)) -> None:
         # Remove related rows in dependency order, including with SQLite foreign keys off.
         # Trades use RESTRICT; the other rows also have database CASCADE as a safeguard.
         db.execute(delete(AIAnalysis).where(AIAnalysis.company_id == company_id))
+        db.execute(delete(ValuationSnapshot).where(ValuationSnapshot.company_id == company_id))
         db.execute(delete(FinancialFactCorrection).where(FinancialFactCorrection.fact_id.in_(fact_ids)))
         db.execute(delete(FinancialMetric).where(FinancialMetric.financial_period_id.in_(period_ids)))
         db.execute(update(FinancialMetric).where(FinancialMetric.comparison_period_id.in_(period_ids))

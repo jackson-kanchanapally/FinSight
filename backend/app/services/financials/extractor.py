@@ -157,6 +157,23 @@ def extract_pdf_tables(path: Path) -> list[RawPeriod]:
                         period.facts[code] = RawFact(code, value,
                             OriginalUnit.INR_PER_SHARE if code in (MetricCode.BASIC_EPS, MetricCode.DILUTED_EPS) else unit,
                             page_number, label, identity.end)
+                # Some PDFs corrupt the printed subtotal's text while leaving all
+                # component cells and an independent PBT cell readable. Recover
+                # only when both arithmetic paths agree; retain CALCULATED origin.
+                expense_codes = (MetricCode.EMPLOYEE_EXPENSE, MetricCode.FINANCE_COST,
+                                 MetricCode.DEPRECIATION, MetricCode.OTHER_EXPENSE)
+                if all(code in period.facts for code in expense_codes) and all(
+                    code in period.facts for code in (MetricCode.TOTAL_INCOME, MetricCode.PBT)):
+                    expenses = sum((period.facts[code].original_value for code in expense_codes), Decimal(0))
+                    income = period.facts[MetricCode.TOTAL_INCOME].original_value
+                    pbt_printed = period.facts[MetricCode.PBT].original_value
+                    reported_expenses = period.facts.get(MetricCode.TOTAL_EXPENSES)
+                    if (reported_expenses is None or abs(reported_expenses.original_value - expenses) > Decimal(".03")) \
+                            and abs(income - expenses - pbt_printed) <= Decimal(".03"):
+                        period.facts[MetricCode.TOTAL_EXPENSES] = RawFact(
+                            MetricCode.TOTAL_EXPENSES, expenses, unit, page_number,
+                            "Calculated: expense components; checked against total income - printed PBT",
+                            identity.end, True)
                 if current_tax and deferred_tax:
                     current = _number(words, left, right, current_tax[0])
                     deferred = _number(words, left, right, deferred_tax[0])
@@ -168,6 +185,11 @@ def extract_pdf_tables(path: Path) -> list[RawPeriod]:
                             period.facts[MetricCode.TOTAL_TAX_EXPENSE] = RawFact(
                                 MetricCode.TOTAL_TAX_EXPENSE, printed, unit, page_number,
                                 "Total tax expense (checked against current + deferred tax)", identity.end)
+                        else:
+                            period.facts[MetricCode.TOTAL_TAX_EXPENSE] = RawFact(
+                                MetricCode.TOTAL_TAX_EXPENSE, expected, unit, page_number,
+                                "Calculated: current tax + deferred tax; printed subtotal unreadable",
+                                identity.end, True)
                 pbt = period.facts.get(MetricCode.PBT)
                 tax = period.facts.get(MetricCode.TOTAL_TAX_EXPENSE)
                 if pbt is None:
@@ -190,6 +212,11 @@ def extract_pdf_tables(path: Path) -> list[RawPeriod]:
                                 page_number, "Profit for period/year (table row; checked against PBT - tax)",
                                 identity.end)
                             break
+                    if MetricCode.PAT not in period.facts:
+                        period.facts[MetricCode.PAT] = RawFact(
+                            MetricCode.PAT, expected_pat, unit, page_number,
+                            "Calculated: printed PBT - current and deferred tax; PAT cell unreadable",
+                            identity.end, True)
                 _validate(period)
                 periods.append(period)
     return periods

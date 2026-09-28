@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { api, type AIAnalysis, type AIClaim, type Company, type CompanyFinancials, type FinancialFact, type FinancialPeriod, type MarketSnapshot } from "./api";
 import "./financials.css";
+import { ValuationPanel } from "./ValuationPanel";
 
 function indiaToday() {
-  const parts = new Intl.DateTimeFormat("en-GB", {timeZone: "Asia/Kolkata", year: "numeric",
-    month: "2-digit", day: "2-digit"}).formatToParts(new Date());
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata", year: "numeric",
+    month: "2-digit", day: "2-digit"
+  }).formatToParts(new Date());
   const value = (name: string) => parts.find((part) => part.type === name)?.value || "";
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
@@ -36,7 +39,7 @@ function periodName(period: FinancialPeriod) {
 function valueText(value: string, unit: string) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "—";
-  const text = new Intl.NumberFormat("en-IN", {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(number);
+  const text = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number);
   if (unit === "INR_CRORE") return `₹${text} Cr`;
   if (unit === "INR_PER_SHARE") return `₹${text}`;
   if (unit === "PERCENT") return `${text}%`;
@@ -52,8 +55,10 @@ function originalUnit(unit: string) {
 }
 
 function indiaDate(value: string) {
-  return new Intl.DateTimeFormat("en-IN", {day: "numeric", month: "short", year: "numeric",
-    timeZone: "Asia/Kolkata"}).format(new Date(value));
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric", month: "short", year: "numeric",
+    timeZone: "Asia/Kolkata"
+  }).format(new Date(value));
 }
 
 function financialValue(period: FinancialPeriod, code: string, calculated = false) {
@@ -66,7 +71,8 @@ function financialValue(period: FinancialPeriod, code: string, calculated = fals
     <details className="financial-value">
       <summary>{valueText(entry.value, entry.unit)}</summary>
       <div className="financial-provenance">
-        <strong>{calculated ? "Calculated by almonds" : "Source fact"}</strong>
+        <strong>{calculated ? "Calculated by almonds" : fact?.extraction_method === "CALCULATED"
+          ? "Calculated from PDF rows" : "Source fact"}</strong>
         <span>{calculated ? metric?.formula : fact?.source_label}</span>
         <span>{period.source_title}</span>
         <span>{period.source_name} · source document date {indiaDate(period.published_at)}</span>
@@ -89,14 +95,15 @@ function metricValue(period: FinancialPeriod, code: string) {
   return financialValue(period, code, true);
 }
 
-function EvidenceLinks({analysis, ids}: {analysis: AIAnalysis; ids: string[]}) {
+function EvidenceLinks({ analysis, ids }: { analysis: AIAnalysis; ids: string[] }) {
   return <div className="ai-evidence">Sources: {ids.map((id) => {
     const item = analysis.evidence_registry[id];
     if (!item) return null;
     const title = item.kind === "MARKET_SNAPSHOT" ? `Market snapshot · ${item.as_of_date}`
-      : item.kind === "METRIC" ? `${item.metric_code?.replaceAll("_", " ")} · Python metric`
-      : item.kind === "FACT" ? `${item.metric_code?.replaceAll("_", " ")} · page ${item.page ?? "?"}`
-      : `Official PDF · page ${item.page ?? "?"}`;
+      : item.kind === "VALUATION" ? `${item.metric_code?.replaceAll("_", " ")} · Almonds calculated`
+        : item.kind === "METRIC" ? `${item.metric_code?.replaceAll("_", " ")} · Python metric`
+          : item.kind === "FACT" ? `${item.metric_code?.replaceAll("_", " ")} · page ${item.page ?? "?"}`
+            : `Official PDF · page ${item.page ?? "?"}`;
     const url = item.document_url || item.source_url;
     return url
       ? <a key={id} href={url} target="_blank" rel="noreferrer">{title} ↗</a>
@@ -104,36 +111,42 @@ function EvidenceLinks({analysis, ids}: {analysis: AIAnalysis; ids: string[]}) {
   })}</div>;
 }
 
-function MarketSnapshotPanel({symbol, onSaved}: {symbol: string; onSaved: (value: MarketSnapshot | null) => void}) {
+function MarketSnapshotPanel({ symbol, onSaved }: { symbol: string; onSaved: (value: MarketSnapshot | null) => void }) {
   const [snapshot, setSnapshot] = useState<MarketSnapshot | null>(null);
   const [price, setPrice] = useState("");
   const [pe, setPe] = useState("");
   const [marketCap, setMarketCap] = useState("");
   const [growth, setGrowth] = useState("");
   const [growthSourceUrl, setGrowthSourceUrl] = useState("");
+  const [growthSourceType, setGrowthSourceType] = useState("USER_ASSUMPTION");
+  const [shares, setShares] = useState("");
+  const [note, setNote] = useState("");
   const [date, setDate] = useState(indiaToday());
   const [sourceUrl, setSourceUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
-    api.marketSnapshot(symbol).then((value) => {
+    Promise.all([api.marketSnapshot(symbol), api.market(symbol)]).then(([value, status]) => {
       if (!active) return;
       setSnapshot(value);
-      onSaved(value);
+      onSaved(status.latest);
       if (value) {
         setPrice(value.close_price);
         setPe(value.pe_ratio || "");
         setMarketCap(value.market_cap_crore || "");
         setGrowth(value.forward_eps_growth_pct || "");
         setGrowthSourceUrl(value.growth_source_url || "");
+        setGrowthSourceType(value.growth_source_type || "USER_ASSUMPTION");
+        setShares(value.shares_outstanding || "");
+        setNote(value.note || "");
         setDate(value.as_of_date);
         setSourceUrl(value.source_url);
       }
     }).catch((cause) => {
       if (active) setError(cause instanceof Error ? cause.message : "Could not load market snapshot.");
     });
-    return () => {active = false;};
+    return () => { active = false; };
   }, [symbol, onSaved]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -144,10 +157,13 @@ function MarketSnapshotPanel({symbol, onSaved}: {symbol: string; onSaved: (value
       const value = await api.saveMarketSnapshot(symbol, {
         close_price: price, pe_ratio: pe || null, market_cap_crore: marketCap || null,
         forward_eps_growth_pct: growth || null, growth_source_url: growthSourceUrl.trim() || null,
+        growth_source_type: growth ? growthSourceType : null,
+        shares_outstanding: shares || null, note: note.trim() || null,
         as_of_date: date, source_url: sourceUrl.trim(),
       });
       setSnapshot(value);
-      onSaved(value);
+      const status = await api.market(symbol);
+      onSaved(status.latest);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not save market snapshot.");
     } finally {
@@ -158,32 +174,39 @@ function MarketSnapshotPanel({symbol, onSaved}: {symbol: string; onSaved: (value
   const daysOld = snapshot ? marketSnapshotAge(snapshot) : null;
   return <div className="market-panel">
     <div><p className="eyebrow">DATED MARKET CONTEXT</p><h3>Share price and valuation</h3>
-      <p className="financial-footnote">Enter a dated closing price and source. Add sourced P/E and a forward annual EPS growth estimate to calculate PEG. These are user-entered observations, not live quotes. <a href={`https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(symbol)}`} target="_blank" rel="noreferrer">Open NSE quote ↗</a></p></div>
+      <p className="financial-footnote">Enter a dated closing price and source. Optional entered P/E and PEG are reference values; Almonds calculates its own ratios from verified financial data below. <a href={`https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(symbol)}`} target="_blank" rel="noreferrer">Open NSE quote ↗</a></p></div>
     {snapshot && <p className="market-current">Last entered close: ₹{Number(snapshot.close_price).toLocaleString("en-IN")} · {snapshot.as_of_date}
-      {snapshot.pe_ratio ? ` · P/E ${Number(snapshot.pe_ratio).toLocaleString("en-IN")}` : " · P/E unavailable"}
-      {snapshot.peg_ratio ? ` · PEG ${Number(snapshot.peg_ratio).toLocaleString("en-IN", {maximumFractionDigits: 2})}` : " · PEG unavailable"}
+      {snapshot.pe_ratio ? ` · source P/E reference ${Number(snapshot.pe_ratio).toLocaleString("en-IN")}` : " · source P/E unavailable"}
+      {snapshot.peg_ratio ? ` · source PEG reference ${Number(snapshot.peg_ratio).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : " · source PEG unavailable"}
       {snapshot.market_cap_crore ? ` · Market cap ₹${Number(snapshot.market_cap_crore).toLocaleString("en-IN")} Cr` : ""}
       {daysOld !== null && daysOld > 7 ? " · Stale for analysis" : ""}
       {" · "}<a href={snapshot.source_url} target="_blank" rel="noreferrer">Price and P/E source ↗</a>
       {snapshot.growth_source_url && <> · <a href={snapshot.growth_source_url} target="_blank" rel="noreferrer">Growth estimate source ↗</a></>}</p>}
     <form className="market-form" onSubmit={(event) => void save(event)}>
       <label>Close price (₹)<input required type="number" min="0.0001" step="0.0001" value={price} onChange={(event) => setPrice(event.target.value)} /></label>
-      <label>P/E ratio<input type="number" min="0.0001" step="0.0001" value={pe} onChange={(event) => setPe(event.target.value)} /></label>
+      <label>Source P/E (reference only)<input type="number" min="0.0001" step="0.0001" value={pe} onChange={(event) => setPe(event.target.value)} /></label>
       <label>Market cap (₹ crore)<input type="number" min="0.0001" step="0.0001" value={marketCap} onChange={(event) => setMarketCap(event.target.value)} /></label>
+      <label>Shares outstanding<input type="number" min="1" step="1" value={shares} onChange={(event) => setShares(event.target.value)} /></label>
       <label>As of<input required type="date" max={indiaToday()} value={date} onChange={(event) => setDate(event.target.value)} /></label>
       <label>Forward annual EPS growth estimate (%)<input type="number" min="-1000" max="1000" step="0.0001" value={growth} onChange={(event) => setGrowth(event.target.value)} /></label>
+      <label>Growth estimate type<select value={growthSourceType} onChange={(event) => setGrowthSourceType(event.target.value)}>
+        <option value="USER_ASSUMPTION">User assumption</option><option value="MANAGEMENT_GUIDANCE">Management guidance</option>
+        <option value="ANALYST_CONSENSUS">Analyst consensus</option><option value="OTHER_VERIFIED_SOURCE">Other verified source</option>
+      </select></label>
       <label className="market-growth-source">Growth estimate source URL<input type="url" pattern="https://.*" required={Boolean(growth)} placeholder="https://…" value={growthSourceUrl} onChange={(event) => setGrowthSourceUrl(event.target.value)} /></label>
       <label className="market-source">Source URL<input required type="url" pattern="https://.*" placeholder="https://…" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} /></label>
+      <label className="market-source">Observation note<input maxLength={1000} value={note} onChange={(event) => setNote(event.target.value)} /></label>
       <button className="button button-outline button-small" type="submit" disabled={busy}>{busy ? "Saving…" : "Save market snapshot"}</button>
     </form>
     {error && <p className="event-error" role="alert">{error}</p>}
   </div>;
 }
 
-function AnalysisPanel({symbol, period, snapshot}: {symbol: string; period: FinancialPeriod; snapshot: MarketSnapshot | null}) {
+function AnalysisPanel({ symbol, period, snapshot }: { symbol: string; period: FinancialPeriod; snapshot: MarketSnapshot | null }) {
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [now, setNow] = useState(Date.now());
   useEffect(() => {
     let active = true;
     setAnalysis(null);
@@ -204,6 +227,15 @@ function AnalysisPanel({symbol, period, snapshot}: {symbol: string; period: Fina
     catch (cause) { setError(cause instanceof Error ? cause.message : "Analysis failed."); }
     finally { setLoading(false); }
   }
+  useEffect(() => {
+    if (analysis?.status !== "VERIFIED_FALLBACK") return;
+    const remaining = Date.parse(analysis.created_at) + 15 * 60_000 - Date.now();
+    if (remaining <= 0) return;
+    const timer = window.setTimeout(() => setNow(Date.now()), remaining + 100);
+    return () => window.clearTimeout(timer);
+  }, [analysis]);
+  const retryCoolingDown = analysis?.status === "VERIFIED_FALLBACK" &&
+    now < Date.parse(analysis.created_at) + 15 * 60_000;
   const output = analysis?.structured_output;
   const claimList = (title: string, claims: AIClaim[], empty: string) =>
     <div className={`ai-group${title === "Concerns" ? " ai-concerns" : ""}`}><h4>{title}</h4>
@@ -213,15 +245,18 @@ function AnalysisPanel({symbol, period, snapshot}: {symbol: string; period: Fina
         : <p>{empty}</p>}</div>;
   return <div className="ai-panel">
     <div className="ai-header"><div><p className="eyebrow">{analysis?.status === "VERIFIED_FALLBACK" ?
-      "VERIFIED FACTS · MODEL RESPONSE REJECTED" : "LOCAL MODEL · EVIDENCE CHECKED"}</p>
+      "VERIFIED FACTS · LOCAL FALLBACK" : "LOCAL MODEL · EVIDENCE CHECKED"}</p>
       <h3>AI Analysis · {periodName(period)}</h3></div>
-      <button className="button button-outline button-small" disabled={loading} onClick={() => run(Boolean(analysis))}>
-        {loading ? "Analyzing…" : analysis?.status === "VERIFIED_FALLBACK" ? "Retry AI analysis" :
+      <button className="button button-outline button-small" disabled={loading || retryCoolingDown} onClick={() => run(Boolean(analysis))}>
+        {loading ? "Analyzing…" : retryCoolingDown ? "Retry available shortly" : analysis?.status === "VERIFIED_FALLBACK" ? "Retry AI analysis" :
           analysis?.status === "SUCCESS" ? "Regenerate" : "Analyze Results"}</button></div>
     <p className="financial-footnote">Interpretation of verified results, not an investment recommendation. Financial values come from almonds calculations.</p>
     {error && <p className="event-error" role="alert">{error}</p>}
     {analysis?.status === "VERIFIED_FALLBACK" && <p className="financial-footnote" role="status">
-      The model response did not pass validation. Showing a summary built from verified results.
+      {analysis.failure_reason?.startsWith("OLLAMA_") || analysis.failure_reason === "MODEL_UNAVAILABLE" ?
+        "The local model was unavailable or timed out. Showing an interpretation built from verified results." :
+        "The model response did not pass validation. Showing an interpretation built from verified results."}
+      {retryCoolingDown && " A repeat request within 15 minutes uses this saved analysis."}
     </p>}
     {analysis && analysis.status !== "SUCCESS" && analysis.status !== "VERIFIED_FALLBACK" &&
       <p className="event-error" role="alert">Analysis {analysis.status.toLowerCase()}: {analysis.failure_reason}</p>}
@@ -242,15 +277,15 @@ function AnalysisPanel({symbol, period, snapshot}: {symbol: string; period: Fina
         <p>{output.what_might_happen.text}</p><EvidenceLinks analysis={analysis!} ids={output.what_might_happen.evidence_ids} /></div>}
       {output.valuation_assessment && <div className="ai-group ai-valuation"><h4>Do the results support the current valuation?</h4>
         <div className="ai-valuation-grid">
-          <div><span>Dated share price</span><strong>{snapshot ? `₹${Number(snapshot.close_price).toLocaleString("en-IN", {maximumFractionDigits: 2})}` : "Unavailable"}</strong>
+          <div><span>Dated share price</span><strong>{snapshot ? `₹${Number(snapshot.close_price).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "Unavailable"}</strong>
             <small>{snapshot?.as_of_date || "Enter a recent sourced close"}</small></div>
-          <div><span>P/E</span><strong>{snapshot?.pe_ratio ? Number(snapshot.pe_ratio).toLocaleString("en-IN", {maximumFractionDigits: 2}) : "Unavailable"}</strong>
-            <small>User-entered sourced ratio</small></div>
-          <div><span>PEG</span><strong>{snapshot?.peg_ratio ? Number(snapshot.peg_ratio).toLocaleString("en-IN", {maximumFractionDigits: 2}) : "Unavailable"}</strong>
-            <small>{snapshot?.peg_ratio ? `P/E ÷ ${snapshot.forward_eps_growth_pct}% forward EPS growth` :
+          <div><span>Source P/E reference</span><strong>{snapshot?.pe_ratio ? Number(snapshot.pe_ratio).toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "Unavailable"}</strong>
+            <small>See calculated P/E in Valuation above</small></div>
+          <div><span>Source PEG reference</span><strong>{snapshot?.peg_ratio ? Number(snapshot.peg_ratio).toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "Unavailable"}</strong>
+            <small>{snapshot?.peg_ratio ? `Source P/E ÷ ${snapshot.forward_eps_growth_pct}% forward EPS growth` :
               !snapshot?.pe_ratio ? "Needs sourced P/E" :
-              snapshot.forward_eps_growth_pct !== null && Number(snapshot.forward_eps_growth_pct) <= 0
-                ? "Unavailable for nonpositive growth" : "Needs a sourced forward EPS growth estimate"}</small></div>
+                snapshot.forward_eps_growth_pct !== null && Number(snapshot.forward_eps_growth_pct) <= 0
+                  ? "Unavailable for nonpositive growth" : "Needs a sourced forward EPS growth estimate"}</small></div>
         </div>
         <p><strong>View: {output.valuation_assessment.verdict.replaceAll("_", " ")}</strong> · {output.valuation_assessment.text}</p>
         {snapshot && <p className="ai-valuation-sources"><a href={snapshot.source_url} target="_blank" rel="noreferrer">Price and P/E source ↗</a>
@@ -265,7 +300,7 @@ function AnalysisPanel({symbol, period, snapshot}: {symbol: string; period: Fina
   </div>;
 }
 
-export function FinancialsSection({companies}: {companies: Company[]}) {
+export function FinancialsSection({ companies }: { companies: Company[] }) {
   const [symbol, setSymbol] = useState("");
   const [scope, setScope] = useState<"CONSOLIDATED" | "STANDALONE">("CONSOLIDATED");
   const [data, setData] = useState<CompanyFinancials | null>(null);
@@ -290,11 +325,11 @@ export function FinancialsSection({companies}: {companies: Company[]}) {
     setData(null);
     setError("");
     api.companyFinancials(selectedSymbol).then((value) => {
-      if (active) {setData(value); setError("");}
+      if (active) { setData(value); setError(""); }
     }).catch((cause) => {
       if (active) setError(cause instanceof Error ? cause.message : "Financials could not load.");
     });
-    return () => {active = false;};
+    return () => { active = false; };
   }, [selectedSymbol]);
   const visibleData = data?.symbol === selectedSymbol ? data : null;
   const scopes = useMemo(() => new Set(visibleData?.periods.map((period) => period.scope) || []), [visibleData]);
@@ -317,6 +352,13 @@ export function FinancialsSection({companies}: {companies: Company[]}) {
       <p className="financial-intro">Figures come from official result tables. Open any number to see its source,
         page, original unit, or calculation.</p>
       {selectedSymbol && <MarketSnapshotPanel key={selectedSymbol} symbol={selectedSymbol} onSaved={setSnapshot} />}
+      {selectedSymbol && <ValuationPanel symbol={selectedSymbol} scope={effectiveScope} snapshot={visibleSnapshot}
+        onMarketChanged={setSnapshot}
+        periods={periods}
+        growth={(["REVENUE_YOY", "REVENUE_QOQ", "PAT_YOY", "PAT_QOQ"] as const).flatMap((code) => {
+          const metric = latest?.metrics.find((item) => item.metric_code === code);
+          return metric ? [{ label: code.replaceAll("_", " "), value: metric.value }] : [];
+        })} />}
       {error && <div className="event-error" role="alert">{error}</div>}
       {!companies.length && <p className="financial-empty">Add a company to view financial results.</p>}
       {visibleData && scopes.size > 0 && (

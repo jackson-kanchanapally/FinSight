@@ -17,7 +17,7 @@ from app.ingestion.storage import LocalDocumentStorage
 from app.main import app
 from app.models import Company
 from app.models.event import CompanyEvent, CompanySource, DataOrigin, Document, DocumentPage, EventType, ProcessingStatus
-from app.models.financial import (FinancialFact, FinancialMetric, FinancialPeriod, FinancialProcessingRun,
+from app.models.financial import (FinancialFact, FinancialFactCorrection, FinancialMetric, FinancialPeriod, FinancialProcessingRun,
                                   FinancialScope, FinancialStatus, MetricCode, OriginalUnit, PeriodType)
 from app.services.financials.calculator import growth, margin, margin_change_bps, normalize_currency
 from app.services.financials.extractor import extract_pdf_tables
@@ -217,6 +217,27 @@ def test_process_is_idempotent_and_api_provenance(financial_env):
     assert client.get("/api/companies/ESDS/financials/latest?scope=STANDALONE").status_code == 200
     assert client.get("/api/companies/UNKNOWN/financials").status_code == 404
     assert db.query(FinancialFact).count() > 0 and db.query(FinancialMetric).count() > 0
+
+
+def test_same_pdf_revalidation_records_changed_fact(financial_env):
+    _, db, storage, event_id = financial_env
+    process_financial_event(db, event_id, storage=storage)
+    annual = db.scalar(select(FinancialPeriod).where(
+        FinancialPeriod.scope == FinancialScope.CONSOLIDATED,
+        FinancialPeriod.period_type == PeriodType.ANNUAL))
+    expenses = next(f for f in annual.facts if f.metric_code == MetricCode.TOTAL_EXPENSES)
+    previous_id = expenses.id
+    expenses.value = Decimal("0.3")
+    annual.status = FinancialStatus.NEEDS_REVIEW
+    db.commit()
+    result = process_financial_event(db, event_id, storage=storage)
+    db.refresh(annual, ["facts"])
+    corrected = next(f for f in annual.facts if f.metric_code == MetricCode.TOTAL_EXPENSES)
+    assert result["periods_created"] == 0
+    assert annual.status == FinancialStatus.VALIDATED
+    assert corrected.id == previous_id and corrected.value == Decimal("313.229")
+    audit = db.scalar(select(FinancialFactCorrection).where(FinancialFactCorrection.fact_id == previous_id))
+    assert audit.previous_value == Decimal("0.3") and audit.corrected_value == Decimal("313.229")
 
 
 def test_wrong_document_hash_records_failure(financial_env):

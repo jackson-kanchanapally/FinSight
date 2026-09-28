@@ -18,7 +18,7 @@ almonds is a personal investment research and portfolio monitor. Phase 1 provide
 - Extract financial statement facts from stored official PDFs with period, scope, units, page provenance, and validation status.
 - Calculate EBITDA, margins, YoY and QoQ in Python, then inspect them in the Financials section.
 - Open any event for a short local AI brief with source citations and a research action. Financial results have a deeper analysis of metrics, management commentary where reported, possible scenarios, and valuation context.
-- Enter a dated closing price, P/E, and market cap with a source URL. The results analyst uses a snapshot only while it is at most seven days old; no live market price is inferred.
+- Store dated official NSE MCP EOD OHLCV or manual observations, calculate point-in-time valuation from verified facts, inspect price and multiple history, compare imported Market Lens references, and run forward or reverse user-defined scenarios. The results analyst uses a snapshot only while it is at most seven days old.
 
 Accounting uses weighted average cost. BUY charges are added to acquisition cost. SELL charges are deducted from proceeds and therefore reduce realised P&L. A SELL removes cost basis at the current weighted average; it does not change the per-share cost of remaining shares. Values use decimal numeric types, never binary floating point.
 
@@ -50,6 +50,8 @@ validated period + verified facts + Python metrics + relevant stored PDF lines
 ```
 
 `EventSource` isolates feed formats and document retrieval from the rest of almonds. The monitor records the last attempt, last successful check, last external ID, error, and failure count per source. A failed source does not stop other sources. Each source observation retains its URL, external ID, origin, and raw payload in `event_references`; matching PDFs merge into one company event while retaining both source references. Different PDFs remain separate even when titles and dates match. Local PDF storage uses content-addressed paths behind a replaceable storage interface.
+
+`MarketDataProvider` isolates price acquisition from valuation. The preferred official NSE MCP Bhavcopy provider retrieves raw daily OHLCV; manual and optional Alpha Vantage providers remain available. Dated observations are stored in `market_snapshots`; the Python engine combines eligible verified facts into `valuation_snapshots`. The AI interprets these calculated values and cites their evidence IDs. User-exported NSE Market Lens metrics are stored separately in `reference_metrics`.
 
 Portfolio calculations and SELL validation remain in the portfolio service. Alembic owns schema changes; the application does not call `create_all()` at startup.
 
@@ -86,9 +88,19 @@ uvicorn app.main:app --reload
 
 Swagger UI: <http://127.0.0.1:8000/docs>. Health check: <http://127.0.0.1:8000/health>.
 
-The event migrations are 0002 and 0003; Phase 4 adds 0004_financial_reporting and 0005_calculated_fact_provenance; Phase 5 adds 0006_local_ai_analyst. Event briefs and dated market snapshots add 0007 and 0008; sourced forward EPS growth for PEG adds 0009. Run `alembic upgrade head` against the configured PostgreSQL database before starting the API.
+The event migrations are 0002 and 0003; Phase 4 adds 0004_financial_reporting and 0005_calculated_fact_provenance; Phase 5 adds 0006_local_ai_analyst. Event briefs and dated market snapshots add 0007 and 0008; sourced forward EPS growth for PEG adds 0009. Phase 6 adds 0010_market_valuation_history and 0011_market_ohlcv_reference. Run `alembic upgrade head` against the configured PostgreSQL database before starting the API.
 
 ## Start the dashboard
+
+After completing local setup, run both servers from the project root with:
+
+```sh
+./run.sh
+```
+
+The launcher checks the existing `.env`, Python and frontend dependencies, starts PostgreSQL through Docker Compose if needed, applies Alembic migrations, and starts FastAPI and Vite. Press Ctrl+C to stop the application servers. Event scanning follows the settings in `.env`; the launcher does not change fixture or live mode.
+
+For Phase 6 provider setup, point-in-time rules, formulas, API examples and ESDS integration, see [market data and valuation](docs/market-valuation.md).
 
 Leave FastAPI running on port 8000. In a second terminal from the project root:
 
@@ -307,7 +319,7 @@ Install [Ollama](https://ollama.com/), run `ollama pull qwen3:8b`, and start its
 
 Open any event to request its short local AI brief automatically. Successful briefs are cached by event content, model, and prompt; **Regenerate** requests another. Open **Financial performance → AI Analysis** for a validated period and select **Analyze Results** for a deeper review. Financial analysis is manual. Results and failures are stored separately from financial facts. The deeper view shows a summary, positives, concerns, a cited positive/negative/neutral view of the results, management statements when found, conditional scenarios, valuation context, research action, and evidence links.
 
-For a valuation comparison, enter a dated closing price, optional P/E and market cap, and an HTTPS source link in **Financial performance**. You may also enter a sourced forward annual EPS growth estimate and its HTTPS source URL. almonds calculates PEG as P/E divided by the growth rate expressed in percentage points; it leaves PEG unavailable when P/E or sourced positive growth is missing. The quote and growth estimate are user supplied, not a live feed or verified forecast. A snapshot over seven days old is excluded from new AI analysis. The results report shows the input date and sources and treats the valuation conclusion as provisional because one reporting period cannot establish whether future earnings growth will be achieved.
+For a valuation comparison, enter a dated closing price, optional source P/E reference and market cap, and an HTTPS source link in **Financial performance**. You may also enter a sourced forward annual EPS growth estimate and its source type. Almonds calculates its own P/E from verified trailing EPS, then calculates forward PEG from that P/E and the growth estimate in percentage points. The source P/E and legacy PEG are reference values only. A snapshot over seven days old is excluded from new AI analysis. The result review explains both annual and sequential performance and treats valuation conclusions as provisional when forecasts, cash flow or balance-sheet inputs are missing.
 
 ```sh
 curl -X POST http://127.0.0.1:8000/api/companies/ESDS/financials/42/analyze

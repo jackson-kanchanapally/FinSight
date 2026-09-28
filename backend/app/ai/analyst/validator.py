@@ -130,7 +130,8 @@ def validate_output(raw: str, registry: dict[str, dict], period_year: int,
         if valuation.status == "INSUFFICIENT_DATA" and valuation.verdict != "INCONCLUSIVE":
             raise InvalidAnalysis("VALUATION_VERDICT_UNSUPPORTED")
         if valuation.status == "ASSESSED" and (
-            not any(registry[item]["kind"] == "MARKET_SNAPSHOT" and registry[item].get("peg_ratio")
+            not any(registry[item]["kind"] == "VALUATION" and registry[item].get("metric_code") in
+                    {"PE_TTM", "PS_TTM", "EV_EBITDA_TTM", "PEG_FORWARD"}
                     for item in valuation.evidence_ids)
             or not any(registry[item]["kind"] in {"FACT", "METRIC"}
                        for item in valuation.evidence_ids)):
@@ -203,19 +204,14 @@ def _check_semantics(text: str, evidence_ids: list[str], registry: dict[str, dic
         ):
             raise InvalidAnalysis("UNSUPPORTED_MARGIN_COMPARISON", field=field)
     for clause in _comparison_clauses(lowered):
-        for subject, prefix in ((r"\brevenue\b", "REVENUE"),
-                                (r"\b(?:pat|profit after tax)\b", "PAT")):
-            if not re.search(subject, clause):
+        for code in _comparison_codes(clause):
+            if code in codes:
                 continue
-            for marker, suffix in ((r"\byoy\b|year.over.year|same quarter last year", "YOY"),
-                                   (r"\bqoq\b|quarter.over.quarter|previous quarter", "QOQ")):
-                if re.search(marker, clause) and f"{prefix}_{suffix}" not in codes:
-                    code = f"{prefix}_{suffix}"
-                    matching = [key for key, item in registry.items()
-                                if item["kind"] == "METRIC" and item["metric_code"] == code]
-                    hint = (f"Cite {matching[0]} ({code}) in this field or remove that comparison."
-                            if matching else f"No {code} metric is available; remove that comparison.")
-                    raise InvalidAnalysis("MISSING_COMPARISON_EVIDENCE", hint=hint, field=field)
+            matching = [key for key, item in registry.items()
+                        if item["kind"] == "METRIC" and item["metric_code"] == code]
+            hint = (f"Cite {matching[0]} ({code}) in this field or remove that comparison."
+                    if matching else f"No {code} metric is available; remove that comparison.")
+            raise InvalidAnalysis("MISSING_COMPARISON_EVIDENCE", hint=hint, field=field)
     comparisons = [registry[item] for item in evidence_ids if registry[item]["kind"] == "METRIC"
                    and (registry[item]["metric_code"].endswith(("_YOY", "_QOQ", "_CHANGE_BPS")))]
     if len(comparisons) == 1:
@@ -241,11 +237,36 @@ def _comparison_clauses(text: str) -> list[str]:
     return clauses
 
 
+def _comparison_codes(clause: str) -> set[str]:
+    """Attach each comparison marker to its subject, not every noun in the clause."""
+    subjects = [(match.start(), match.end(), "REVENUE" if match.group() == "revenue" else "PAT")
+                for match in COMPARISON_SUBJECT.finditer(clause)]
+    required = set()
+    for marker in COMPARISON_WORD.finditer(clause):
+        suffix = "YOY" if re.fullmatch(r"yoy|year.over.year|same quarter last year", marker.group()) else "QOQ"
+        before = [subject for subject in subjects if subject[1] <= marker.start()]
+        if before:
+            chosen = before[-1]
+            required.add(f"{chosen[2]}_{suffix}")
+            # "Revenue and PAT grew YoY" makes the comparison about both subjects.
+            for prior in reversed(before[:-1]):
+                if not re.fullmatch(r"\s+and\s+", clause[prior[1]:chosen[0]]):
+                    break
+                required.add(f"{prior[2]}_{suffix}")
+                chosen = prior
+        else:
+            after = next((subject for subject in subjects if subject[0] >= marker.end()), None)
+            if after:
+                required.add(f"{after[2]}_{suffix}")
+    return required
+
+
 def _check_numbers(text: str, registry: dict[str, dict], period_year: int, evidence_ids,
                    field: str) -> None:
     allowed = {Decimal(period_year), Decimal(period_year - 1), Decimal(period_year + 1),
                Decimal(period_year % 100), Decimal((period_year - 1) % 100),
                Decimal(1), Decimal(2), Decimal(3), Decimal(4)}
+    negative_allowed: set[Decimal] = set()
     supported_dates = set()
     for evidence_id in evidence_ids:
         item = registry[evidence_id]
@@ -253,19 +274,26 @@ def _check_numbers(text: str, registry: dict[str, dict], period_year: int, evide
             supported_dates.add(item["period_end"])
         if item["kind"] in {"FACT", "METRIC"}:
             _add_value(allowed, item["value"])
+            _add_negative_value(negative_allowed, item["value"])
             if item["kind"] == "METRIC":
                 for input_id in item["input_evidence_ids"]:
                     if input_id in registry:
                         input_fact = registry[input_id]
                         _add_value(allowed, input_fact["value"])
+                        _add_negative_value(negative_allowed, input_fact["value"])
                         if input_fact.get("period_end"):
                             supported_dates.add(input_fact["period_end"])
         if item["kind"] == "MARKET_SNAPSHOT":
             for key in ("price", "pe_ratio", "market_cap_crore", "forward_eps_growth_pct", "peg_ratio"):
                 if item.get(key) is not None:
                     _add_value(allowed, item[key])
+                    _add_negative_value(negative_allowed, item[key])
             supported_dates.add(item["as_of_date"])
             allowed.update(Decimal(part) for part in item["as_of_date"].split("-"))
+        if item["kind"] == "VALUATION":
+            _add_value(allowed, item["value"])
+            _add_negative_value(negative_allowed, item["value"])
+            supported_dates.add(item["as_of_date"])
         for key in ("page", "document_id"):
             if item.get(key) is not None:
                 allowed.add(Decimal(item[key]))
@@ -279,22 +307,26 @@ def _check_numbers(text: str, registry: dict[str, dict], period_year: int, evide
             number = Decimal(match.group().replace(",", ""))
         except InvalidOperation as exc:
             raise InvalidAnalysis("UNSUPPORTED_NUMBER", match.group(), field=field) from exc
-        if abs(number) not in allowed:
+        if abs(number) not in allowed or number < 0 and abs(number) not in negative_allowed:
             matches = []
             for evidence_id, item in registry.items():
-                if evidence_id in evidence_ids or item["kind"] not in {"FACT", "METRIC", "MARKET_SNAPSHOT"}:
+                if evidence_id in evidence_ids or item["kind"] not in {"FACT", "METRIC", "MARKET_SNAPSHOT", "VALUATION"}:
                     continue
                 values = set()
                 if item["kind"] == "MARKET_SNAPSHOT":
                     for key in ("price", "pe_ratio", "market_cap_crore", "forward_eps_growth_pct", "peg_ratio"):
                         if item.get(key) is not None:
                             _add_value(values, item[key])
+                elif item["kind"] == "VALUATION":
+                    _add_value(values, item["value"])
                 else:
                     _add_value(values, item["value"])
                 if abs(number) in values:
                     matches.append(f"{evidence_id} ({item.get('metric_code', item['kind'])})")
             hint = ("If this value refers to " + ", ".join(matches[:3])
-                    + ", cite the matching ID in this field; otherwise remove or correct it.") if matches else None
+                    + ", cite the matching ID with its correct direction; otherwise remove or correct it.") if matches else None
+            if not hint:
+                hint = _nearby_comparison_hint(number, registry)
             raise InvalidAnalysis("UNSUPPORTED_NUMBER", match.group(), hint, field)
 
 
@@ -321,3 +353,21 @@ def _add_value(allowed: set[Decimal], value: str) -> None:
     for places in range(5):
         precision = Decimal(1).scaleb(-places)
         allowed.add(number.quantize(precision, rounding=ROUND_HALF_UP))
+
+
+def _add_negative_value(allowed: set[Decimal], value: str) -> None:
+    if Decimal(value) < 0:
+        _add_value(allowed, value)
+
+
+def _nearby_comparison_hint(number: Decimal, registry: dict[str, dict]) -> str | None:
+    comparisons = [(key, item, Decimal(item["value"])) for key, item in registry.items()
+                   if item["kind"] == "METRIC" and item["metric_code"].endswith(("_YOY", "_QOQ", "_CHANGE_BPS"))]
+    close = [(abs(abs(number) - abs(value)), key, item, value) for key, item, value in comparisons
+             if abs(abs(number) - abs(value)) <= max(Decimal("0.2"), abs(value) * Decimal("0.02"))]
+    if not close:
+        return None
+    _, key, item, value = min(close, key=lambda candidate: candidate[0])
+    direction = "+" if value > 0 else ""
+    return (f"Nearest verified comparison: {key} {item['metric_code']} = {direction}{value} "
+            f"{item['unit']}. Cite {key} and preserve its direction and supported rounding, or remove the claim.")

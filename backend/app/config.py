@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     bse_source_enabled: bool = False
     company_ir_source_enabled: bool = True
     live_source_timeout_seconds: float = Field(default=15, ge=3, le=60)
+    market_data_enabled: bool = False
+    market_data_provider: Literal["nse_mcp", "alpha_vantage", "manual"] = "nse_mcp"
+    market_data_timeout_seconds: float = Field(default=12, ge=3, le=60)
+    market_data_refresh_hour: int = Field(default=18, ge=0, le=23)
+    market_data_refresh_minute: int = Field(default=30, ge=0, le=59)
+    market_lens_tolerance_pct: float = Field(default=5, ge=0, le=100)
+    alpha_vantage_api_key: str = ""
     document_storage_path: Path = Path(__file__).resolve().parents[1] / "data" / "documents"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:8b"

@@ -3,6 +3,7 @@ export type Company = {
   symbol: string;
   name: string;
   exchange: string;
+  bse_code: string | null;
   isin: string | null;
   sector: string | null;
   created_at: string;
@@ -38,6 +39,7 @@ export type CompanyInput = {
   symbol: string;
   name: string;
   exchange: string;
+  bse_code?: string | null;
   isin?: string | null;
   sector?: string | null;
 };
@@ -183,6 +185,9 @@ export type MarketSnapshotInput = {
   market_cap_crore: string | null;
   forward_eps_growth_pct: string | null;
   growth_source_url: string | null;
+  growth_source_type?: string | null;
+  shares_outstanding?: string | null;
+  note?: string | null;
   as_of_date: string;
   source_url: string;
 };
@@ -191,7 +196,36 @@ export type MarketSnapshot = MarketSnapshotInput & {
   company_id: number;
   updated_at: string;
   peg_ratio: string | null;
+  provider: string;
+  data_origin: string;
+  observed_at: string;
+  fetched_at: string;
+  shares_outstanding: string | null;
+  open_price: string | null; high_price: string | null; low_price: string | null; volume: number | null;
 };
+
+export type ValuationDetail = {value: string | null; status: string; inputs: string[];
+  formula: string; reason: string | null};
+export type Valuation = {id: number; market_snapshot_id: number; market_date: string;
+  market: MarketSnapshot; scope: string; calculation_status: string;
+  metric_details: Record<string, ValuationDetail | Record<string, unknown>>;
+  ttm_revenue: string | null; ttm_ebitda: string | null; ttm_pat: string | null;
+  ttm_eps: string | null; pe_ttm: string | null; ps_ttm: string | null;
+  ev_ebitda_ttm: string | null; earnings_yield_pct: string | null;
+  peg_forward: string | null; updated_at: string};
+export type ScenarioResult = {name: string; eps_growth_pct: string; terminal_pe: string;
+  years: number; current_eps: string; current_price: string; future_eps: string;
+  implied_future_price: string; total_return_pct: string; annualized_return_pct: string; label: string};
+export type ReverseResult = {current_eps: string; current_price: string; terminal_pe: string;
+  years: number; target_annualized_return_pct: string; target_future_price: string;
+  required_future_eps: string; required_eps_cagr_pct: string; label: string};
+export type ValuationChange = {status: "CALCULATED"; old_date: string; new_date: string; old_price: string; new_price: string;
+  old_eps: string; new_eps: string; old_pe: string; new_pe: string; price_change_pct: string;
+  eps_change_pct: string; pe_change_pct: string; method: string};
+export type ValuationChangeUnavailable = {status: "INSUFFICIENT_DATA"; reason: string;
+  old_date: string; new_date: string; missing_inputs: string[]};
+export type ReferenceComparison = {metric_code: string; almonds: string | null; market_lens: string;
+  difference_pct: string | null; status: string; reference_date: string; source_url: string};
 
 export type AIClaim = {title: string; explanation: string; evidence_ids: string[]};
 export type AIMaterialChange = {metric: string; change: string; interpretation: string; evidence_ids: string[]};
@@ -316,6 +350,21 @@ export const api = {
   saveMarketSnapshot: (symbol: string, value: MarketSnapshotInput) =>
     request<MarketSnapshot>(`/api/companies/${encodeURIComponent(symbol)}/market-snapshot`,
       {method: "PUT", body: JSON.stringify(value)}),
+  market: (symbol: string) => request<{latest: MarketSnapshot | null; provider: string; refresh_available: boolean}>(`/api/companies/${encodeURIComponent(symbol)}/market`),
+  refreshMarket: (symbol: string) => request<{stored: number; latest: MarketSnapshot}>(`/api/companies/${encodeURIComponent(symbol)}/market/refresh`, {method: "POST"}),
+  marketHistory: (symbol: string) => request<MarketSnapshot[]>(`/api/companies/${encodeURIComponent(symbol)}/market/history?limit=365`),
+  valuation: (symbol: string, scope: string) => request<Valuation | null>(`/api/companies/${encodeURIComponent(symbol)}/valuation?scope=${scope}`),
+  valuationHistory: (symbol: string, scope: string) => request<Valuation[]>(`/api/companies/${encodeURIComponent(symbol)}/valuation/history?scope=${scope}&limit=100`),
+  scenarios: (symbol: string, scope: string, assumptions: {name: string; eps_growth_pct: string; terminal_pe: string; years: number}[]) =>
+    request<ScenarioResult[]>(`/api/companies/${encodeURIComponent(symbol)}/valuation/scenario`,
+      {method: "POST", body: JSON.stringify({scope, assumptions})}),
+  reverseGrowth: (symbol: string, scope: string, terminal_pe: string, years: number, target_annualized_return_pct: string) =>
+    request<ReverseResult>(`/api/companies/${encodeURIComponent(symbol)}/valuation/reverse`,
+      {method: "POST", body: JSON.stringify({scope, terminal_pe, years, target_annualized_return_pct})}),
+  valuationChange: (symbol: string, oldId: number, newId: number, scope: string) =>
+    request<ValuationChange | ValuationChangeUnavailable>(`/api/companies/${encodeURIComponent(symbol)}/valuation/change?old_market_snapshot_id=${oldId}&new_market_snapshot_id=${newId}&scope=${scope}`),
+  valuationReference: (symbol: string, scope: string) =>
+    request<ReferenceComparison[]>(`/api/companies/${encodeURIComponent(symbol)}/valuation/reference?scope=${scope}`),
   companyAnalyses: (symbol: string) =>
     request<AIAnalysis[]>(`/api/companies/${encodeURIComponent(symbol)}/analysis`),
   analyzeFinancials: (symbol: string, periodId: number, regenerate = false) =>
