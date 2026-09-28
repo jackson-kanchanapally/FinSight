@@ -70,25 +70,11 @@ function PriceLine({history}: {history: Valuation[]}) {
     <span>{points[points.length - 1].market_date}: {format(points[points.length - 1].pe_ttm, "×")}</span></div></div>;
 }
 
-function ClosingPriceLine({history}: {history: MarketSnapshot[]}) {
-  const points = [...history].reverse();
-  if (points.length < 2) return <p className="financial-footnote">Price history appears after two dated observations.</p>;
-  const values = points.map((item) => Number(item.close_price));
-  const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
-  const coordinates = values.map((value, i) => `${20 + i * 560 / (values.length - 1)},${116 - (value - min) / span * 94}`).join(" ");
-  return <div className="valuation-chart"><svg viewBox="0 0 600 140" role="img" aria-label="Unadjusted closing price history">
-    <polyline points={coordinates} fill="none" stroke="currentColor" strokeWidth="3" />
-  </svg><div><span>{points[0].as_of_date}: {format(points[0].close_price, "", "₹")}</span>
-    <span>{points[points.length - 1].as_of_date}: {format(points[points.length - 1].close_price, "", "₹")}</span></div>
-    <p className="financial-footnote">Raw closing prices; historical NSE prices are unadjusted for splits and bonuses.</p></div>;
-}
-
 export function ValuationPanel({symbol, scope, snapshot, growth, onMarketChanged, periods}: {symbol: string; scope: string;
   snapshot: MarketSnapshot | null; growth: {label: string; value: string}[];
   onMarketChanged: (snapshot: MarketSnapshot | null) => void; periods: FinancialPeriod[]}) {
   const [valuation, setValuation] = useState<Valuation | null>(null);
   const [history, setHistory] = useState<Valuation[]>([]);
-  const [priceHistory, setPriceHistory] = useState<MarketSnapshot[]>([]);
   const [change, setChange] = useState<ValuationChange | null>(null);
   const [changeNotice, setChangeNotice] = useState("");
   const [references, setReferences] = useState<ReferenceComparison[]>([]);
@@ -105,9 +91,9 @@ export function ValuationPanel({symbol, scope, snapshot, growth, onMarketChanged
     let active = true;
     setError(""); setScenarios([]);
     Promise.all([api.market(symbol), api.valuation(symbol, scope), api.valuationHistory(symbol, scope),
-      api.marketHistory(symbol), api.valuationReference(symbol, scope)])
-      .then(([market, latest, entries, prices, imported]) => {if (active) {setRefreshAvailable(market.refresh_available);
-        setValuation(latest); setHistory(entries); setPriceHistory(prices); setReferences(imported);
+      api.valuationReference(symbol, scope)])
+      .then(([market, latest, entries, imported]) => {if (active) {setRefreshAvailable(market.refresh_available);
+        setValuation(latest); setHistory(entries); setReferences(imported);
         const comparable = entries.filter((entry) => entry.pe_ttm != null && entry.ttm_eps != null &&
           Number(entry.pe_ttm) > 0 && Number(entry.ttm_eps) > 0);
         if (comparable.length >= 2 && comparable[0].market_date !== comparable[comparable.length - 1].market_date) {
@@ -124,9 +110,9 @@ export function ValuationPanel({symbol, scope, snapshot, growth, onMarketChanged
   async function refresh() {
     setBusy(true); setError("");
     try {const refreshed = await api.refreshMarket(symbol); onMarketChanged(refreshed.latest);
-      const [latest, entries, prices] = await Promise.all([
-      api.valuation(symbol, scope), api.valuationHistory(symbol, scope), api.marketHistory(symbol)]);
-      setValuation(latest); setHistory(entries); setPriceHistory(prices);
+      const [latest, entries] = await Promise.all([
+      api.valuation(symbol, scope), api.valuationHistory(symbol, scope)]);
+      setValuation(latest); setHistory(entries);
     } catch (cause) {setError(cause instanceof Error ? cause.message : "Price refresh failed.");}
     finally {setBusy(false);}
   }
@@ -181,7 +167,6 @@ export function ValuationPanel({symbol, scope, snapshot, growth, onMarketChanged
           <strong>{format(item.value, "%")}</strong></div>) : <p className="financial-footnote">No comparable verified growth metrics yet.</p>}
       </div>
       <h4>Valuation history</h4><PriceLine history={history} />
-      <h4>Closing price history</h4><ClosingPriceLine history={priceHistory} />
       {change && <div className="valuation-result"><h4>Valuation change · {change.old_date} → {change.new_date}</h4>
         <p>Price {format(change.price_change_pct, "%")} · diluted EPS {format(change.eps_change_pct, "%")} · P/E {format(change.old_pe, "×")} → {format(change.new_pe, "×")} ({format(change.pe_change_pct, "%")})</p>
         <p className="financial-footnote">{change.method}. These are changes in price, trailing earnings and multiple; raw prices may be affected by corporate actions.</p></div>}
