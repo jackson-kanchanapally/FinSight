@@ -3,6 +3,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from app.ai.analyst.schemas import AnalystOutput
+from app.ai.analyst.quality import build_quality_report
 from app.ai.analyst.validator import validate_output
 from app.models.financial import FinancialPeriod
 
@@ -24,7 +25,8 @@ def _display(value: str) -> str:
     return f"{rounded:,.2f}"
 
 
-def verified_fallback(registry: dict[str, dict], period: FinancialPeriod) -> AnalystOutput:
+def verified_fallback(registry: dict[str, dict], period: FinancialPeriod,
+                      reasoning: dict | None = None) -> AnalystOutput:
     facts = [(key, item) for key, item in registry.items()
              if item["kind"] == "FACT" and item["period_id"] == period.id]
     selected = [next(((key, item) for key, item in facts if item["metric_code"] == code), None)
@@ -62,11 +64,11 @@ def verified_fallback(registry: dict[str, dict], period: FinancialPeriod) -> Ana
         direction = "increased" if value > 0 else "decreased" if value < 0 else "was unchanged"
         label = f"{subject} {comparison}"
         implication = (
-            "This supports year-on-year operating progress, subject to the sequential trend."
+            "This establishes growth against the equivalent prior-year quarter; its driver is unverified."
             if value > 0 and code == "REVENUE_YOY" else
-            "This shows earnings growth against the comparable quarter."
+            "This establishes higher reported earnings, not their operating cause."
             if value > 0 and code == "PAT_YOY" else
-            "The sequential decline warrants checking whether the next quarter stabilizes."
+            "Equivalent-quarter history is needed before treating this as deterioration."
             if value < 0 and comparison == "QoQ" else
             "This weakens the comparison with the prior-year quarter."
             if value < 0 else
@@ -91,7 +93,7 @@ def verified_fallback(registry: dict[str, dict], period: FinancialPeriod) -> Ana
         unfavorable = len(concerns)
         sentiment = ("POSITIVE" if favorable and not unfavorable else
                      "NEGATIVE" if unfavorable and not favorable else "NEUTRAL")
-        central = ("Year-on-year progress alongside sequential weakness makes earnings durability the central question. "
+        central = ("Year-on-year growth and sequential declines give mixed signals until equivalent-quarter history is checked. "
                    if favorable and unfavorable else
                    "The reported comparisons improved, with durability still unproven. " if favorable else
                    "The reported comparisons weakened and need an explanation. " if unfavorable else
@@ -122,7 +124,7 @@ def verified_fallback(registry: dict[str, dict], period: FinancialPeriod) -> Ana
         "The available results do not establish whether the estimate can be met."
     )
     multiple_assessment = (
-        "Year-on-year gains offer some support, but sequential weakness raises a question about sustaining earnings growth."
+        "Year-on-year gains offer some support, but the sequential declines need historical pattern and cash-flow context."
         if positives and concerns else
         "The favorable comparisons offer directional support for the multiple, but one result does not establish durability."
         if sentiment == "POSITIVE" else
@@ -144,11 +146,11 @@ def verified_fallback(registry: dict[str, dict], period: FinancialPeriod) -> Ana
             summary += (f" At the dated close of {price}, calculated TTM P/E was "
                         f"{_display(pe[1]['value'])}; this result alone does not establish support for that multiple.")
             summary_ids.extend([key, pe[0]])
-        reference_note = (f" The entered source P/E reference is {_display(quote['pe_ratio'])}; "
-                          "its EPS basis should be reconciled with Almonds' verified TTM EPS."
-                          if pe and quote.get("pe_ratio") and
-                          Decimal(pe[1]["value"]).quantize(Decimal(".01")) !=
-                          Decimal(quote["pe_ratio"]).quantize(Decimal(".01")) else "")
+        reference = (reasoning or {}).get("relationships", {}).get("pe_reference")
+        reference_note = (f" Almonds P/E is {reference['relationship'].lower().replace('_', ' ')} the "
+                          f"external P/E reference of {_display(quote['pe_ratio'])}. This difference is a "
+                          "calculation cross-check, not a valuation benchmark; verify price date, scope and EPS basis."
+                          if pe and quote.get("pe_ratio") and reference else "")
         if pe and peg:
             valuation = {
                 "status": "ASSESSED", "verdict": "INCONCLUSIVE",
@@ -199,6 +201,38 @@ def verified_fallback(registry: dict[str, dict], period: FinancialPeriod) -> Ana
         quality_notes.append("Verified cash-flow data is unavailable; earnings quality cannot be judged from profit alone.")
     if not has_balance:
         quality_notes.append("Verified debt and cash balances are unavailable; balance-sheet risk remains unassessed.")
+    comparisons = {item["metric_code"]: (key, Decimal(item["value"]))
+                   for key, item in registry.items() if item["kind"] == "METRIC"}
+    if all(code in comparisons for code, _, _ in COMPARISONS):
+        revenue_yoy = comparisons["REVENUE_YOY"][1]
+        revenue_qoq = comparisons["REVENUE_QOQ"][1]
+        pat_yoy = comparisons["PAT_YOY"][1]
+        pat_qoq = comparisons["PAT_QOQ"][1]
+        central = ("The latest quarter provides mixed evidence about earnings durability. "
+                   if sentiment == "NEUTRAL" else
+                   "The latest quarter changes the operating picture, but its durability remains unproven. ")
+        def movement(subject: str, value: Decimal, basis: str) -> str:
+            verb = "rose" if value > 0 else "fell" if value < 0 else "was unchanged"
+            return f"{subject} {verb} {_display(str(value))}% {basis}"
+        summary = (central + movement("Revenue", revenue_yoy, "YoY") + " and " +
+                   movement("PAT", pat_yoy, "YoY") +
+                   "; the supplied figures do not establish the drivers of the profit change. " +
+                   movement("Revenue", revenue_qoq, "QoQ") + " and " +
+                   movement("PAT", pat_qoq, "QoQ") + ".")
+        revenue_pattern = (reasoning or {}).get("seasonality", {}).get("revenue", {})
+        if revenue_pattern.get("status") == "INSUFFICIENT_HISTORY":
+            summary += (" Fewer than three verified equivalent-quarter transitions are available, "
+                        "so the sequential decline cannot yet be classified as normal seasonality or unusual weakness.")
+        else:
+            summary += " The sequential move needs its equivalent-quarter historical context."
+        summary_ids = [comparisons[code][0] for code, _, _ in COMPARISONS]
+        if "H_REVENUE" in registry:
+            summary_ids.append("H_REVENUE")
+        if snapshot and pe:
+            summary += (f" At the {quote['as_of_date']} close of ₹{_display(quote['price'])}, "
+                        f"calculated TTM P/E was {_display(pe[1]['value'])}; forward growth and cash "
+                        "conversion evidence is needed before judging support for that multiple.")
+            summary_ids.extend([key, pe[0]])
     output = {
         "summary": summary,
         "summary_evidence_ids": summary_ids,
@@ -209,10 +243,9 @@ def verified_fallback(registry: dict[str, dict], period: FinancialPeriod) -> Ana
         "data_quality_notes": quality_notes,
         "management_commentary": None,
         "what_might_happen": {
-            "text": ("If the mixed year-on-year and sequential signals persist, the next validated period "
-                     "could clarify whether the weakness is temporary."
-                     if sentiment == "NEUTRAL" and trend_ids else
-                     "If the reported performance continues, the next validated results could confirm the trend."),
+            "text": ("Monitor the next equivalent-quarter revenue and PAT comparisons and seek "
+                     "verified operating cash flow before judging durability."
+                     if trend_ids else "Monitor the next validated result for a comparable operating trend."),
             "evidence_ids": trend_ids or summary_ids[:1],
         },
         "result_view": view,
@@ -222,15 +255,16 @@ def verified_fallback(registry: dict[str, dict], period: FinancialPeriod) -> Ana
             "reason": "Investigate the drivers of the reported results in the next company filing.",
             "evidence_ids": summary_ids[:1],
         },
+        "quality_report": build_quality_report(registry, reasoning, period).model_dump(),
     }
     return validate_output(AnalystOutput.model_validate(output).model_dump_json(),
                            registry, period.period_end.year, require_extended=True)
 
 
 def complete_comparison_claims(output: AnalystOutput, registry: dict[str, dict],
-                               period: FinancialPeriod) -> AnalystOutput:
+                               period: FinancialPeriod, reasoning: dict | None = None) -> AnalystOutput:
     """Keep grounded prose and supply a substantive summary when it omits key trends."""
-    fallback = verified_fallback(registry, period)
+    fallback = verified_fallback(registry, period, reasoning)
     additions = {}
     required_summary = {key for key, item in registry.items() if
                         (item["kind"] == "METRIC" and item["metric_code"] in
@@ -250,5 +284,6 @@ def complete_comparison_claims(output: AnalystOutput, registry: dict[str, dict],
                 cited.update(claim.evidence_ids)
         additions[field] = current
     enriched = output.model_copy(update=additions)
+    enriched = enriched.model_copy(update={"quality_report": fallback.quality_report})
     return validate_output(enriched.model_dump_json(), registry, period.period_end.year,
                            require_extended=True)

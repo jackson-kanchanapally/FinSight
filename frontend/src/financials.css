@@ -61,11 +61,25 @@
 .ai-valuation-grid strong { color: var(--text); font-size: 1.25rem; }
 .ai-valuation-sources a { color: var(--green); }
 .ai-metadata { margin-bottom: 0; color: var(--subtle); font-size: .76rem; }
+.ai-dates { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; margin: .9rem 0 1.3rem; padding: .7rem .9rem; border-radius: .6rem; background: var(--surface-raised); color: var(--muted); font-size: .78rem; }
+.ai-support-label { display: inline-block; padding: .32rem .65rem; border-radius: .45rem; background: #263b30; color: var(--green); font-size: .76rem; font-weight: 700; letter-spacing: .04em; }
+.ai-watch-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.ai-watch-grid .ai-group { margin: .7rem 0; }
+.ai-confidence { color: var(--muted); font-size: .8rem; }
+.ai-supporting { margin: 1rem 0; padding: .8rem 1rem; border: 1px solid var(--border); border-radius: .6rem; }
+.ai-supporting > summary, .ai-evidence-detail > summary { cursor: pointer; }
+.ai-evidence-detail { max-width: 100%; }
+.ai-evidence-detail > summary { color: var(--green); }
+.ai-evidence-detail[open] { flex-basis: 100%; padding: .35rem .55rem; border-radius: .4rem; background: var(--surface-raised); }
+.ai-evidence-detail > span { display: block; margin: .3rem 0; }
+.ai-evidence-detail > div { display: flex; flex-wrap: wrap; gap: .3rem .7rem; }
+.ai-group li .ai-evidence { margin-top: .3rem; }
 @media (max-width: 700px) {
   .market-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .market-source { grid-column: span 2; }
   .market-growth-source { grid-column: span 2; }
   .ai-valuation-grid { grid-template-columns: 1fr; }
+  .ai-watch-grid { grid-template-columns: 1fr; }
   .financial-highlights { grid-template-columns: 1fr; }
   .financial-company { align-items: flex-start; flex-direction: column; }
   .ai-header { align-items: flex-start; flex-direction: column; }

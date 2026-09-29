@@ -11,6 +11,12 @@ from app.ai.analyst.schemas import AnalystOutput
 
 NUMBER = re.compile(r"(?<![A-Za-z0-9])[-+]?\d+(?:,\d+)*(?:\.\d+)?")
 RECOMMENDATION = re.compile(r"\b(?:buy|sell|hold|strong buy|weak buy|conviction score)\b", re.I)
+VALUE_JUDGMENT = re.compile(r"\b(?:overvalued|undervalued|overpriced|underpriced|cheap|expensive|fairly valued|fair value|overvaluation|undervaluation)\b", re.I)
+UNSUPPORTED_CAUSE = re.compile(
+    r"\b(?:continued demand|weak demand|pricing power|cost control|market saturation|"
+    r"operational (?:in)?efficien\w*|strong order book|customer weakness|market.share gain|"
+    r"competitive advantage|temporary issue|one.time (?:issue|charge|benefit)|"
+    r"operating leverage|demand improvement)\b", re.I)
 MARGIN_CHANGE = re.compile(
     r"\b(?:pat|ebitda) margin\b(?:\s+(?:has|had|was|is|were|been))?\s+"
     r"(?:increas\w*|decreas\w*|dropp?\w*|fell|rose|improv\w*|"
@@ -151,6 +157,21 @@ def validate_output(raw: str, registry: dict[str, dict], period_year: int,
         all_text.append(action.reason)
     if valuation is not None:
         all_text.append(valuation.text)
+    quality = result.quality_report
+    if quality is not None:
+        notes = [quality.operating_performance, quality.seasonality_context,
+                 quality.earnings_quality, quality.valuation_expectations,
+                 quality.results_vs_valuation, *quality.strengthening_evidence,
+                 *quality.weakening_evidence]
+        for note in notes:
+            _require_known(note.evidence_ids, registry, "quality_report")
+            _check_numbers(note.text, registry, period_year, note.evidence_ids, "quality_report")
+            _check_semantics(note.text, note.evidence_ids, registry, "quality_report")
+            all_text.append(note.text)
+        for gap in quality.research_gaps:
+            _require_known(gap.evidence_ids, registry, "research_gaps")
+            _check_numbers(gap.question, registry, period_year, gap.evidence_ids, "research_gaps")
+            all_text.append(gap.question)
     if result.management_commentary and not any(
         registry[item].get("kind") == "DOCUMENT_PAGE" and
         re.search(r"\b(?:management|director|ceo|cfo|chairman|guidance|outlook)\b",
@@ -161,6 +182,12 @@ def validate_output(raw: str, registry: dict[str, dict], period_year: int,
                    registry, period_year, registry.keys(), "questions_or_data_quality_notes")
     if RECOMMENDATION.search(" ".join(all_text)):
         raise InvalidAnalysis("RECOMMENDATION_FORBIDDEN")
+    if VALUE_JUDGMENT.search(" ".join(all_text)):
+        raise InvalidAnalysis("UNSUPPORTED_VALUATION_JUDGMENT")
+    for phrase in UNSUPPORTED_CAUSE.finditer(" ".join(all_text)):
+        if not any(item["kind"] == "DOCUMENT_PAGE" and phrase.group().lower() in
+                   item.get("excerpt", "").lower() for item in registry.values()):
+            raise InvalidAnalysis("UNSUPPORTED_CAUSAL_EXPLANATION", token=phrase.group())
     return result
 
 
@@ -190,6 +217,23 @@ def _check_semantics(text: str, evidence_ids: list[str], registry: dict[str, dic
     lowered = text.lower()
     codes = {registry[item]["metric_code"] for item in evidence_ids
              if registry[item]["kind"] == "METRIC"}
+    pe_reference = registry.get("R_PE")
+    if pe_reference and pe_reference["relationship"] == "BELOW" and re.search(
+        r"(?:calculated|almonds|trailing|ttm)\s+p/e.{0,110}(?:higher|above|greater)\s+than.{0,45}reference",
+        lowered):
+        raise InvalidAnalysis("NUMERICAL_RELATIONSHIP_MISMATCH", hint="Calculated P/E is below the reference P/E; this is only a calculation cross-check.", field=field)
+    if pe_reference and pe_reference["relationship"] == "ABOVE" and re.search(
+        r"(?:calculated|almonds|trailing|ttm)\s+p/e.{0,110}(?:lower|below|less)\s+than.{0,45}reference",
+        lowered):
+        raise InvalidAnalysis("NUMERICAL_RELATIONSHIP_MISMATCH", hint="Calculated P/E is above the reference P/E; this is only a calculation cross-check.", field=field)
+    margin = registry.get("R_MARGIN")
+    if margin and re.search(r"ebitda margin", lowered):
+        for match in re.finditer(r"([-+]?\d+(?:\.\d+)?)\s+percentage points?", lowered):
+            stated = abs(Decimal(match.group(1)))
+            actual = abs(Decimal(margin["change_percentage_points"]))
+            if abs(stated - actual) > Decimal("0.005"):
+                raise InvalidAnalysis("MARGIN_UNIT_MISMATCH", token=match.group(0),
+                    hint=f"Verified change is {margin['change_percentage_points']} percentage points or {margin['change_bps']} basis points.", field=field)
     for match in MARGIN_CHANGE.finditer(lowered):
         phrase = match.group()
         if "pat margin" in phrase:
@@ -294,6 +338,20 @@ def _check_numbers(text: str, registry: dict[str, dict], period_year: int, evide
             _add_value(allowed, item["value"])
             _add_negative_value(negative_allowed, item["value"])
             supported_dates.add(item["as_of_date"])
+        if item["kind"] == "RELATIONSHIP":
+            for key in ("primary_value", "reference_value", "absolute_difference", "percentage_difference",
+                        "previous_margin_pct", "current_margin_pct", "change_percentage_points", "change_bps"):
+                if item.get(key) is not None:
+                    _add_value(allowed, item[key])
+                    _add_negative_value(negative_allowed, item[key])
+        if item["kind"] == "SEASONALITY":
+            for key in ("current_change_pct", "median_change_pct", "difference_from_median_pct"):
+                if item.get(key) is not None:
+                    _add_value(allowed, item[key])
+                    _add_negative_value(negative_allowed, item[key])
+            for value in item.get("range_pct") or []:
+                _add_value(allowed, value)
+                _add_negative_value(negative_allowed, value)
         for key in ("page", "document_id"):
             if item.get(key) is not None:
                 allowed.add(Decimal(item[key]))

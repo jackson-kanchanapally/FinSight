@@ -61,6 +61,13 @@ function indiaDate(value: string) {
   }).format(new Date(value));
 }
 
+function indiaDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit",
+    timeZone: "Asia/Kolkata", timeZoneName: "short"
+  }).format(new Date(value));
+}
+
 function financialValue(period: FinancialPeriod, code: string, calculated = false) {
   const fact = period.facts.find((item) => item.metric_code === code);
   const metric = period.metrics.find((item) => item.metric_code === code);
@@ -101,10 +108,25 @@ function EvidenceLinks({ analysis, ids }: { analysis: AIAnalysis; ids: string[] 
     if (!item) return null;
     const title = item.kind === "MARKET_SNAPSHOT" ? `Market snapshot · ${item.as_of_date}`
       : item.kind === "VALUATION" ? `${item.metric_code?.replaceAll("_", " ")} · Almonds calculated`
+        : item.kind === "RELATIONSHIP" ? `${item.metric_code?.replaceAll("_", " ")} · Almonds comparison`
+          : item.kind === "SEASONALITY" ? `${item.metric_code?.replaceAll("_", " ")} · historical pattern`
         : item.kind === "METRIC" ? `${item.metric_code?.replaceAll("_", " ")} · Python metric`
           : item.kind === "FACT" ? `${item.metric_code?.replaceAll("_", " ")} · page ${item.page ?? "?"}`
             : `Official PDF · page ${item.page ?? "?"}`;
-    const url = item.document_url || item.source_url;
+    const inputs = item.input_evidence_ids || [];
+    if (["VALUATION", "RELATIONSHIP", "SEASONALITY", "METRIC"].includes(item.kind) && inputs.length) {
+      return <details key={id} className="ai-evidence-detail"><summary>{title}</summary>
+        {item.formula && <span>{item.formula}</span>}
+        {item.kind === "RELATIONSHIP" && item.relationship && <span>{item.relationship.replaceAll("_", " ")}
+          {item.role === "CALCULATION_CROSS_CHECK" ? " · external reference is a calculation cross-check" : ""}</span>}
+        {item.kind === "SEASONALITY" && <span>{item.status?.replaceAll("_", " ")}</span>}
+        <div>{inputs.map((inputId) => {const input = analysis.evidence_registry[inputId];
+          const inputUrl = input?.document_url || (input?.kind === "MARKET_SNAPSHOT" ? input.source_url : undefined);
+          return inputUrl ? <a key={inputId} href={inputUrl} target="_blank" rel="noreferrer">{inputId} · {input?.kind === "MARKET_SNAPSHOT" ? "external market source" : "source document"} ↗</a>
+            : <span key={inputId}>{inputId} · {input?.kind === "VALUATION" ? "Almonds calculated" : "verified input"}</span>;})}</div>
+      </details>;
+    }
+    const url = item.kind === "VALUATION" ? undefined : item.document_url || item.source_url;
     return url
       ? <a key={id} href={url} target="_blank" rel="noreferrer">{title} ↗</a>
       : <span key={id} title={item.value ? valueText(item.value, item.unit || "") : ""}>{title}</span>;
@@ -237,12 +259,18 @@ function AnalysisPanel({ symbol, period, snapshot }: { symbol: string; period: F
   const retryCoolingDown = analysis?.status === "VERIFIED_FALLBACK" &&
     now < Date.parse(analysis.created_at) + 15 * 60_000;
   const output = analysis?.structured_output;
+  const quality = output?.quality_report;
+  const calculatedPe = Object.values(analysis?.evidence_registry || {}).find((item) =>
+    item.kind === "VALUATION" && item.metric_code === "PE_TTM")?.value;
   const claimList = (title: string, claims: AIClaim[], empty: string) =>
     <div className={`ai-group${title === "Concerns" ? " ai-concerns" : ""}`}><h4>{title}</h4>
       {claims.length ? claims.map((claim, index) =>
         <article key={index}><strong>{claim.title}</strong><p>{claim.explanation}</p>
           <EvidenceLinks analysis={analysis!} ids={claim.evidence_ids} /></article>)
         : <p>{empty}</p>}</div>;
+  const qualityNote = (title: string, note: {text: string; evidence_ids: string[]}) =>
+    <div className="ai-group"><h4>{title}</h4><p>{note.text}</p>
+      <EvidenceLinks analysis={analysis!} ids={note.evidence_ids} /></div>;
   return <div className="ai-panel">
     <div className="ai-header"><div><p className="eyebrow">{analysis?.status === "VERIFIED_FALLBACK" ?
       "VERIFIED FACTS · LOCAL FALLBACK" : "LOCAL MODEL · EVIDENCE CHECKED"}</p>
@@ -260,22 +288,66 @@ function AnalysisPanel({ symbol, period, snapshot }: { symbol: string; period: F
     </p>}
     {analysis && analysis.status !== "SUCCESS" && analysis.status !== "VERIFIED_FALLBACK" &&
       <p className="event-error" role="alert">Analysis {analysis.status.toLowerCase()}: {analysis.failure_reason}</p>}
-    {output && <><div className="ai-group"><h4>Summary</h4><p className="ai-summary">{output.summary}</p>
+    {output && <><div className="ai-dates"><span>Result period: {period.period_end}</span>
+      <span>Published: {indiaDate(period.published_at)}</span>
+      <span>Market price: {snapshot?.as_of_date || "Unavailable"}</span>
+      <span>Generated: {indiaDateTime(analysis!.created_at)}</span></div>
+      <div className="ai-group"><h4>Investor summary</h4><p className="ai-summary">{output.summary}</p>
       <EvidenceLinks analysis={analysis!} ids={output.summary_evidence_ids} /></div>
-      {claimList("Positives", output.positives, "No supported positive result changes were identified.")}
-      {claimList("Concerns", output.concerns, "No supported negative result changes were identified.")}
-      {output.result_view && <div className="ai-group ai-result-view"><h4>Results view</h4>
+      {quality && <>
+        {qualityNote("Operating performance", quality.operating_performance)}
+        {qualityNote("Historical / seasonal context", quality.seasonality_context)}
+        {qualityNote("Earnings quality", quality.earnings_quality)}
+        <div className="ai-group ai-valuation"><h4>Current valuation and expectations</h4>
+          <div className="ai-valuation-grid">
+            <div><span>Dated share price</span><strong>{snapshot ? `₹${Number(snapshot.close_price).toLocaleString("en-IN", {maximumFractionDigits: 2})}` : "Unavailable"}</strong>
+              <small>{snapshot?.as_of_date || "No fresh price"}</small></div>
+            <div><span>Almonds calculated P/E</span><strong>{calculatedPe ? `${Number(calculatedPe).toFixed(2)}×` : "Unavailable"}</strong>
+              <small>Verified trailing EPS basis</small></div>
+            <div><span>External P/E cross-check</span><strong>{snapshot?.pe_ratio ? `${Number(snapshot.pe_ratio).toFixed(2)}×` : "Unavailable"}</strong>
+              <small>Calculation comparison, not a valuation benchmark</small></div>
+          </div>
+          <p>{quality.valuation_expectations.text}</p>
+          <EvidenceLinks analysis={analysis!} ids={quality.valuation_expectations.evidence_ids} />
+        </div>
+        <div className="ai-group ai-result-view"><h4>Results vs valuation</h4>
+          <span className="ai-support-label">{quality.results_vs_valuation.assessment.replaceAll("_", " ")}</span>
+          <p>{quality.results_vs_valuation.text}</p>
+          <EvidenceLinks analysis={analysis!} ids={quality.results_vs_valuation.evidence_ids} /></div>
+        <div className="ai-watch-grid">
+          <div className="ai-group"><h4>What strengthens the case</h4>{quality.strengthening_evidence.map((note, index) =>
+            <article key={index}><p>{note.text}</p><EvidenceLinks analysis={analysis!} ids={note.evidence_ids} /></article>)}</div>
+          <div className="ai-group ai-concerns"><h4>What weakens the case</h4>{quality.weakening_evidence.map((note, index) =>
+            <article key={index}><p>{note.text}</p><EvidenceLinks analysis={analysis!} ids={note.evidence_ids} /></article>)}</div>
+        </div>
+        <div className="ai-group"><h4>Research gaps · {quality.research_priority} priority</h4>
+          <ul>{quality.research_gaps.map((gap, index) => <li key={index}><strong>{gap.type.replaceAll("_", " ")}</strong>
+            {" · "}{gap.question}<EvidenceLinks analysis={analysis!} ids={gap.evidence_ids} /></li>)}</ul>
+          <p className="ai-confidence">Evidence confidence: {quality.confidence.toLowerCase()}</p></div>
+        <details className="ai-supporting"><summary>Positives, concerns and metric details</summary>
+          {claimList("Positives", output.positives, "No supported positive result changes were identified.")}
+          {claimList("Concerns", output.concerns, "No supported negative result changes were identified.")}
+          {output.material_changes.length > 0 && <div className="ai-group"><h4>Material changes</h4>{output.material_changes.map((change, index) =>
+            <article key={index}><strong>{change.metric}: {change.change}</strong><p>{change.interpretation}</p>
+              <EvidenceLinks analysis={analysis!} ids={change.evidence_ids} /></article>)}</div>}
+        </details>
+        {output.questions.length > 0 && <details className="ai-supporting"><summary>Questions to watch next quarter</summary>
+          <ul>{output.questions.map((item, index) => <li key={index}>{item}</li>)}</ul></details>}
+      </>}
+      {!quality && claimList("Positives", output.positives, "No supported positive result changes were identified.")}
+      {!quality && claimList("Concerns", output.concerns, "No supported negative result changes were identified.")}
+      {!quality && output.result_view && <div className="ai-group ai-result-view"><h4>Results view</h4>
         <span className={`ai-sentiment ai-sentiment-${output.result_view.sentiment.toLowerCase()}`}>
           {output.result_view.sentiment}</span>
         <p>{output.result_view.reason}</p><EvidenceLinks analysis={analysis!} ids={output.result_view.evidence_ids} /></div>}
-      {output.material_changes.length > 0 && <div className="ai-group"><h4>Material changes</h4>{output.material_changes.map((change, index) =>
+      {!quality && output.material_changes.length > 0 && <div className="ai-group"><h4>Material changes</h4>{output.material_changes.map((change, index) =>
         <article key={index}><strong>{change.metric}: {change.change}</strong><p>{change.interpretation}</p>
           <EvidenceLinks analysis={analysis!} ids={change.evidence_ids} /></article>)}</div>}
       {output.management_commentary && <div className="ai-group"><h4>What management said</h4>
         <p>{output.management_commentary.text}</p><EvidenceLinks analysis={analysis!} ids={output.management_commentary.evidence_ids} /></div>}
-      {output.what_might_happen && <div className="ai-group"><h4>What might happen next</h4>
+      {!quality && output.what_might_happen && <div className="ai-group"><h4>Evidence to monitor</h4>
         <p>{output.what_might_happen.text}</p><EvidenceLinks analysis={analysis!} ids={output.what_might_happen.evidence_ids} /></div>}
-      {output.valuation_assessment && <div className="ai-group ai-valuation"><h4>Do the results support the current valuation?</h4>
+      {!quality && output.valuation_assessment && <div className="ai-group ai-valuation"><h4>Do the results support the current valuation?</h4>
         <div className="ai-valuation-grid">
           <div><span>Dated share price</span><strong>{snapshot ? `₹${Number(snapshot.close_price).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "Unavailable"}</strong>
             <small>{snapshot?.as_of_date || "Enter a recent sourced close"}</small></div>
@@ -291,9 +363,9 @@ function AnalysisPanel({ symbol, period, snapshot }: { symbol: string; period: F
         {snapshot && <p className="ai-valuation-sources"><a href={snapshot.source_url} target="_blank" rel="noreferrer">Price and P/E source ↗</a>
           {snapshot.growth_source_url && <> · <a href={snapshot.growth_source_url} target="_blank" rel="noreferrer">Growth estimate source ↗</a></>}</p>}
         <EvidenceLinks analysis={analysis!} ids={output.valuation_assessment.evidence_ids} /></div>}
-      {output.research_action && <div className="ai-group"><h4>Research recommendation · {output.research_action.action.replaceAll("_", " ")}</h4>
+      {!quality && output.research_action && <div className="ai-group"><h4>Research step · {output.research_action.action.replaceAll("_", " ")}</h4>
         <p>{output.research_action.reason}</p><EvidenceLinks analysis={analysis!} ids={output.research_action.evidence_ids} /></div>}
-      {output.questions.length > 0 && <div className="ai-group"><h4>Questions to watch</h4><ul>{output.questions.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
+      {!quality && output.questions.length > 0 && <div className="ai-group"><h4>Questions to watch</h4><ul>{output.questions.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
       {output.data_quality_notes.length > 0 && <div className="ai-group"><h4>Data quality notes</h4><ul>{output.data_quality_notes.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
       <p className="ai-metadata">{analysis!.status === "VERIFIED_FALLBACK" ? "Verified facts summary" :
         `Model: ${analysis!.model_provider} / ${analysis!.model_name}`} · Generated: {indiaDate(analysis!.created_at)} · Prompt: {analysis!.prompt_version}</p></>}

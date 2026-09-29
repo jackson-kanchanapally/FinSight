@@ -101,6 +101,11 @@
 }
 .valuation-reference-head { color: var(--muted); font-weight: 700; }
 .valuation-reference-row:last-child { border-bottom: 0; }
+.valuation-expectations { margin: 1.35rem 0; }
+.valuation-expectations h4 { margin: 0 0 .5rem; }
+.valuation-expectation-row { grid-template-columns: repeat(5, minmax(110px, 1fr)); min-width: 650px; }
+.valuation-expectation-row strong { color: var(--text); }
+.valuation-stale { margin: .75rem 0 1rem; padding: .8rem 1rem; border-left: 3px solid var(--gold); border-radius: .35rem; background: #2d291f; color: #f2deb1; font-size: .86rem; line-height: 1.5; }
 
 @media (max-width: 600px) {
   .valuation-heading { align-items: flex-start; }

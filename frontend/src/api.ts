@@ -218,7 +218,10 @@ export type ScenarioResult = {name: string; eps_growth_pct: string; terminal_pe:
   implied_future_price: string; total_return_pct: string; annualized_return_pct: string; label: string};
 export type ReverseResult = {current_eps: string; current_price: string; terminal_pe: string;
   years: number; target_annualized_return_pct: string; target_future_price: string;
-  required_future_eps: string; required_eps_cagr_pct: string; label: string};
+  required_future_eps: string; required_eps_cagr_pct: string; label: string;
+  observed_eps_growth: {latest_eps_growth_pct: string; latest_period_end: string;
+    previous_period_end: string; input_evidence_ids: string[]} | null;
+  growth_gap: {relationship: string; absolute_difference: string | null} | null};
 export type ValuationChange = {status: "CALCULATED"; old_date: string; new_date: string; old_price: string; new_price: string;
   old_eps: string; new_eps: string; old_pe: string; new_pe: string; price_change_pct: string;
   eps_change_pct: string; pe_change_pct: string; method: string};
@@ -229,6 +232,20 @@ export type ReferenceComparison = {metric_code: string; almonds: string | null; 
 
 export type AIClaim = {title: string; explanation: string; evidence_ids: string[]};
 export type AIMaterialChange = {metric: string; change: string; interpretation: string; evidence_ids: string[]};
+export type AIQualityNote = {text: string; evidence_ids: string[]};
+export type AIResearchGap = {type: string; question: string; priority: "HIGH" | "MEDIUM" | "LOW"; evidence_ids: string[]};
+export type AIQualityReport = {
+  operating_performance: AIQualityNote;
+  seasonality_context: AIQualityNote & {status: string};
+  earnings_quality: AIQualityNote;
+  valuation_expectations: AIQualityNote;
+  results_vs_valuation: AIQualityNote & {assessment: string};
+  strengthening_evidence: AIQualityNote[];
+  weakening_evidence: AIQualityNote[];
+  research_gaps: AIResearchGap[];
+  research_priority: "HIGH" | "MEDIUM" | "LOW";
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+};
 export type EventInsightClaim = {text: string; evidence_ids: string[]};
 export type EventInsight = {
   summary: EventInsightClaim;
@@ -271,6 +288,9 @@ export type AIAnalysis = {
     as_of_date?: string; price?: string; pe_ratio?: string | null;
     market_cap_crore?: string | null; forward_eps_growth_pct?: string | null;
     growth_source_url?: string | null; peg_ratio?: string | null;
+    input_evidence_ids?: string[]; formula?: string; relationship?: string;
+    status?: string; role?: string; reference_status?: string;
+    primary_value?: string; reference_value?: string; percentage_difference?: string;
   }>;
   structured_output: {
     summary: string;
@@ -289,6 +309,7 @@ export type AIAnalysis = {
       text: string; evidence_ids: string[]} | null;
     research_action?: {action: "WATCH" | "INVESTIGATE" | "NO_ACTION" | "INSUFFICIENT_EVIDENCE";
       reason: string; evidence_ids: string[]} | null;
+    quality_report?: AIQualityReport | null;
   } | null;
 };
 

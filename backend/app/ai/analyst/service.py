@@ -64,6 +64,11 @@ def analyze_period(db: Session, company: Company, period: FinancialPeriod,
                 provider.name, provider.model, context.fact_count, context.metric_count,
                 len(context.registry), len(context.text))
     schema = GeneratedAnalystOutput.model_json_schema()
+    # The investor quality report is assembled from verified inputs after model
+    # validation. Keep it out of the model's response contract entirely.
+    schema["properties"].pop("quality_report", None)
+    if "required" in schema:
+        schema["required"] = [name for name in schema["required"] if name != "quality_report"]
     guide = evidence_guide(context.registry, period.id)
     feedback = None
     seen_invalid: set[tuple[str, str | None, str | None]] = set()
@@ -75,7 +80,7 @@ def analyze_period(db: Session, company: Company, period: FinancialPeriod,
                                                 citation_guide=guide), schema)
             output = validate_output(raw, context.registry, period.period_end.year,
                                      require_extended=True)
-            output = complete_comparison_claims(output, context.registry, period)
+            output = complete_comparison_claims(output, context.registry, period, context.reasoning)
             record.status = "SUCCESS"
             record.summary = output.summary
             record.structured_output = output.model_dump()
@@ -118,7 +123,7 @@ def analyze_period(db: Session, company: Company, period: FinancialPeriod,
             break
     if record.status in {"INVALID", "FAILED"}:
         try:
-            output = verified_fallback(context.registry, period)
+            output = verified_fallback(context.registry, period, context.reasoning)
             record.status = "VERIFIED_FALLBACK"
             record.summary = output.summary
             record.structured_output = output.model_dump()

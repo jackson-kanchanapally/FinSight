@@ -76,3 +76,5 @@ class ReverseResult(BaseModel):
     required_future_eps: Decimal
     required_eps_cagr_pct: Decimal
     label: str
+    observed_eps_growth: dict | None = None
+    growth_gap: dict | None = None

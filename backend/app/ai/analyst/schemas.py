@@ -54,6 +54,44 @@ class ResearchAction(StrictText):
     evidence_ids: list[str] = Field(min_length=1, max_length=8)
 
 
+class QualityNote(StrictText):
+    text: str = Field(min_length=1, max_length=900)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=12)
+
+
+class SeasonalityAssessment(QualityNote):
+    status: Literal["CONSISTENT_WITH_HISTORICAL_PATTERN", "LARGER_THAN_HISTORICAL_PATTERN",
+                    "SMALLER_THAN_HISTORICAL_PATTERN", "NO_CLEAR_PATTERN", "INSUFFICIENT_HISTORY"]
+
+
+class ResultsSupport(QualityNote):
+    assessment: Literal["STRONG_SUPPORT", "MODERATE_SUPPORT", "MIXED_EVIDENCE",
+                        "LIMITED_SUPPORT", "INSUFFICIENT_EVIDENCE"]
+
+
+class ResearchGap(StrictText):
+    type: Literal["MANAGEMENT_GUIDANCE", "SEASONALITY", "ORDER_BOOK", "MARGIN_GUIDANCE",
+                  "CASH_CONVERSION", "CAPEX", "DEBT", "CUSTOMER_CONCENTRATION",
+                  "HISTORICAL_VALUATION", "PEER_VALUATION", "FORWARD_GROWTH",
+                  "MANAGEMENT_EXECUTION", "EARNINGS_DRIVERS"]
+    question: str = Field(min_length=1, max_length=500)
+    priority: Literal["HIGH", "MEDIUM", "LOW"]
+    evidence_ids: list[str] = Field(default_factory=list, max_length=8)
+
+
+class InvestorQuality(StrictText):
+    operating_performance: QualityNote
+    seasonality_context: SeasonalityAssessment
+    earnings_quality: QualityNote
+    valuation_expectations: QualityNote
+    results_vs_valuation: ResultsSupport
+    strengthening_evidence: list[QualityNote] = Field(max_length=5)
+    weakening_evidence: list[QualityNote] = Field(max_length=5)
+    research_gaps: list[ResearchGap] = Field(max_length=12)
+    research_priority: Literal["HIGH", "MEDIUM", "LOW"]
+    confidence: Literal["HIGH", "MEDIUM", "LOW"]
+
+
 class AnalystOutput(StrictText):
     summary: str = Field(min_length=1, max_length=1500)
     summary_evidence_ids: list[str] = Field(min_length=1, max_length=8)
@@ -67,6 +105,7 @@ class AnalystOutput(StrictText):
     result_view: ResultView | None = None
     valuation_assessment: ValuationView | None = None
     research_action: ResearchAction | None = None
+    quality_report: InvestorQuality | None = None
 
     @field_validator("questions", "data_quality_notes")
     @classmethod

@@ -1,5 +1,7 @@
 """Auditable historical valuations and user-defined scenarios."""
 
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -8,6 +10,8 @@ from app.database import get_db
 from app.market.service import latest_snapshot, market_history
 from app.market.valuation import recalculate, scenario, reverse_growth, valuation_change
 from app.market.reference import comparisons
+from app.market.expectations import latest_quarter_eps_growth
+from app.ai.analyst.reasoning import required_growth_gap
 from app.config import settings
 from app.models.company import Company
 from app.models.financial import FinancialScope
@@ -88,11 +92,16 @@ def valuation_reverse(symbol: str, payload: ReverseRequest,
     valuation = recalculate(db, market, FinancialScope(payload.scope))
     if valuation.ttm_eps is None or valuation.ttm_eps <= 0:
         raise HTTPException(status_code=422, detail="Reliable positive TTM EPS is unavailable")
+    scenario_result = reverse_growth(valuation.ttm_eps, market.close_price, payload.terminal_pe,
+                                     payload.years, payload.target_annualized_return_pct)
+    observed = latest_quarter_eps_growth(db, company.id, FinancialScope(payload.scope), market.as_of_date)
+    gap = required_growth_gap(Decimal(scenario_result["required_eps_cagr_pct"]),
+                              latest_eps_growth=observed["latest_eps_growth_pct"] if observed else None)
     return ReverseResult(current_eps=valuation.ttm_eps, current_price=market.close_price,
         terminal_pe=payload.terminal_pe, years=payload.years,
         target_annualized_return_pct=payload.target_annualized_return_pct,
-        **reverse_growth(valuation.ttm_eps, market.close_price, payload.terminal_pe,
-                         payload.years, payload.target_annualized_return_pct))
+        observed_eps_growth=observed, growth_gap=gap["comparisons"]["latest_eps_growth"],
+        **scenario_result)
 
 
 @router.get("/api/companies/{symbol}/valuation/change")

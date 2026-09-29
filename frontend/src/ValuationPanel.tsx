@@ -83,6 +83,7 @@ export function ValuationPanel({symbol, scope, snapshot, growth, onMarketChanged
   const [busy, setBusy] = useState(false);
   const [scenarios, setScenarios] = useState<ScenarioResult[]>([]);
   const [reverse, setReverse] = useState<ReverseResult | null>(null);
+  const [reverseCases, setReverseCases] = useState<ReverseResult[]>([]);
   const [targetReturn, setTargetReturn] = useState("12");
   const [scenarioGrowth, setScenarioGrowth] = useState("20");
   const [terminalPe, setTerminalPe] = useState("30");
@@ -125,7 +126,15 @@ export function ValuationPanel({symbol, scope, snapshot, growth, onMarketChanged
   }
   async function runReverse(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError("");
-    try {setReverse(await api.reverseGrowth(symbol, scope, terminalPe, Number(years), targetReturn));}
+    try {
+      const targets = [...new Set(["0", "10", "15", targetReturn])].sort((a, b) => Number(a) - Number(b));
+      const cases = [];
+      for (const target of targets) {
+        cases.push(await api.reverseGrowth(symbol, scope, terminalPe, Number(years), target));
+      }
+      setReverseCases(cases);
+      setReverse(cases.find((item) => Number(item.target_annualized_return_pct) === Number(targetReturn)) || null);
+    }
     catch (cause) {setError(cause instanceof Error ? cause.message : "Reverse growth unavailable.");}
     finally {setBusy(false);}
   }
@@ -145,6 +154,7 @@ export function ValuationPanel({symbol, scope, snapshot, growth, onMarketChanged
     {error && <p className="event-error" role="alert">{error}</p>}
     {!valuation && <p className="financial-footnote">Add a dated market price to calculate valuation.</p>}
     {valuation && <>
+      {days !== null && days > 7 && <p className="valuation-stale" role="status">Valuation based on price from {market?.as_of_date}. Refresh or enter a newer dated price before using these ratios for a current view.</p>}
       <p className="financial-footnote">Price {market?.as_of_date} · {market?.provider} / {market?.data_origin} · {days === 0 ? "Current date" : `${days} day${days === 1 ? "" : "s"} old`}{days !== null && days > 7 ? " · Stale" : ""}. Calculated ratios use verified financial facts available by this market date.</p>
       <div className="valuation-cards"><div className="valuation-card"><span>Closing price</span><strong>{format(market?.close_price, "", "₹")}</strong><small>{market?.as_of_date}</small></div>
         {(valuation.metric_details.market_cap as ValuationDetail)?.value != null && <div className="valuation-card"><span>Market cap</span><strong>{format((valuation.metric_details.market_cap as ValuationDetail)?.value, " Cr", "₹")}</strong><Detail valuation={valuation} code="market_cap" periods={periods} /></div>}
@@ -177,18 +187,29 @@ export function ValuationPanel({symbol, scope, snapshot, growth, onMarketChanged
             <span>{format(item.almonds)}</span><span>{format(item.market_lens)}</span><span>{format(item.difference_pct, "%")}</span>
             <span>{item.status} · <a href={item.source_url} target="_blank" rel="noreferrer">{item.reference_date}</a></span></div>)}</div></>}
       <form className="valuation-scenario" onSubmit={(event) => void runScenario(event)}><h4>Scenario analysis</h4>
-        <p className="financial-footnote">Your assumptions, not a forecast. Requires reliable positive TTM EPS.</p>
+        <p className="financial-footnote">Your visible inputs are scenario assumptions, not forecasts. Requires reliable positive TTM EPS.</p>
         <label>Annual EPS growth (%)<input type="number" min="-99" max="1000" step="0.1" required value={scenarioGrowth} onChange={(event) => setScenarioGrowth(event.target.value)} /></label>
-        <label>Terminal P/E<input type="number" min="0.01" max="1000" step="0.1" required value={terminalPe} onChange={(event) => setTerminalPe(event.target.value)} /></label>
-        <label>Years<input type="number" min="1" max="10" step="1" required value={years} onChange={(event) => setYears(event.target.value)} /></label>
+        <label>Terminal P/E (your assumption)<input type="number" min="0.01" max="1000" step="0.1" required value={terminalPe} onChange={(event) => {setTerminalPe(event.target.value); setReverseCases([]); setReverse(null);}} /></label>
+        <label>Years<input type="number" min="1" max="10" step="1" required value={years} onChange={(event) => {setYears(event.target.value); setReverseCases([]); setReverse(null);}} /></label>
         <button className="button button-outline button-small" disabled={busy}>Calculate scenario</button>
       </form>
       {scenarios.map((item) => <p className="valuation-result" key={item.name}>{item.name}: future EPS {format(item.future_eps, "", "₹")}, implied price {format(item.implied_future_price, "", "₹")}, total return {format(item.total_return_pct, "%")}, annualized return {format(item.annualized_return_pct, "%")}</p>)}
       <form className="valuation-scenario" onSubmit={(event) => void runReverse(event)}><h4>Required EPS growth</h4>
         <p className="financial-footnote">What annual EPS growth would be needed for your target return? Uses the terminal P/E and years above.</p>
-        <label>Target annual return (%)<input type="number" min="-99" max="1000" step="0.1" required value={targetReturn} onChange={(event) => setTargetReturn(event.target.value)} /></label>
+        <label>Target annual return (%)<input type="number" min="-99" max="1000" step="0.1" required value={targetReturn} onChange={(event) => {setTargetReturn(event.target.value); setReverseCases([]); setReverse(null);}} /></label>
         <button className="button button-outline button-small" disabled={busy}>Calculate required growth</button></form>
       {reverse && <p className="valuation-result">{reverse.label}: {format(reverse.required_eps_cagr_pct, "%")} EPS CAGR to reach {format(reverse.target_future_price, "", "₹")} in {reverse.years} years at {format(reverse.terminal_pe, "×")} terminal P/E.</p>}
+      {reverseCases.length > 0 && <div className="valuation-expectations"><h4>Reverse expectations · user assumption</h4>
+        <p className="financial-footnote">The terminal P/E and horizon above are your inputs. These required growth rates are scenarios, not forecasts.</p>
+        {reverseCases[0].observed_eps_growth && <p className="financial-footnote">Latest verified diluted EPS grew {format(reverseCases[0].observed_eps_growth.latest_eps_growth_pct, "%")} YoY ({reverseCases[0].observed_eps_growth.previous_period_end} → {reverseCases[0].observed_eps_growth.latest_period_end}). This is one quarter’s annual comparison, not a forecast.</p>}
+        <div className="valuation-reference"><div className="valuation-expectation-row valuation-reference-head"><span>Terminal P/E</span><span>Horizon</span><span>Target return</span><span>Required EPS CAGR</span><span>Vs latest EPS YoY</span></div>
+          {reverseCases.map((item) => <div className="valuation-expectation-row valuation-reference-row" key={item.target_annualized_return_pct}>
+            <span>{format(item.terminal_pe, "×")}</span><span>{item.years} years</span>
+            <span>{format(item.target_annualized_return_pct, "%")}</span><strong>{format(item.required_eps_cagr_pct, "%")}</strong>
+            <span>{item.observed_eps_growth && item.growth_gap?.absolute_difference != null
+              ? `${item.growth_gap.relationship.replaceAll("_", " ").toLowerCase()} by ${format(Math.abs(Number(item.growth_gap.absolute_difference)).toString(), " pp")}`
+              : "No comparable EPS YoY"}</span></div>)}</div>
+        <p className="financial-footnote">Historical diluted EPS CAGR and sourced forward EPS growth are needed to test whether a scenario’s required rate is durable.</p></div>}
     </>}
   </section>;
 }
