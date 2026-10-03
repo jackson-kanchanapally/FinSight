@@ -7,6 +7,13 @@
   margin: -4px 0 17px;
   line-height: 1.6;
 }
+.event-upload { margin: 0 0 17px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.event-upload > summary { cursor: pointer; font-size: 12px; font-weight: 700; }
+.event-upload-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.event-upload-form label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 11px; }
+.event-upload-form input, .event-upload-form select { width: 100%; min-width: 0; padding: 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-raised); color: var(--text); }
+.event-upload-form button { align-self: end; }
+@media (max-width: 760px) { .event-upload-form { grid-template-columns: 1fr; } }
 .event-list {
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -356,4 +363,12 @@
     margin-left: 48px;
   }
 }
-.event-financial-action { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; margin: 1rem 0; color: var(--muted); font-size: .84rem; }
+.event-financial-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 1rem 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}

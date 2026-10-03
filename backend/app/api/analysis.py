@@ -16,8 +16,9 @@ router = APIRouter(tags=["analysis"])
 
 
 @router.post("/api/events/{event_id}/analyze", response_model=EventAnalysisRead)
-def analyze_company_event(event_id: int, regenerate: bool = False,
-                          db: Session = Depends(get_db)):
+def analyze_company_event(
+    event_id: int, regenerate: bool = False, db: Session = Depends(get_db)
+):
     event = db.get(CompanyEvent, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -31,15 +32,31 @@ def _company(db: Session, symbol: str) -> Company:
     return company
 
 
-@router.post("/api/companies/{symbol}/financials/{period_id}/analyze", response_model=AnalysisRead)
-def analyze(symbol: str, period_id: int, regenerate: bool = False, force: bool = False,
-            db: Session = Depends(get_db)) -> AIAnalysis:
+@router.post(
+    "/api/companies/{symbol}/financials/{period_id}/analyze",
+    response_model=AnalysisRead,
+)
+def analyze(
+    symbol: str,
+    period_id: int,
+    regenerate: bool = False,
+    force: bool = False,
+    deterministic_only: bool = False,
+    db: Session = Depends(get_db),
+) -> AIAnalysis:
     company = _company(db, symbol)
     period = db.get(FinancialPeriod, period_id)
     if period is None or period.company_id != company.id:
         raise HTTPException(status_code=404, detail="Financial period not found")
     try:
-        return analyze_period(db, company, period, regenerate=regenerate, force=force)
+        return analyze_period(
+            db,
+            company,
+            period,
+            regenerate=regenerate,
+            force=force,
+            deterministic_only=deterministic_only,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -47,8 +64,13 @@ def analyze(symbol: str, period_id: int, regenerate: bool = False, force: bool =
 @router.get("/api/companies/{symbol}/analysis", response_model=list[AnalysisRead])
 def company_analyses(symbol: str, db: Session = Depends(get_db)) -> list[AIAnalysis]:
     company = _company(db, symbol)
-    return list(db.scalars(select(AIAnalysis).where(AIAnalysis.company_id == company.id)
-                           .order_by(AIAnalysis.created_at.desc(), AIAnalysis.id.desc())))
+    return list(
+        db.scalars(
+            select(AIAnalysis)
+            .where(AIAnalysis.company_id == company.id)
+            .order_by(AIAnalysis.created_at.desc(), AIAnalysis.id.desc())
+        )
+    )
 
 
 @router.get("/api/analysis/{analysis_id}", response_model=AnalysisRead)

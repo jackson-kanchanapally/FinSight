@@ -15,17 +15,28 @@ from app.models.financial import FinancialPeriod, FinancialScope, FinancialStatu
 
 def test_live_esds_analyst():
     if os.environ.get("OLLAMA_TEST_ENABLED", "").lower() != "true":
-        pytest.skip("Set OLLAMA_TEST_ENABLED=true for local Ollama and PostgreSQL integration")
+        pytest.skip(
+            "Set OLLAMA_TEST_ENABLED=true for local Ollama and PostgreSQL integration"
+        )
     with SessionLocal() as db:
         company = db.scalar(select(Company).where(Company.symbol == "ESDS"))
         assert company is not None
-        period = db.scalar(select(FinancialPeriod).where(FinancialPeriod.company_id == company.id,
-            FinancialPeriod.scope == FinancialScope.CONSOLIDATED,
-            FinancialPeriod.status == FinancialStatus.VALIDATED).order_by(FinancialPeriod.period_end.desc()))
+        period = db.scalar(
+            select(FinancialPeriod)
+            .where(
+                FinancialPeriod.company_id == company.id,
+                FinancialPeriod.scope == FinancialScope.CONSOLIDATED,
+                FinancialPeriod.status == FinancialStatus.VALIDATED,
+            )
+            .order_by(FinancialPeriod.period_end.desc())
+        )
         assert period is not None
         record = analyze_period(db, company, period, regenerate=True)
         assert record.status == "SUCCESS", record.failure_reason
-        report = evaluate_esds(AnalystOutput.model_validate(record.structured_output),
-                               record.evidence_registry, period.period_end.year)
+        report = evaluate_esds(
+            AnalystOutput.model_validate(record.structured_output),
+            record.evidence_registry,
+            period.period_end.year,
+        )
         print(report)
         assert report["all_passed"], report

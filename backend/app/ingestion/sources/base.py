@@ -60,7 +60,9 @@ class EventSource(ABC):
     origin: DataOrigin = DataOrigin.LIVE
 
     @abstractmethod
-    async def fetch_events(self, companies: list[MonitoredCompany], since: datetime | None) -> list[SourceEvent]:
+    async def fetch_events(
+        self, companies: list[MonitoredCompany], since: datetime | None
+    ) -> list[SourceEvent]:
         """Fetch a source feed once and return source-level announcements."""
 
     @abstractmethod

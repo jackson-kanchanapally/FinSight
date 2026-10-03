@@ -13,7 +13,9 @@ from app.main import app
 
 @pytest.fixture
 def client():
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
     TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     Base.metadata.create_all(engine)
 
@@ -33,11 +35,23 @@ def client():
 
 
 def create_company(client, symbol="ESDS"):
-    response = client.post("/api/companies", json={"symbol": symbol.lower(), "name": "ESDS", "exchange": "NSE"})
+    response = client.post(
+        "/api/companies",
+        json={"symbol": symbol.lower(), "name": "ESDS", "exchange": "NSE"},
+    )
     assert response.status_code == 201
     return response.json()
 
 
 def post_tx(client, kind, qty, price, day, charges="0"):
-    return client.post("/api/transactions", json={"symbol": "ESDS", "transaction_type": kind,
-        "quantity": str(qty), "price": str(price), "transaction_date": day, "charges": charges})
+    return client.post(
+        "/api/transactions",
+        json={
+            "symbol": "ESDS",
+            "transaction_type": kind,
+            "quantity": str(qty),
+            "price": str(price),
+            "transaction_date": day,
+            "charges": charges,
+        },
+    )

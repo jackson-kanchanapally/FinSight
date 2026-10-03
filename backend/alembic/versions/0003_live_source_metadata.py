@@ -12,23 +12,50 @@ depends_on = None
 
 def upgrade() -> None:
     bind = op.get_bind()
-    origin = postgresql.ENUM("LIVE", "FIXTURE", "MANUAL", name="data_origin", create_type=False)
-    precision = postgresql.ENUM("TIMESTAMP", "DATE", name="publication_precision", create_type=False)
-    basis = postgresql.ENUM("STANDALONE", "CONSOLIDATED", "BOTH", name="reporting_basis", create_type=False)
+    origin = postgresql.ENUM(
+        "LIVE", "FIXTURE", "MANUAL", name="data_origin", create_type=False
+    )
+    precision = postgresql.ENUM(
+        "TIMESTAMP", "DATE", name="publication_precision", create_type=False
+    )
+    basis = postgresql.ENUM(
+        "STANDALONE", "CONSOLIDATED", "BOTH", name="reporting_basis", create_type=False
+    )
     origin.create(bind, checkfirst=True)
     precision.create(bind, checkfirst=True)
     basis.create(bind, checkfirst=True)
 
-    op.add_column("company_events", sa.Column("data_origin", origin, server_default="LIVE", nullable=False))
-    op.add_column("company_events", sa.Column("publication_precision", precision, server_default="TIMESTAMP", nullable=False))
+    op.add_column(
+        "company_events",
+        sa.Column("data_origin", origin, server_default="LIVE", nullable=False),
+    )
+    op.add_column(
+        "company_events",
+        sa.Column(
+            "publication_precision",
+            precision,
+            server_default="TIMESTAMP",
+            nullable=False,
+        ),
+    )
     op.add_column("company_events", sa.Column("period_end_date", sa.Date()))
     op.add_column("company_events", sa.Column("fiscal_year", sa.String(10)))
     op.add_column("company_events", sa.Column("quarter", sa.Integer()))
     op.add_column("company_events", sa.Column("reporting_basis", basis))
-    op.add_column("event_references", sa.Column("data_origin", origin, server_default="LIVE", nullable=False))
-    op.add_column("monitoring_states", sa.Column("last_attempted_check", sa.DateTime(timezone=True)))
-    op.execute("UPDATE company_events SET data_origin = 'FIXTURE' WHERE source = 'FIXTURE'")
-    op.execute("UPDATE event_references SET data_origin = 'FIXTURE' WHERE source = 'FIXTURE'")
+    op.add_column(
+        "event_references",
+        sa.Column("data_origin", origin, server_default="LIVE", nullable=False),
+    )
+    op.add_column(
+        "monitoring_states",
+        sa.Column("last_attempted_check", sa.DateTime(timezone=True)),
+    )
+    op.execute(
+        "UPDATE company_events SET data_origin = 'FIXTURE' WHERE source = 'FIXTURE'"
+    )
+    op.execute(
+        "UPDATE event_references SET data_origin = 'FIXTURE' WHERE source = 'FIXTURE'"
+    )
 
 
 def downgrade() -> None:

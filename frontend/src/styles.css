@@ -1144,7 +1144,9 @@ td strong {
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .company-row { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto; }
+  .company-row {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto;
+  }
   .hero {
     align-items: start;
   }
@@ -1218,7 +1220,9 @@ td strong {
   .overview-grid {
     grid-template-columns: 1fr;
   }
-  .company-row { gap: 12px; }
+  .company-row {
+    gap: 12px;
+  }
   .footer {
     display: block;
     line-height: 1.9;
@@ -1290,10 +1294,24 @@ td strong {
     gap: 10px;
     padding: 12px;
   }
-  .company-row-meta { grid-column: 1; grid-row: 2; padding-left: 51px; }
-  .company-card-actions { display: contents; }
-  .company-state { grid-column: 2; grid-row: 2; justify-self: end; }
-  .company-delete { grid-column: 2; grid-row: 1; justify-self: end; }
+  .company-row-meta {
+    grid-column: 1;
+    grid-row: 2;
+    padding-left: 51px;
+  }
+  .company-card-actions {
+    display: contents;
+  }
+  .company-state {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+  }
+  .company-delete {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
   .topbar-right {
     gap: 10px;
   }

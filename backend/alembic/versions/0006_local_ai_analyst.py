@@ -11,10 +11,21 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table("ai_analyses",
+    op.create_table(
+        "ai_analyses",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("company_id", sa.Integer(), sa.ForeignKey("companies.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("financial_period_id", sa.Integer(), sa.ForeignKey("financial_periods.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "company_id",
+            sa.Integer(),
+            sa.ForeignKey("companies.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "financial_period_id",
+            sa.Integer(),
+            sa.ForeignKey("financial_periods.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("analysis_type", sa.String(40), nullable=False),
         sa.Column("model_provider", sa.String(40), nullable=False),
         sa.Column("model_name", sa.String(120), nullable=False),
@@ -27,8 +38,18 @@ def upgrade() -> None:
         sa.Column("status", sa.String(20), nullable=False),
         sa.Column("failure_reason", sa.String(80)),
         sa.Column("attempt_count", sa.Integer(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False))
-    op.create_index("ix_ai_analyses_company_period", "ai_analyses", ["company_id", "financial_period_id"])
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
+    )
+    op.create_index(
+        "ix_ai_analyses_company_period",
+        "ai_analyses",
+        ["company_id", "financial_period_id"],
+    )
 
 
 def downgrade() -> None:

@@ -33,20 +33,36 @@ def get_company(db: Session, symbol: str) -> Company | None:
     return db.scalar(select(Company).where(Company.symbol == symbol.strip().upper()))
 
 
-def record_transaction(db: Session, *, symbol: str, transaction_type: TransactionType,
-                       quantity: Decimal, price: Decimal, transaction_date,
-                       charges: Decimal = ZERO) -> Transaction:
+def record_transaction(
+    db: Session,
+    *,
+    symbol: str,
+    transaction_type: TransactionType,
+    quantity: Decimal,
+    price: Decimal,
+    transaction_date,
+    charges: Decimal = ZERO,
+) -> Transaction:
     """Persist a transaction after replaying dated history to validate SELL availability.
 
     BUY charges are added to cost basis; SELL charges reduce net proceeds. This keeps
     all figures expressed as net investment performance, including transaction costs.
     """
-    company = db.scalar(select(Company).where(Company.symbol == symbol.strip().upper()).with_for_update())
+    company = db.scalar(
+        select(Company)
+        .where(Company.symbol == symbol.strip().upper())
+        .with_for_update()
+    )
     if company is None:
         raise UnknownCompanyError(symbol)
-    row = Transaction(company_id=company.id, transaction_type=transaction_type,
-                      quantity=quantity, price=price, transaction_date=transaction_date,
-                      charges=charges)
+    row = Transaction(
+        company_id=company.id,
+        transaction_type=transaction_type,
+        quantity=quantity,
+        price=price,
+        transaction_date=transaction_date,
+        charges=charges,
+    )
     db.add(row)
     # Replay including the candidate, in transaction date order. This correctly
     # validates imported backdated trades as well as trades entered chronologically.
@@ -62,8 +78,11 @@ def record_transaction(db: Session, *, symbol: str, transaction_type: Transactio
 
 
 def calculate_position(db: Session, company: Company) -> Position:
-    rows = db.scalars(select(Transaction).where(Transaction.company_id == company.id)
-                      .order_by(Transaction.transaction_date, Transaction.id)).all()
+    rows = db.scalars(
+        select(Transaction)
+        .where(Transaction.company_id == company.id)
+        .order_by(Transaction.transaction_date, Transaction.id)
+    ).all()
     position = Position(company=company)
     for row in rows:
         if row.transaction_type == TransactionType.BUY:
@@ -71,7 +90,9 @@ def calculate_position(db: Session, company: Company) -> Position:
             position.quantity += row.quantity
         else:
             if row.quantity > position.quantity:
-                raise OversellError(f"Recorded sale exceeds holdings for {company.symbol}")
+                raise OversellError(
+                    f"Recorded sale exceeds holdings for {company.symbol}"
+                )
             avg = position.average_price
             position.realised_pnl += row.quantity * (row.price - avg) - row.charges
             position.cost_basis -= row.quantity * avg
@@ -92,7 +113,11 @@ def get_positions(db: Session, symbol: str | None = None) -> list[Position]:
 
 
 def transaction_history(db: Session, symbol: str | None = None) -> list[Transaction]:
-    stmt = select(Transaction).options(joinedload(Transaction.company)).order_by(Transaction.transaction_date, Transaction.id)
+    stmt = (
+        select(Transaction)
+        .options(joinedload(Transaction.company))
+        .order_by(Transaction.transaction_date, Transaction.id)
+    )
     if symbol:
         stmt = stmt.join(Company).where(Company.symbol == symbol.strip().upper())
     return list(db.scalars(stmt).all())

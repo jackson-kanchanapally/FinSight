@@ -10,7 +10,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("market_snapshots", sa.Column("forward_eps_growth_pct", sa.Numeric(10, 4)))
+    op.add_column(
+        "market_snapshots", sa.Column("forward_eps_growth_pct", sa.Numeric(10, 4))
+    )
     op.add_column("market_snapshots", sa.Column("growth_source_url", sa.String(2048)))
 
 

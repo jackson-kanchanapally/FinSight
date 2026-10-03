@@ -286,9 +286,16 @@ function CompanyDialog({
             />
           </label>
           <label className="field">
-            <span>BSE code <small>Optional · for EOD provider</small></span>
-            <input pattern="[0-9]{6}" maxLength={6} placeholder="6 digit BSE code"
-              value={bseCode} onChange={(event) => setBseCode(event.target.value)} />
+            <span>
+              BSE code <small>Optional · for EOD provider</small>
+            </span>
+            <input
+              pattern="[0-9]{6}"
+              maxLength={6}
+              placeholder="6 digit BSE code"
+              value={bseCode}
+              onChange={(event) => setBseCode(event.target.value)}
+            />
           </label>
         </div>
         {error && (
@@ -337,7 +344,9 @@ function DeleteCompanyDialog({
     try {
       await onDelete(company.symbol);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not delete company.");
+      setError(
+        cause instanceof Error ? cause.message : "Could not delete company.",
+      );
       setBusy(false);
     }
   }
@@ -360,17 +369,33 @@ function DeleteCompanyDialog({
         </p>
         <p>
           It also removes {transactionCount} recorded
-          {transactionCount === 1 ? " trade" : " trades"}. Portfolio totals will change.
+          {transactionCount === 1 ? " trade" : " trades"}. Portfolio totals will
+          change.
         </p>
         <p>Stored PDFs used only by this company will also be removed.</p>
       </div>
-      {error && <p className="form-error" role="alert">{error}</p>}
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="modal-actions">
-        <button className="button button-quiet" type="button" onClick={close} disabled={busy}>
+        <button
+          className="button button-quiet"
+          type="button"
+          onClick={close}
+          disabled={busy}
+        >
           Cancel
         </button>
-        <button className="button button-danger" type="button" onClick={() => void confirm()} disabled={busy}>
-          <Icon name="trash" size={16} /> {busy ? "Deleting…" : "Delete company"}
+        <button
+          className="button button-danger"
+          type="button"
+          onClick={() => void confirm()}
+          disabled={busy}
+        >
+          <Icon name="trash" size={16} />{" "}
+          {busy ? "Deleting…" : "Delete company"}
         </button>
       </div>
     </Modal>
@@ -646,6 +671,7 @@ function App() {
   const [events, setEvents] = useState<CompanyEvent[]>([]);
   const [eventsError, setEventsError] = useState("");
   const [navHash, setNavHash] = useState(window.location.hash);
+  const [financialSymbol, setFinancialSymbol] = useState<string | null>(null);
   const selectedEventId = /^#event-(\d+)$/.test(navHash)
     ? Number(navHash.slice("#event-".length))
     : null;
@@ -742,6 +768,13 @@ function App() {
     setNavHash("#events");
   }
 
+  function viewCompanyValuation(symbol: string) {
+    setFinancialSymbol(symbol);
+    window.location.hash = "valuation";
+    setNavHash("#valuation");
+    window.setTimeout(() => document.getElementById("valuation")?.scrollIntoView(), 0);
+  }
+
   const companies = data?.companies ?? [];
   const holdings = data?.portfolio.holdings ?? [];
   const transactions = data?.transactions ?? [];
@@ -809,10 +842,16 @@ function App() {
           >
             <Icon name="receipt" /> Events
           </a>
-          <a href="#financials" className={navHash === "#financials" ? "active" : ""}>
+          <a
+            href="#financials"
+            className={navHash === "#financials" ? "active" : ""}
+          >
             <Icon name="trend" /> Financials
           </a>
-          <a href="#valuation" className={navHash === "#valuation" ? "active" : ""}>
+          <a
+            href="#valuation"
+            className={navHash === "#valuation" ? "active" : ""}
+          >
             <Icon name="trend" /> Valuation
           </a>
           <a
@@ -855,7 +894,8 @@ function App() {
         </header>
         <div className="page-content">
           {selectedEventId !== null ? (
-            <EventDetails eventId={selectedEventId} onBack={closeEvent} />
+            <EventDetails eventId={selectedEventId} onBack={closeEvent}
+              onViewValuation={viewCompanyValuation} />
           ) : (
             <>
               <div className="hero">
@@ -1079,12 +1119,14 @@ function App() {
                   </section>
 
                   <EventsSection
+                    companies={companies}
                     events={events}
                     error={eventsError}
                     onCheck={checkEvents}
                     onOpen={openEvent}
+                    onUploaded={async id => { await loadEvents(); openEvent(id); }}
                   />
-                  <FinancialsSection companies={companies} />
+                  <FinancialsSection companies={companies} requestedSymbol={financialSymbol} />
 
                   <section id="holdings" className="section-block">
                     <div className="section-heading">
@@ -1277,7 +1319,11 @@ function App() {
                             (item) => item.symbol === company.symbol,
                           );
                           return (
-                            <div className="company-row" role="listitem" key={company.id}>
+                            <div
+                              className="company-row"
+                              role="listitem"
+                              key={company.id}
+                            >
                               <div className="company-row-identity">
                                 <span className="ticker-avatar large">
                                   {company.symbol.slice(0, 2)}
@@ -1289,23 +1335,25 @@ function App() {
                               </div>
                               <div className="company-row-meta">
                                 <span>{company.exchange}</span>
-                                <span>{company.sector || "Sector not set"}</span>
+                                <span>
+                                  {company.sector || "Sector not set"}
+                                </span>
                               </div>
                               <div className="company-card-actions">
-                                  <span
-                                    className={`company-state ${holding ? "state-held" : ""}`}
-                                  >
-                                    {holding ? "OPEN POSITION" : "NO POSITION"}
-                                  </span>
-                                  <button
-                                    className="company-delete"
-                                    type="button"
-                                    aria-label={`Delete ${company.symbol}`}
-                                    title={`Delete ${company.symbol}`}
-                                    onClick={() => setCompanyToDelete(company)}
-                                  >
-                                    <Icon name="trash" size={16} />
-                                  </button>
+                                <span
+                                  className={`company-state ${holding ? "state-held" : ""}`}
+                                >
+                                  {holding ? "OPEN POSITION" : "NO POSITION"}
+                                </span>
+                                <button
+                                  className="company-delete"
+                                  type="button"
+                                  aria-label={`Delete ${company.symbol}`}
+                                  title={`Delete ${company.symbol}`}
+                                  onClick={() => setCompanyToDelete(company)}
+                                >
+                                  <Icon name="trash" size={16} />
+                                </button>
                               </div>
                             </div>
                           );
@@ -1324,7 +1372,8 @@ function App() {
                       almonds <i>·</i> Portfolio clarity, one trade at a time.
                     </span>
                     <span>
-                      Values shown in INR <i>·</i> Market snapshots are dated, not live
+                      Values shown in INR <i>·</i> Market snapshots are dated,
+                      not live
                     </span>
                   </footer>
                 </>
@@ -1351,7 +1400,11 @@ function App() {
       {companyToDelete && (
         <DeleteCompanyDialog
           company={companyToDelete}
-          transactionCount={transactions.filter((item) => item.symbol === companyToDelete.symbol).length}
+          transactionCount={
+            transactions.filter(
+              (item) => item.symbol === companyToDelete.symbol,
+            ).length
+          }
           onClose={() => setCompanyToDelete(null)}
           onDelete={deleteCompany}
         />

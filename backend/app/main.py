@@ -5,7 +5,16 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from sqlalchemy import select
 
-from app.api import analysis, companies, events, financials, market, portfolio, transactions, valuation
+from app.api import (
+    analysis,
+    companies,
+    events,
+    financials,
+    market,
+    portfolio,
+    transactions,
+    valuation,
+)
 from app.config import settings
 from app.database import SessionLocal
 from app.ingestion.monitor import check_for_events
@@ -40,10 +49,15 @@ async def scheduled_market_refresh() -> None:
                 for market in refresh_market(db, company):
                     recalculate(db, market, FinancialScope.CONSOLIDATED)
             except MarketProviderError as exc:
-                logger.warning("market_data.refresh_failed company=%s reason=%s",
-                               company.symbol, exc.reason)
+                logger.warning(
+                    "market_data.refresh_failed company=%s reason=%s",
+                    company.symbol,
+                    exc.reason,
+                )
             except Exception:
-                logger.exception("market_data.unexpected_refresh_failure company=%s", company.symbol)
+                logger.exception(
+                    "market_data.unexpected_refresh_failure company=%s", company.symbol
+                )
 
 
 @asynccontextmanager
@@ -52,13 +66,26 @@ async def lifespan(_app: FastAPI):
     if settings.event_monitor_enabled or settings.market_data_enabled:
         scheduler = AsyncIOScheduler(timezone="UTC")
         if settings.event_monitor_enabled:
-            scheduler.add_job(scheduled_check, "interval", minutes=settings.event_monitor_interval_minutes,
-                              id="event_monitor", max_instances=1, coalesce=True)
+            scheduler.add_job(
+                scheduled_check,
+                "interval",
+                minutes=settings.event_monitor_interval_minutes,
+                id="event_monitor",
+                max_instances=1,
+                coalesce=True,
+            )
         if settings.market_data_enabled and settings.market_data_provider != "manual":
-            scheduler.add_job(scheduled_market_refresh, "cron", hour=settings.market_data_refresh_hour,
-                              minute=settings.market_data_refresh_minute,
-                              day_of_week="mon-fri", timezone="Asia/Kolkata",
-                              id="market_data_eod", max_instances=1, coalesce=True)
+            scheduler.add_job(
+                scheduled_market_refresh,
+                "cron",
+                hour=settings.market_data_refresh_hour,
+                minute=settings.market_data_refresh_minute,
+                day_of_week="mon-fri",
+                timezone="Asia/Kolkata",
+                id="market_data_eod",
+                max_instances=1,
+                coalesce=True,
+            )
         scheduler.start()
     try:
         yield
@@ -66,7 +93,13 @@ async def lifespan(_app: FastAPI):
         if scheduler:
             scheduler.shutdown(wait=False)
 
-app = FastAPI(title="almonds", version="0.5.0", description="Portfolio, verified reporting, and local AI interpretation", lifespan=lifespan)
+
+app = FastAPI(
+    title="almonds",
+    version="0.5.0",
+    description="Portfolio, verified reporting, and local AI interpretation",
+    lifespan=lifespan,
+)
 app.include_router(companies.router)
 app.include_router(transactions.router)
 app.include_router(portfolio.router)

@@ -14,7 +14,9 @@ from app.config import settings
 from app.database import Base, get_db
 from app.main import app
 
-engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+engine = create_engine(
+    "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+)
 document_dir = TemporaryDirectory(prefix="almonds-browser-docs-")
 settings.document_storage_path = Path(document_dir.name)
 settings.event_source_mode = "fixture"

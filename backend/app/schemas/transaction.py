@@ -12,7 +12,9 @@ class TransactionCreate(BaseModel):
     quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=4)
     price: Decimal = Field(gt=0, max_digits=18, decimal_places=4)
     transaction_date: date
-    charges: Decimal = Field(default=Decimal("0"), ge=0, max_digits=18, decimal_places=4)
+    charges: Decimal = Field(
+        default=Decimal("0"), ge=0, max_digits=18, decimal_places=4
+    )
 
 
 class TransactionRead(BaseModel):

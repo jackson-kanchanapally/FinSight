@@ -25,21 +25,27 @@ class Settings(BaseSettings):
     market_data_refresh_minute: int = Field(default=30, ge=0, le=59)
     market_lens_tolerance_pct: float = Field(default=5, ge=0, le=100)
     alpha_vantage_api_key: str = ""
-    document_storage_path: Path = Path(__file__).resolve().parents[1] / "data" / "documents"
+    document_storage_path: Path = (
+        Path(__file__).resolve().parents[1] / "data" / "documents"
+    )
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:8b"
     ollama_timeout_seconds: float = Field(default=120, ge=1, le=600)
     ollama_num_ctx: int = Field(default=8192, ge=4096, le=32768)
     ai_temperature: float = Field(default=0.1, ge=0, le=1)
-    ai_max_context_chars: int = Field(default=12000, ge=2000, le=50000)
+    ai_max_context_chars: int = Field(default=24000, ge=2000, le=50000)
     ai_max_document_chars: int = Field(default=1800, ge=0, le=10000)
 
-    model_config = SettingsConfigDict(env_file="../.env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file="../.env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     @property
     def database_url(self) -> str:
-        return (f"postgresql+psycopg2://{self.database_user}:{self.database_password}"
-                f"@{self.database_host}:{self.database_port}/{self.database_name}")
+        return (
+            f"postgresql+psycopg2://{self.database_user}:{self.database_password}"
+            f"@{self.database_host}:{self.database_port}/{self.database_name}"
+        )
 
 
 settings = Settings()

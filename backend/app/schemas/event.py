@@ -2,7 +2,13 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.event import DataOrigin, EventType, ProcessingStatus, PublicationPrecision, ReportingBasis
+from app.models.event import (
+    DataOrigin,
+    EventType,
+    ProcessingStatus,
+    PublicationPrecision,
+    ReportingBasis,
+)
 
 
 class EventReferenceRead(BaseModel):
@@ -26,6 +32,7 @@ class DocumentRead(BaseModel):
     published_at: datetime | None
     downloaded_at: datetime | None
     processing_status: ProcessingStatus
+    document_classification: EventType
     page_count: int
     download_url: str | None
 
@@ -52,6 +59,7 @@ class EventRead(BaseModel):
     importance: str
     processing_status: ProcessingStatus
     data_origin: DataOrigin
+    source_verified: bool
     publication_precision: PublicationPrecision
     period_end_date: date | None
     fiscal_year: str | None

@@ -30,8 +30,9 @@ def identify_period(end: date, period_type: PeriodType) -> PeriodIdentity:
             raise ValueError("Annual period must end on 31 March")
         start = date(end.year - 1, 4, 1)
     elif period_type in (PeriodType.HALF_YEARLY, PeriodType.NINE_MONTH):
-        valid = (period_type == PeriodType.HALF_YEARLY and (end.month, end.day) == (9, 30)) or (
-            period_type == PeriodType.NINE_MONTH and (end.month, end.day) == (12, 31))
+        valid = (
+            period_type == PeriodType.HALF_YEARLY and (end.month, end.day) == (9, 30)
+        ) or (period_type == PeriodType.NINE_MONTH and (end.month, end.day) == (12, 31))
         if not valid:
             raise ValueError("Interim period has an invalid Indian fiscal boundary")
         start = date(end.year, 4, 1)
@@ -41,7 +42,11 @@ def identify_period(end: date, period_type: PeriodType) -> PeriodIdentity:
 
 
 def previous_quarter_end(identity: PeriodIdentity) -> date | None:
-    return identity.start - timedelta(days=1) if identity.period_type == PeriodType.QUARTERLY else None
+    return (
+        identity.start - timedelta(days=1)
+        if identity.period_type == PeriodType.QUARTERLY
+        else None
+    )
 
 
 def previous_year_end(identity: PeriodIdentity) -> date:

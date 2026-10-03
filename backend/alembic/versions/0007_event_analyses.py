@@ -11,10 +11,21 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table("event_analyses",
+    op.create_table(
+        "event_analyses",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("event_id", sa.Integer(), sa.ForeignKey("company_events.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("company_id", sa.Integer(), sa.ForeignKey("companies.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "event_id",
+            sa.Integer(),
+            sa.ForeignKey("company_events.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "company_id",
+            sa.Integer(),
+            sa.ForeignKey("companies.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("model_provider", sa.String(40), nullable=False),
         sa.Column("model_name", sa.String(120), nullable=False),
         sa.Column("prompt_version", sa.String(60), nullable=False),
@@ -24,8 +35,16 @@ def upgrade() -> None:
         sa.Column("status", sa.String(20), nullable=False),
         sa.Column("failure_reason", sa.String(80)),
         sa.Column("attempt_count", sa.Integer(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False))
-    op.create_index("ix_event_analyses_event_created", "event_analyses", ["event_id", "created_at"])
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
+    )
+    op.create_index(
+        "ix_event_analyses_event_created", "event_analyses", ["event_id", "created_at"]
+    )
 
 
 def downgrade() -> None:

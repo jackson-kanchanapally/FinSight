@@ -26,12 +26,16 @@ def validate_event_insight(raw: str, registry: dict[str, dict]) -> EventInsight:
     for claim in claims:
         _check_claim(claim.text, claim.evidence_ids, registry)
         texts.append(claim.text)
-    _check_claim(insight.recommendation.reason, insight.recommendation.evidence_ids, registry)
+    _check_claim(
+        insight.recommendation.reason, insight.recommendation.evidence_ids, registry
+    )
     texts.append(insight.recommendation.reason)
     if TRADING_CALL.search(" ".join(texts)):
         raise InvalidAnalysis("TRADING_CALL_UNSUPPORTED")
-    if insight.management_says and not any(MANAGEMENT_WORDS.search(registry[item]["text"])
-                                          for item in insight.management_says.evidence_ids):
+    if insight.management_says and not any(
+        MANAGEMENT_WORDS.search(registry[item]["text"])
+        for item in insight.management_says.evidence_ids
+    ):
         raise InvalidAnalysis("MANAGEMENT_NOT_IN_SOURCE")
     return insight
 

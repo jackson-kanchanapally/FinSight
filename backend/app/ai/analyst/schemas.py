@@ -11,8 +11,12 @@ class StrictText(BaseModel):
     @field_validator("*", mode="after")
     @classmethod
     def safe_text(cls, value):
-        if isinstance(value, str) and ("<" in value or ">" in value or "http://" in value.lower()
-                                       or "https://" in value.lower()):
+        if isinstance(value, str) and (
+            "<" in value
+            or ">" in value
+            or "http://" in value.lower()
+            or "https://" in value.lower()
+        ):
             raise ValueError("HTML or links are not allowed in analyst text")
         return value
 
@@ -60,20 +64,41 @@ class QualityNote(StrictText):
 
 
 class SeasonalityAssessment(QualityNote):
-    status: Literal["CONSISTENT_WITH_HISTORICAL_PATTERN", "LARGER_THAN_HISTORICAL_PATTERN",
-                    "SMALLER_THAN_HISTORICAL_PATTERN", "NO_CLEAR_PATTERN", "INSUFFICIENT_HISTORY"]
+    status: Literal[
+        "CONSISTENT_WITH_HISTORICAL_PATTERN",
+        "LARGER_THAN_HISTORICAL_PATTERN",
+        "SMALLER_THAN_HISTORICAL_PATTERN",
+        "NO_CLEAR_PATTERN",
+        "INSUFFICIENT_HISTORY",
+    ]
 
 
 class ResultsSupport(QualityNote):
-    assessment: Literal["STRONG_SUPPORT", "MODERATE_SUPPORT", "MIXED_EVIDENCE",
-                        "LIMITED_SUPPORT", "INSUFFICIENT_EVIDENCE"]
+    assessment: Literal[
+        "STRONG_SUPPORT",
+        "MODERATE_SUPPORT",
+        "MIXED_EVIDENCE",
+        "LIMITED_SUPPORT",
+        "INSUFFICIENT_EVIDENCE",
+    ]
 
 
 class ResearchGap(StrictText):
-    type: Literal["MANAGEMENT_GUIDANCE", "SEASONALITY", "ORDER_BOOK", "MARGIN_GUIDANCE",
-                  "CASH_CONVERSION", "CAPEX", "DEBT", "CUSTOMER_CONCENTRATION",
-                  "HISTORICAL_VALUATION", "PEER_VALUATION", "FORWARD_GROWTH",
-                  "MANAGEMENT_EXECUTION", "EARNINGS_DRIVERS"]
+    type: Literal[
+        "MANAGEMENT_GUIDANCE",
+        "SEASONALITY",
+        "ORDER_BOOK",
+        "MARGIN_GUIDANCE",
+        "CASH_CONVERSION",
+        "CAPEX",
+        "DEBT",
+        "CUSTOMER_CONCENTRATION",
+        "HISTORICAL_VALUATION",
+        "PEER_VALUATION",
+        "FORWARD_GROWTH",
+        "MANAGEMENT_EXECUTION",
+        "EARNINGS_DRIVERS",
+    ]
     question: str = Field(min_length=1, max_length=500)
     priority: Literal["HIGH", "MEDIUM", "LOW"]
     evidence_ids: list[str] = Field(default_factory=list, max_length=8)
@@ -92,6 +117,117 @@ class InvestorQuality(StrictText):
     confidence: Literal["HIGH", "MEDIUM", "LOW"]
 
 
+class DeterministicResults(StrictText):
+    verdict: Literal[
+        "VERY_POSITIVE",
+        "POSITIVE",
+        "NEUTRAL",
+        "NEGATIVE",
+        "VERY_NEGATIVE",
+        "INSUFFICIENT_EVIDENCE",
+    ]
+    confidence: Literal["HIGH", "MEDIUM", "LOW"]
+    reasons: list[str]
+    evidence_ids: list[str]
+    signals: dict[str, str]
+    methodology: str
+
+
+class DeterministicValuation(StrictText):
+    verdict: Literal[
+        "EXTREMELY_UNDERVALUED",
+        "UNDERVALUED",
+        "FAIRLY_VALUED",
+        "OVERVALUED",
+        "EXTREMELY_OVERVALUED",
+        "INSUFFICIENT_EVIDENCE",
+    ]
+    confidence: Literal["HIGH", "MEDIUM", "LOW", "NOT_ASSESSED"]
+    reason: str
+
+
+class ManagementStatementRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    evidence_id: str
+    statement_type: str
+    topic: str
+    raw_statement: str
+    speaker_name: str | None
+    speaker_role: str | None
+    section_type: str
+    source_type: str
+    published_at: str
+    document_id: int
+    page_number: int
+    source_url: str | None
+    document_url: str
+    extraction_confidence: str
+
+
+class CommentaryDocumentRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    document_id: int
+    event_id: int
+    document_type: str
+    source: str
+    published_at: str
+    source_url: str | None
+    document_url: str
+    source_priority: int
+
+
+class GuidanceRead(StrictText):
+    id: int
+    statement_evidence_id: str
+    metric: str
+    target_period: str
+    lower_bound: str
+    upper_bound: str
+    unit: str
+    published_at: str
+    change: str
+    actual_comparison: str
+    execution_outcome: str = "INSUFFICIENT_DATA"
+
+
+class GuidanceChangeRead(StrictText):
+    status: str
+    statement_evidence_id: str
+    topic: str
+    published_at: str
+
+
+class ClaimComparisonRead(StrictText):
+    statement_evidence_id: str
+    status: str
+    financial_evidence_ids: list[str]
+    note: str
+
+
+class EvidenceNoteRead(StrictText):
+    text: str
+    evidence_ids: list[str]
+
+
+class InvestorReport(StrictText):
+    results: DeterministicResults
+    valuation: DeterministicValuation
+    source_documents: list[CommentaryDocumentRead] = Field(default_factory=list)
+    valuation_support: list[EvidenceNoteRead] = Field(default_factory=list)
+    valuation_challenges: list[EvidenceNoteRead] = Field(default_factory=list)
+    management_statements: list[ManagementStatementRead]
+    management_guidance: list[GuidanceRead]
+    guidance_changes: list[GuidanceChangeRead] = Field(default_factory=list)
+    claim_comparisons: list[ClaimComparisonRead]
+    investor_stance: str = "INSUFFICIENT_EVIDENCE"
+    investor_conclusion: EvidenceNoteRead | None = None
+    tested_pe: dict = Field(default_factory=dict)
+    earnings_quality: dict = Field(default_factory=dict)
+    research_gaps: list[str] = Field(default_factory=list)
+    strengthen_case: list[str] = Field(default_factory=list)
+    weaken_case: list[str] = Field(default_factory=list)
+
+
 class AnalystOutput(StrictText):
     summary: str = Field(min_length=1, max_length=1500)
     summary_evidence_ids: list[str] = Field(min_length=1, max_length=8)
@@ -106,12 +242,19 @@ class AnalystOutput(StrictText):
     valuation_assessment: ValuationView | None = None
     research_action: ResearchAction | None = None
     quality_report: InvestorQuality | None = None
+    investor_report: InvestorReport | None = None
 
     @field_validator("questions", "data_quality_notes")
     @classmethod
     def bounded_notes(cls, values: list[str]) -> list[str]:
-        if any(len(value) > 500 or "<" in value or ">" in value or "http://" in value.lower()
-               or "https://" in value.lower() for value in values):
+        if any(
+            len(value) > 500
+            or "<" in value
+            or ">" in value
+            or "http://" in value.lower()
+            or "https://" in value.lower()
+            for value in values
+        ):
             raise ValueError("Invalid note text")
         return values
 
@@ -145,6 +288,7 @@ class AnalysisRead(BaseModel):
     structured_output: AnalystOutput | None
     status: str
     failure_reason: str | None
+    validation_diagnostics: list[dict] | None = None
     attempt_count: int
     created_at: datetime
 

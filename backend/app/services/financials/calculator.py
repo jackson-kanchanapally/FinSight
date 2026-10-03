@@ -2,7 +2,6 @@ from decimal import Decimal
 
 from app.models.financial import OriginalUnit
 
-
 HUNDRED = Decimal("100")
 
 
@@ -30,7 +29,9 @@ def margin(numerator: Decimal | None, revenue: Decimal | None) -> Decimal | None
     return numerator / revenue * HUNDRED
 
 
-def margin_change_bps(current: Decimal | None, previous: Decimal | None) -> Decimal | None:
+def margin_change_bps(
+    current: Decimal | None, previous: Decimal | None
+) -> Decimal | None:
     if current is None or previous is None:
         return None
     return (current - previous) * HUNDRED

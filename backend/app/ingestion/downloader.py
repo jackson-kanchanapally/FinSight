@@ -31,9 +31,15 @@ def validate_pdf(document: "DownloadedDocument", max_bytes: int = 10_000_000) ->
 class SafePdfDownloader:
     """HTTP retrieval for trusted adapters, with explicit hosts and bounded content."""
 
-    def __init__(self, allowed_hosts: set[str], *, max_bytes: int = 10_000_000,
-                 timeout_seconds: float = 10, retries: int = 2,
-                 client: httpx.AsyncClient | None = None):
+    def __init__(
+        self,
+        allowed_hosts: set[str],
+        *,
+        max_bytes: int = 10_000_000,
+        timeout_seconds: float = 10,
+        retries: int = 2,
+        client: httpx.AsyncClient | None = None,
+    ):
         self.allowed_hosts = {host.lower() for host in allowed_hosts}
         self.max_bytes = max_bytes
         self.timeout_seconds = timeout_seconds
@@ -42,46 +48,88 @@ class SafePdfDownloader:
 
     def validate_url(self, url: str) -> None:
         parts = urlsplit(url)
-        if (parts.scheme != "https" or parts.hostname is None or
-                parts.hostname.lower() not in self.allowed_hosts or
-                parts.username or parts.password or parts.port not in (None, 443)):
-            raise DocumentDownloadError("Document URL is not from an approved HTTPS host")
+        if (
+            parts.scheme != "https"
+            or parts.hostname is None
+            or parts.hostname.lower() not in self.allowed_hosts
+            or parts.username
+            or parts.password
+            or parts.port not in (None, 443)
+        ):
+            raise DocumentDownloadError(
+                "Document URL is not from an approved HTTPS host"
+            )
 
     async def download(self, url: str) -> "DownloadedDocument":
         from app.ingestion.sources.base import DownloadedDocument
+
         self.validate_url(url)
         own_client = self.client is None
-        client = self.client or httpx.AsyncClient(timeout=self.timeout_seconds, follow_redirects=False,
-                                                   trust_env=False, headers={"User-Agent": "almonds/0.3 (personal portfolio monitor)"})
+        client = self.client or httpx.AsyncClient(
+            timeout=self.timeout_seconds,
+            follow_redirects=False,
+            trust_env=False,
+            headers={"User-Agent": "almonds/0.3 (personal portfolio monitor)"},
+        )
         try:
             for attempt in range(self.retries + 1):
                 try:
-                    async with client.stream("GET", url, follow_redirects=False) as response:
+                    async with client.stream(
+                        "GET", url, follow_redirects=False
+                    ) as response:
                         if response.status_code in (301, 302, 303, 307, 308):
-                            raise DocumentDownloadError("Document redirects are not followed")
+                            raise DocumentDownloadError(
+                                "Document redirects are not followed"
+                            )
                         if response.status_code >= 500:
-                            raise httpx.HTTPStatusError("Source server error", request=response.request, response=response)
+                            raise httpx.HTTPStatusError(
+                                "Source server error",
+                                request=response.request,
+                                response=response,
+                            )
                         if response.status_code != 200:
-                            raise DocumentDownloadError(f"Document request returned HTTP {response.status_code}")
+                            raise DocumentDownloadError(
+                                f"Document request returned HTTP {response.status_code}"
+                            )
                         try:
-                            declared_size = int(response.headers.get("content-length", "0"))
+                            declared_size = int(
+                                response.headers.get("content-length", "0")
+                            )
                         except ValueError as exc:
-                            raise DocumentDownloadError("Invalid document size header") from exc
+                            raise DocumentDownloadError(
+                                "Invalid document size header"
+                            ) from exc
                         if declared_size > self.max_bytes:
-                            raise DocumentDownloadError("Document exceeds the size limit")
+                            raise DocumentDownloadError(
+                                "Document exceeds the size limit"
+                            )
                         content = bytearray()
                         async for chunk in response.aiter_bytes():
                             content.extend(chunk)
                             if len(content) > self.max_bytes:
-                                raise DocumentDownloadError("Document exceeds the size limit")
-                        raw_name = PurePosixPath(urlsplit(url).path).name or "document.pdf"
+                                raise DocumentDownloadError(
+                                    "Document exceeds the size limit"
+                                )
+                        raw_name = (
+                            PurePosixPath(urlsplit(url).path).name or "document.pdf"
+                        )
                         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", raw_name)[:100]
-                        document = DownloadedDocument(bytes(content), response.headers.get("content-type", ""), safe_name)
+                        document = DownloadedDocument(
+                            bytes(content),
+                            response.headers.get("content-type", ""),
+                            safe_name,
+                        )
                         validate_pdf(document, self.max_bytes)
                         return document
-                except (httpx.TimeoutException, httpx.TransportError, httpx.HTTPStatusError) as exc:
+                except (
+                    httpx.TimeoutException,
+                    httpx.TransportError,
+                    httpx.HTTPStatusError,
+                ) as exc:
                     if attempt >= self.retries:
-                        raise DocumentDownloadError("Document source unavailable after retries") from exc
+                        raise DocumentDownloadError(
+                            "Document source unavailable after retries"
+                        ) from exc
                     await asyncio.sleep(0.2 * (attempt + 1))
         finally:
             if own_client:

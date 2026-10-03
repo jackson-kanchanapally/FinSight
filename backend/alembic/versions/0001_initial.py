@@ -1,4 +1,5 @@
 """Initial companies and transactions tables."""
+
 from alembic import op
 import sqlalchemy as sa
 
@@ -17,19 +18,33 @@ def upgrade() -> None:
         sa.Column("exchange", sa.String(length=50), nullable=False),
         sa.Column("isin", sa.String(length=12), nullable=True),
         sa.Column("sector", sa.String(length=100), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
     )
     op.create_index("ix_companies_symbol", "companies", ["symbol"], unique=True)
     op.create_table(
         "transactions",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("company_id", sa.Integer(), nullable=False),
-        sa.Column("transaction_type", sa.Enum("BUY", "SELL", name="transaction_type"), nullable=False),
+        sa.Column(
+            "transaction_type",
+            sa.Enum("BUY", "SELL", name="transaction_type"),
+            nullable=False,
+        ),
         sa.Column("quantity", sa.Numeric(18, 4), nullable=False),
         sa.Column("price", sa.Numeric(18, 4), nullable=False),
         sa.Column("transaction_date", sa.Date(), nullable=False),
         sa.Column("charges", sa.Numeric(18, 4), server_default="0", nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
         sa.CheckConstraint("quantity > 0", name="ck_transactions_quantity_positive"),
         sa.CheckConstraint("price > 0", name="ck_transactions_price_positive"),
         sa.CheckConstraint("charges >= 0", name="ck_transactions_charges_nonnegative"),

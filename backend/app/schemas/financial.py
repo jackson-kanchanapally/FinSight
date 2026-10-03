@@ -3,8 +3,16 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
-from app.models.financial import (FactMethod, FactStatus, FinancialScope, FinancialStatus,
-                                  FinancialUnit, MetricCode, OriginalUnit, PeriodType)
+from app.models.financial import (
+    FactMethod,
+    FactStatus,
+    FinancialScope,
+    FinancialStatus,
+    FinancialUnit,
+    MetricCode,
+    OriginalUnit,
+    PeriodType,
+)
 
 
 class FinancialFactRead(BaseModel):

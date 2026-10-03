@@ -88,7 +88,7 @@ uvicorn app.main:app --reload
 
 Swagger UI: <http://127.0.0.1:8000/docs>. Health check: <http://127.0.0.1:8000/health>.
 
-The event migrations are 0002 and 0003; Phase 4 adds 0004_financial_reporting and 0005_calculated_fact_provenance; Phase 5 adds 0006_local_ai_analyst. Event briefs and dated market snapshots add 0007 and 0008; sourced forward EPS growth for PEG adds 0009. Phase 6 adds 0010_market_valuation_history and 0011_market_ohlcv_reference. Run `alembic upgrade head` against the configured PostgreSQL database before starting the API.
+The event migrations are 0002 and 0003; Phase 4 adds 0004_financial_reporting and 0005_calculated_fact_provenance; Phase 5 adds 0006_local_ai_analyst. Event briefs and dated market snapshots add 0007 and 0008; sourced forward EPS growth for PEG adds 0009. Phase 6 adds 0010_market_valuation_history and 0011_market_ohlcv_reference. Phase 6.2 adds 0012_management_commentary and 0013_commentary_documents. Run `alembic upgrade head` against the configured PostgreSQL database before starting the API.
 
 ## Start the dashboard
 
@@ -101,6 +101,8 @@ After completing local setup, run both servers from the project root with:
 The launcher checks the existing `.env`, Python and frontend dependencies, starts PostgreSQL through Docker Compose if needed, applies Alembic migrations, and starts FastAPI and Vite. Press Ctrl+C to stop the application servers. Event scanning follows the settings in `.env`; the launcher does not change fixture or live mode.
 
 For Phase 6 provider setup, point-in-time rules, formulas, API examples and ESDS integration, see [market data and valuation](docs/market-valuation.md).
+
+For Phase 6.2 commentary, deterministic verdicts, tested P/E scenarios, and the ESDS audit, see [the Phase 6.2 report](docs/phase62-report.md).
 
 Leave FastAPI running on port 8000. In a second terminal from the project root:
 
@@ -224,6 +226,7 @@ The scheduler runs in each API process when enabled, so use one API worker for l
 | `GET /api/events` | Recent events; filters: `symbol`, `event_type`, `source`, `from_date`, `to_date`, `limit` (1–100). |
 | `GET /api/events/{id}` | Event details, source references, and documents. |
 | `GET /api/companies/{symbol}/events` | Events for a registered company. |
+| `POST /api/companies/{symbol}/events/upload-pdf` | Attach a local PDF as a manual test event. |
 | `POST /api/events/check` | One monitoring cycle with counts and source errors. |
 | `GET /api/events/sources/status` | Source health, last attempt/success, and last error. |
 | `POST /api/events/bootstrap` | Bounded ESDS IR lookback (1–90 days; five-minute cooldown). |
@@ -243,6 +246,19 @@ curl -X POST http://127.0.0.1:8000/api/companies/ETERNAL/sources \
 ```
 
 Use `GET /api/companies/ETERNAL/sources` to inspect explicit overrides; an empty list no longer means NSE monitoring is disabled. Use `PUT /api/companies/ETERNAL/sources/NSE` with the same JSON to correct an override. `POST /api/events/check` reports `company_matches` and `unresolved_symbols` if a registered symbol is missing or ambiguous in the official directory, or if its supplied ISIN disagrees. The older `portfolio_matches` response field remains as a compatibility alias. NSE's announcements RSS lists recent filings only, so adding a company may yield no immediate PDF when it has no item in the current feed. The ESDS IR adapter is company-specific and does not crawl Eternal's investor-relations site. `POST /api/events/bootstrap` currently applies only to ESDS.
+
+### Add an ETERNAL PDF manually for testing
+
+Register ETERNAL as a company if it is not already in the dashboard. In **Company events**, open **Upload a company PDF for testing**, choose **ETERNAL**, enter the PDF title and publication date, select its event type, and choose the local file. An HTTPS source URL is optional. The saved manual event opens automatically; its PDF and extracted text pages can be reviewed there. The upload accepts PDFs up to 10 MB and is idempotent by PDF content for that company.
+
+The equivalent API call sends the PDF as the raw request body:
+
+```sh
+curl -X POST 'http://127.0.0.1:8000/api/companies/ETERNAL/events/upload-pdf?title=Q2%20FY27%20results&published_on=2026-09-28&event_type=FINANCIAL_RESULTS&file_name=eternal.pdf' \
+  -H 'Content-Type: application/pdf' --data-binary '@/absolute/path/to/eternal.pdf'
+```
+
+Uploads are labeled `MANUAL` and are available for document review and event analysis. Image-only PDFs show `NO_TEXT` because OCR is not enabled. They do not become verified financial facts or add a share price: the financial extractor accepts live official filings, while the valuation page uses a separate dated market snapshot. Use the live NSE source and **Check for events** when testing the verified financial-results path; use **Refresh EOD price** or enter a dated sourced close for the price input.
 
 ## Tests
 
@@ -331,6 +347,12 @@ curl http://127.0.0.1:8000/api/companies/ESDS/market-snapshot
 ```
 
 Replace `42` with a real validated period ID from `GET /api/companies/ESDS/financials`. Invalid model output is retried once. If both responses fail validation, the API returns `VERIFIED_FALLBACK` with a cited summary assembled from verified facts and calculated metrics; the dashboard labels it and offers **Retry AI analysis**. The last validation reason remains in `failure_reason`. Provider failures return `FAILED` with a reason such as `OLLAMA_UNAVAILABLE` or `OLLAMA_TIMEOUT`. See [the analyst design and evaluation](docs/local-ai-analyst.md) for the schema, provenance rules, and limitations.
+
+## Phase 6.3 investor report
+
+The results report separates business results, scenario valuation and investor stance. It includes a reconciled earnings bridge, reverse required EPS growth and three editable P/E scenarios with explicit provenance. **Save assumptions and update report** uses the existing valuation and analysis APIs; all calculations and final judgments remain deterministic. Model failures preserve a complete report and structured validation diagnostics.
+
+Apply migration `0014_investor_scenarios` with `alembic upgrade head`. See [Phase 6.3 implementation and regression results](docs/phase63-report.md) for the assumptions, ESDS/Eternal outcomes, tests and limitations.
 
 ## Next phase
 

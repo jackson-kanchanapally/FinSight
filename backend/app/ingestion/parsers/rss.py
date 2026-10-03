@@ -20,8 +20,14 @@ class RssItem:
 
 def parse_rss(payload: bytes) -> list[RssItem]:
     """Parse standard RSS 2.0 items; source adapters map items to symbols."""
-    if len(payload) > 5_000_000 or b"<!DOCTYPE" in payload.upper() or b"<!ENTITY" in payload.upper():
-        raise MalformedFeedError("Feed is too large or contains forbidden XML declarations")
+    if (
+        len(payload) > 5_000_000
+        or b"<!DOCTYPE" in payload.upper()
+        or b"<!ENTITY" in payload.upper()
+    ):
+        raise MalformedFeedError(
+            "Feed is too large or contains forbidden XML declarations"
+        )
     try:
         root = ElementTree.fromstring(payload)
         if root.tag != "rss":
@@ -37,9 +43,18 @@ def parse_rss(payload: bytes) -> list[RssItem]:
             if published.tzinfo is None:
                 raise MalformedFeedError("RSS date lacks a timezone")
             enclosure = item.find("enclosure")
-            items.append(RssItem(title=title, description=item.findtext("description"), link=link,
-                                 external_id=item.findtext("guid"), published_at=published,
-                                 enclosure_url=enclosure.get("url") if enclosure is not None else None))
+            items.append(
+                RssItem(
+                    title=title,
+                    description=item.findtext("description"),
+                    link=link,
+                    external_id=item.findtext("guid"),
+                    published_at=published,
+                    enclosure_url=(
+                        enclosure.get("url") if enclosure is not None else None
+                    ),
+                )
+            )
         return items
     except (ElementTree.ParseError, TypeError, ValueError, OverflowError) as exc:
         if isinstance(exc, MalformedFeedError):
