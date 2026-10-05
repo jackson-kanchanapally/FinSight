@@ -38,7 +38,8 @@ def quarterly_packet(context) -> tuple[str, list[str], int]:
         if source is None:
             continue
         statements.append({"evidence_id": row["evidence_id"], "kind": "MANAGEMENT_CLAIM",
-            "materiality": row["category"], "speaker": source.get("speaker_name"),
+            "materiality": row["category"], "tier": row.get("tier"),
+            "priority_factors": row.get("priority_factors", []), "speaker": source.get("speaker_name"),
             "topic": source.get("topic"), "statement_type": source.get("statement_type"),
             "page": source.get("page"), "statement": row["source_quote"]})
     current_statement_ids = {row["evidence_id"] for row in statements}

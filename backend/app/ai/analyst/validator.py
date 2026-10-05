@@ -394,6 +394,12 @@ def validate_review_item(note, section, registry, period_year):
     linked_statements = [registry[s["source_statement_id"]] for s in sources
         if s["kind"] == "CHECKPOINT_RECORD" and s.get("source_statement_id") in registry]
     attributable = statements + linked_statements
+    undated_targets = [s for s in sources if s["kind"] == "CHECKPOINT_RECORD"
+                       and not s.get("target_period") and not s.get("target_date")]
+    if undated_targets and re.search(r"\b(?:FY\s*\d{2,4}|Q[1-4]\s*FY\s*\d{2,4})\b", note.text, re.I):
+        stated_dates = " ".join(s.get("source_quote", "") for s in attributable)
+        if not re.search(r"\b(?:FY\s*\d{2,4}|Q[1-4]\s*FY\s*\d{2,4})\b", stated_dates, re.I):
+            raise InvalidAnalysis("UNSUPPORTED_TARGET_PERIOD", field=field)
     memory = [s for s in sources if s["kind"] == "MEMORY_CHUNK"]
     if note.source_quote and not any(note.source_quote in s.get("source_quote", s.get("excerpt", "")) for s in attributable + memory):
         raise InvalidAnalysis("MANAGEMENT_QUOTE_NOT_IN_SOURCE" if attributable else "QUOTE_NOT_IN_CITED_EVIDENCE", field=field)
@@ -415,6 +421,10 @@ def validate_review_item(note, section, registry, period_year):
             raise InvalidAnalysis("MANAGEMENT_QUOTE_NOT_IN_SOURCE", field=field)
         if not attributed:
             raise InvalidAnalysis("MANAGEMENT_ATTRIBUTION_REQUIRED", field=field)
+        if (re.search(r"\b(?:delay|postponement)\b", note.text, re.I)
+                and not re.search(r"\b(?:delay\w*|postpon\w*)\b", note.source_quote or "", re.I)
+                and not any(s["kind"] == "CHECKPOINT_RECORD" and s.get("status") == "DELAYED" for s in sources)):
+            raise InvalidAnalysis("CHECKPOINT_OUTCOME_UNSUPPORTED", field=field)
     # Causal language needs a declared evidence basis. Arithmetic PAT bridges
     # establish component contributions, not explanations of operations.
     causal = note.causal_basis

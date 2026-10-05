@@ -8,13 +8,23 @@ from pydantic import ValidationError
 
 from app.ai.analyst.schemas import QuarterlyInvestorReview, ReviewItem, ReviewValuation
 from app.ai.analyst.validator import InvalidAnalysis, validate_review_item
+from app.services.materiality import materiality_details
 
 
 SECTIONS = ("quarterly_investor_view", "key_developments", "management_signals",
             "what_changed", "key_risks", "watch_next_quarter")
 SINGLES = ("valuation_implication", "investor_conclusion")
-BOUNDS = {"quarterly_investor_view": 4, "key_developments": 7, "management_signals": 5,
-          "what_changed": 6, "key_risks": 5, "watch_next_quarter": 6}
+BOUNDS = {"quarterly_investor_view": 4, "key_developments": 6, "management_signals": 5,
+          "what_changed": 5, "key_risks": 5, "watch_next_quarter": 5}
+
+
+def _concept_tokens(value):
+    """Normalize small wording changes while keeping section-specific verbs."""
+    words = re.findall(r"[a-z]{4,}", value.lower())
+    stop = {"management", "company", "quarter", "current", "reported", "disclosed",
+            "would", "could", "should", "their", "these", "those", "from", "with",
+            "that", "this", "into", "next", "future"}
+    return {word[:-1] if word.endswith("s") else word for word in words if word not in stop}
 
 
 @dataclass
@@ -38,7 +48,9 @@ def assess_review(raw, registry, period_year, deterministic_review, allowed_ids=
     result = {}
     rejected, diagnostics = [], []
     accepted, fallback_items = 0, 0
+    accepted_objects = set()
     seen_text = set()
+    seen_concepts = []
 
     def check(raw_item, section, index, model):
         nonlocal accepted
@@ -50,8 +62,17 @@ def assess_review(raw, registry, period_year, deterministic_review, allowed_ids=
             normalized = re.sub(r"\W+", " ", item.text.lower()).strip()
             if normalized in seen_text:
                 raise InvalidAnalysis("DUPLICATE_REVIEW_ITEM", field=f"quarterly_review.{section}")
+            tokens = _concept_tokens(item.text)
+            if any((set(item.evidence_ids) & ids) and tokens and (
+                   len(tokens & prior) / len(tokens | prior) >= 0.68 or
+                   section == "key_developments" and prior_section == "quarterly_investor_view" and
+                   len(tokens & prior) / min(len(tokens), len(prior)) >= 0.72)
+                   for prior_section, ids, prior in seen_concepts if prior):
+                raise InvalidAnalysis("DUPLICATE_REVIEW_ITEM", field=f"quarterly_review.{section}")
             seen_text.add(normalized)
+            seen_concepts.append((section, set(item.evidence_ids), tokens))
             accepted += 1
+            accepted_objects.add(id(item))
             return item
         except (ValidationError, ValueError) as exc:
             if isinstance(exc, InvalidAnalysis):
@@ -129,6 +150,63 @@ def assess_review(raw, registry, period_year, deterministic_review, allowed_ids=
             result["quarterly_investor_view"][1], result["key_developments"][development] = (
                 result["key_developments"][development], result["quarterly_investor_view"][1])
 
+    # A safe optional section can still omit a central disclosure. Preserve
+    # accepted model prose and use open slots for already evidence-checked
+    # deterministic items. This is factor coverage, not a second parser.
+    def factors(item):
+        found = set()
+        for key in item.evidence_ids:
+            source = registry.get(key, {})
+            if source.get("kind") == "CHECKPOINT_RECORD":
+                source = registry.get(source.get("source_statement_id"), {})
+            if source.get("kind") == "MANAGEMENT_STATEMENT":
+                found.update(materiality_details(source.get("source_quote", ""))["factors"])
+        return found
+
+    candidates = [ReviewItem.model_validate(row) for section in (
+        "key_developments", "management_signals", "key_risks")
+        for row in deterministic_review.get(section, [])]
+    for section, factor, maximum in (
+        ("key_developments", "CAPITAL_COMMITMENT", 5),
+        ("key_developments", "VERIFIED_RESULTS", 5),
+        ("key_developments", "DEMAND_CLAIM", 5),
+        ("management_signals", "FUNDING", 3),
+        ("key_risks", "ASSET_ASSUMPTION", 3),
+    ):
+        rows = result[section]
+        if len(rows) >= maximum:
+            continue
+        def matches(item):
+            return (item.basis == "VERIFIED_FACT" and
+                    "Revenue" in item.text) if factor == "VERIFIED_RESULTS" else factor in factors(item)
+        if any(matches(item) for item in rows):
+            continue
+        candidate = next((item for item in candidates if matches(item)
+                          and not any(item.text == existing.text for existing in rows)), None)
+        if candidate is None:
+            continue
+        try:
+            validate_review_item(candidate, section, registry, period_year)
+        except InvalidAnalysis:
+            continue
+        rows.append(candidate)
+        fallback_items += 1
+
+    if len(result["watch_next_quarter"]) < 4:
+        for raw_item in deterministic_review.get("watch_next_quarter", []):
+            if len(result["watch_next_quarter"]) >= 4:
+                break
+            candidate = ReviewItem.model_validate(raw_item)
+            if any(set(candidate.evidence_ids) & set(existing.evidence_ids)
+                   for existing in result["watch_next_quarter"]):
+                continue
+            try:
+                validate_review_item(candidate, "watch_next_quarter", registry, period_year)
+            except InvalidAnalysis:
+                continue
+            result["watch_next_quarter"].append(candidate)
+            fallback_items += 1
+
     # Keep the model's strongest valid claims if its total prose is excessive.
     def word_count():
         return sum(len(item.text.split()) for section in SECTIONS for item in result[section]) + sum(
@@ -136,8 +214,11 @@ def assess_review(raw, registry, period_year, deterministic_review, allowed_ids=
 
     for section in ("management_signals", "key_risks", "key_developments", "watch_next_quarter", "what_changed"):
         while word_count() > 750 and result[section]:
-            result[section].pop()
-            accepted -= 1
+            removed = result[section].pop()
+            if id(removed) in accepted_objects:
+                accepted -= 1
+            else:
+                fallback_items -= 1
             diagnostics.append(_diagnostic(section, -1, "REVIEW_NOT_CONCISE"))
     if word_count() > 750:
         raise InvalidAnalysis("REVIEW_NOT_CONCISE", field="quarterly_review")

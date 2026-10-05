@@ -15,6 +15,7 @@ from app.api import (
     portfolio,
     transactions,
     valuation,
+    thesis,
 )
 from app.config import settings
 from app.database import SessionLocal
@@ -110,6 +111,7 @@ app.include_router(analysis.router)
 app.include_router(market.router)
 app.include_router(valuation.router)
 app.include_router(memory.router)
+app.include_router(thesis.router)
 
 
 @app.get("/health", tags=["health"])

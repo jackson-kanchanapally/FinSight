@@ -241,8 +241,8 @@ def test_automatic_review_refresh_and_concise_fallback(financial_env):
     review = next(r for r in rows if r.financial_period_id == period.id).structured_output['investor_report']
     assert review['checkpoints'][0]['status'] == 'PENDING'
     changes = review['quarterly_review']['what_changed']
-    assert len(changes) == 2
-    assert all('QoQ' in item['text'] for item in changes)  # YoY is not last-quarter change.
+    assert changes == []  # Financial QoQ movements do not establish a story change.
+    assert 'Baseline established this quarter' in review['history_note']
     assert len(review['quarterly_review']['key_developments']) <= 7
     assert len(review['quarterly_review']['watch_next_quarter']) <= 6
     before = len(rows)
@@ -281,7 +281,13 @@ def test_live_esds_review_packet():
         context = build_context(session, company.name, company.symbol, period, max_chars=12000)
         packet = json.loads(context.text)['investor_review_packet']
         quotes = ' '.join(s['source_quote'] for s in packet['material_statements']).lower()
-        assert all(term in quotes for term in ('gpu', 'pat margin', 'capex', 'debt', 'order book', 'seasonality', 'guidance'))
+        priority_factors = {factor for row in packet['material_statements']
+                            for factor in row.get('priority_factors', [])}
+        assert {'TIMELINE_REVISION', 'CAPITAL_COMMITMENT', 'MARGIN_TARGET',
+                'ASSET_ASSUMPTION', 'SUPPLY_RISK'} <= priority_factors
+        full_factors = {factor for row in context.investor_report['review_packet']['material_statements']
+                        for factor in row.get('priority_factors', [])}
+        assert {'FUNDING', 'DEMAND_CLAIM'} <= full_factors
         assert len(packet['material_statements']) <= 14
         assert 'good morning' not in quotes
         assert context.investor_report['full_statement_count'] > len(packet['material_statements'])

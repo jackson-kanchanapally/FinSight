@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { ThesisPanel } from "./ThesisPanel";
 import {
   api,
   type AIAnalysis,
@@ -1471,7 +1472,7 @@ export function FinancialsSection({
     () => new Set(visibleData?.periods.map((period) => period.scope) || []),
     [visibleData],
   );
-  const effectiveScope = scopes.has(scope)
+  const effectiveScope = scopes.size === 0 || scopes.has(scope)
     ? scope
     : scopes.has("CONSOLIDATED")
       ? "CONSOLIDATED"
@@ -1644,6 +1645,7 @@ export function FinancialsSection({
           onSaved={setSnapshot}
         />
       )}
+      {selectedSymbol && <ThesisPanel key={`${selectedSymbol}:${effectiveScope}`} symbol={selectedSymbol} scope={effectiveScope} />}
       {selectedSymbol && (
         <ValuationPanel
           symbol={selectedSymbol}

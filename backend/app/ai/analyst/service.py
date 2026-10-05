@@ -147,6 +147,8 @@ def analyze_period(
             AIAnalysis.context_hash == context.hash,
         ).order_by(AIAnalysis.id.desc()))
         if existing is not None and not force:
+            from app.services.thesis_evaluation import refresh_after_review
+            refresh_after_review(db, existing)
             return existing
         output = verified_fallback(context.registry, period, context.reasoning)
         record = AIAnalysis(
@@ -171,6 +173,8 @@ def analyze_period(
         db.add(record)
         db.commit()
         db.refresh(record)
+        from app.services.thesis_evaluation import refresh_after_review
+        refresh_after_review(db, record)
         return record
     quarterly_contract = provider.supports_quarterly_review
     packet, packet_ids, retrieval_count = (
@@ -199,6 +203,8 @@ def analyze_period(
             and datetime.now(timezone.utc) - created < timedelta(minutes=15)
         )
         if not regenerate or recent_fallback and not force:
+            from app.services.thesis_evaluation import refresh_after_review
+            refresh_after_review(db, existing)
             return existing
 
     record = AIAnalysis(
@@ -424,4 +430,7 @@ def analyze_period(
         record.status,
         record.failure_reason,
     )
+    if record.status in {"SUCCESS", "VERIFIED_FALLBACK"}:
+        from app.services.thesis_evaluation import refresh_after_review
+        refresh_after_review(db, record, provider=provider)
     return record

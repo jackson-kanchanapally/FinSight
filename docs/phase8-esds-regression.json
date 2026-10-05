@@ -1,0 +1,982 @@
+{
+  "analysis_id": 60,
+  "evidence_as_of": "2026-09-29",
+  "proposals": [
+    {
+      "scope": "CONSOLIDATED",
+      "name": "Revenue commencement",
+      "category": "GROWTH",
+      "description": "The investment case requires measurable delivery of the disclosed revenue start commitment.",
+      "importance": "CORE",
+      "created_from": "MANAGEMENT_DERIVED",
+      "source_analysis_id": 60,
+      "evidence_ids": [
+        "K1",
+        "S24"
+      ],
+      "metric_codes": [
+        "REVENUE_FROM_OPERATIONS"
+      ],
+      "is_active": true,
+      "reason": "Initial investment assumption",
+      "expected_version": null,
+      "expectations": [
+        {
+          "description": "Verify the disclosed commitment through the existing management checkpoint.",
+          "expectation_type": "CHECKPOINT",
+          "checkpoint_id": 1,
+          "metric_code": null,
+          "operator": null,
+          "target_value": null,
+          "upper_value": null,
+          "unit": null,
+          "target_period_end": null,
+          "period_type": null,
+          "is_active": true,
+          "reason": "Investor thesis test",
+          "expected_version": null
+        }
+      ]
+    },
+    {
+      "scope": "CONSOLIDATED",
+      "name": "Capacity deployment",
+      "category": "EXECUTION",
+      "description": "The investment case requires measurable delivery of the disclosed gpu deployment commitment.",
+      "importance": "CORE",
+      "created_from": "MANAGEMENT_DERIVED",
+      "source_analysis_id": 60,
+      "evidence_ids": [
+        "K2",
+        "S26"
+      ],
+      "metric_codes": [],
+      "is_active": true,
+      "reason": "Initial investment assumption",
+      "expected_version": null,
+      "expectations": [
+        {
+          "description": "Verify the disclosed commitment through the existing management checkpoint.",
+          "expectation_type": "CHECKPOINT",
+          "checkpoint_id": 2,
+          "metric_code": null,
+          "operator": null,
+          "target_value": null,
+          "upper_value": null,
+          "unit": null,
+          "target_period_end": null,
+          "period_type": null,
+          "is_active": true,
+          "reason": "Investor thesis test",
+          "expected_version": null
+        }
+      ]
+    },
+    {
+      "scope": "CONSOLIDATED",
+      "name": "Profitability",
+      "category": "PROFITABILITY",
+      "description": "The investment case requires measurable delivery of the disclosed pat margin commitment.",
+      "importance": "IMPORTANT",
+      "created_from": "MANAGEMENT_DERIVED",
+      "source_analysis_id": 60,
+      "evidence_ids": [
+        "K3",
+        "S28"
+      ],
+      "metric_codes": [
+        "PAT_MARGIN"
+      ],
+      "is_active": true,
+      "reason": "Initial investment assumption",
+      "expected_version": null,
+      "expectations": [
+        {
+          "description": "Verify the disclosed commitment through the existing management checkpoint.",
+          "expectation_type": "CHECKPOINT",
+          "checkpoint_id": 3,
+          "metric_code": null,
+          "operator": null,
+          "target_value": null,
+          "upper_value": null,
+          "unit": null,
+          "target_period_end": null,
+          "period_type": null,
+          "is_active": true,
+          "reason": "Investor thesis test",
+          "expected_version": null
+        }
+      ]
+    },
+    {
+      "scope": "CONSOLIDATED",
+      "name": "Capital spending",
+      "category": "CAPITAL_ALLOCATION",
+      "description": "The investment case requires measurable delivery of the disclosed capex scope unclear commitment.",
+      "importance": "IMPORTANT",
+      "created_from": "MANAGEMENT_DERIVED",
+      "source_analysis_id": 60,
+      "evidence_ids": [
+        "K6",
+        "S84"
+      ],
+      "metric_codes": [
+        "CAPITAL_EXPENDITURE"
+      ],
+      "is_active": true,
+      "reason": "Initial investment assumption",
+      "expected_version": null,
+      "expectations": [
+        {
+          "description": "Verify the disclosed commitment through the existing management checkpoint.",
+          "expectation_type": "CHECKPOINT",
+          "checkpoint_id": 6,
+          "metric_code": null,
+          "operator": null,
+          "target_value": null,
+          "upper_value": null,
+          "unit": null,
+          "target_period_end": null,
+          "period_type": null,
+          "is_active": true,
+          "reason": "Investor thesis test",
+          "expected_version": null
+        }
+      ]
+    },
+    {
+      "scope": "CONSOLIDATED",
+      "name": "Asset economics",
+      "category": "CAPITAL_ALLOCATION",
+      "description": "The investment case requires realized utilization, pricing and cash returns to substantiate management's asset economics assumptions.",
+      "importance": "IMPORTANT",
+      "created_from": "SYSTEM_INFERRED",
+      "source_analysis_id": 60,
+      "evidence_ids": [
+        "S57"
+      ],
+      "metric_codes": [],
+      "is_active": true,
+      "reason": "Initial investment assumption",
+      "expected_version": null,
+      "expectations": [
+        {
+          "description": "The investment case requires realized utilization, pricing and cash returns to substantiate management's asset economics assumptions.",
+          "expectation_type": "QUALITATIVE",
+          "checkpoint_id": null,
+          "metric_code": null,
+          "operator": null,
+          "target_value": null,
+          "upper_value": null,
+          "unit": null,
+          "target_period_end": null,
+          "period_type": null,
+          "is_active": true,
+          "reason": "Investor thesis test",
+          "expected_version": null
+        }
+      ]
+    },
+    {
+      "scope": "CONSOLIDATED",
+      "name": "Funding capacity",
+      "category": "BALANCE_SHEET",
+      "description": "The investment case requires funding and cash generation to support planned investment without unproven financing assumptions.",
+      "importance": "IMPORTANT",
+      "created_from": "SYSTEM_INFERRED",
+      "source_analysis_id": 60,
+      "evidence_ids": [
+        "S43"
+      ],
+      "metric_codes": [],
+      "is_active": true,
+      "reason": "Initial investment assumption",
+      "expected_version": null,
+      "expectations": [
+        {
+          "description": "The investment case requires funding and cash generation to support planned investment without unproven financing assumptions.",
+          "expectation_type": "QUALITATIVE",
+          "checkpoint_id": null,
+          "metric_code": null,
+          "operator": null,
+          "target_value": null,
+          "upper_value": null,
+          "unit": null,
+          "target_period_end": null,
+          "period_type": null,
+          "is_active": true,
+          "reason": "Investor thesis test",
+          "expected_version": null
+        }
+      ]
+    },
+    {
+      "scope": "CONSOLIDATED",
+      "name": "Demand conversion",
+      "category": "GROWTH",
+      "description": "The investment case requires disclosed demand to convert into signed business, revenue and cash; a management funnel is not earned revenue.",
+      "importance": "IMPORTANT",
+      "created_from": "SYSTEM_INFERRED",
+      "source_analysis_id": 60,
+      "evidence_ids": [
+        "S47"
+      ],
+      "metric_codes": [],
+      "is_active": true,
+      "reason": "Initial investment assumption",
+      "expected_version": null,
+      "expectations": [
+        {
+          "description": "The investment case requires disclosed demand to convert into signed business, revenue and cash; a management funnel is not earned revenue.",
+          "expectation_type": "QUALITATIVE",
+          "checkpoint_id": null,
+          "metric_code": null,
+          "operator": null,
+          "target_value": null,
+          "upper_value": null,
+          "unit": null,
+          "target_period_end": null,
+          "period_type": null,
+          "is_active": true,
+          "reason": "Investor thesis test",
+          "expected_version": null
+        }
+      ]
+    },
+    {
+      "scope": "CONSOLIDATED",
+      "name": "Valuation expectations",
+      "category": "VALUATION",
+      "description": "The investment case requires verified earnings execution to support the growth assumed in the existing valuation scenarios.",
+      "importance": "IMPORTANT",
+      "created_from": "RESEARCH_DERIVED",
+      "source_analysis_id": 60,
+      "evidence_ids": [
+        "A_BASE"
+      ],
+      "metric_codes": [
+        "BASIC_EPS"
+      ],
+      "is_active": true,
+      "reason": "Initial investment assumption",
+      "expected_version": null,
+      "expectations": []
+    }
+  ],
+  "evidence": {
+    "K1": {
+      "id": 1,
+      "kind": "CHECKPOINT_RECORD",
+      "page": 5,
+      "unit": null,
+      "scope": "CONSOLIDATED",
+      "topic": "REVENUE",
+      "metric": "REVENUE_START",
+      "status": "PENDING",
+      "target": {},
+      "commitment": "Yes. So, there was obviously a delay. So, that September date had got postponed by almost a month, 1.5. So, from Q3 onwards, we will see the revenue coming in from the AI factory in Sydney.",
+      "company_id": 1,
+      "document_id": 6,
+      "evidence_id": "K1",
+      "is_previous": false,
+      "target_date": "2026-12-31",
+      "document_url": "/api/documents/6/file#page=5",
+      "published_at": "2026-09-29T14:38:09+00:00",
+      "target_period": "Q3FY27",
+      "actual_outcome": {
+        "note": "A future operating milestone. Require a dated disclosure of revenue commencement for this business.",
+        "actual_value": null,
+        "evidence_ids": []
+      },
+      "evaluated_as_of": "2026-09-29",
+      "measurement_note": "A future operating milestone. Require a dated disclosure of revenue commencement for this business.",
+      "created_period_id": 4,
+      "source_statement_id": "S24"
+    },
+    "K2": {
+      "id": 2,
+      "kind": "CHECKPOINT_RECORD",
+      "page": 5,
+      "unit": "GPU_COUNT",
+      "scope": "CONSOLIDATED",
+      "topic": "STRATEGY",
+      "metric": "GPU_DEPLOYMENT",
+      "status": "PENDING",
+      "target": {
+        "lower": "1500",
+        "upper": "1500"
+      },
+      "commitment": "Yes, we are scaling up that to higher number. The target is to touch around 1,500 GPUs. We'll be deploying those by January or February next year, which will be mid of Q4. Mid of Q4 or end of Q4.",
+      "company_id": 1,
+      "document_id": 6,
+      "evidence_id": "K2",
+      "is_previous": false,
+      "target_date": "2027-02-28",
+      "document_url": "/api/documents/6/file#page=5",
+      "published_at": "2026-09-29T14:38:09+00:00",
+      "target_period": "Q4FY27",
+      "actual_outcome": {
+        "note": "Deployment requires a verified operating disclosure; financial totals cannot establish GPU count.",
+        "actual_value": null,
+        "evidence_ids": []
+      },
+      "evaluated_as_of": "2026-09-29",
+      "measurement_note": "Deployment requires a verified operating disclosure; financial totals cannot establish GPU count.",
+      "created_period_id": 4,
+      "source_statement_id": "S26"
+    },
+    "K3": {
+      "id": 3,
+      "kind": "CHECKPOINT_RECORD",
+      "page": 6,
+      "unit": "PERCENT",
+      "scope": "CONSOLIDATED",
+      "topic": "MARGINS",
+      "metric": "PAT_MARGIN",
+      "status": "NOT_YET_ASSESSABLE",
+      "target": {
+        "lower": "15",
+        "upper": "20"
+      },
+      "commitment": "We are targeting PAT margins in the range of 15% to 20%. So, that's our target PAT margin. We will not work for anything lesser than that.",
+      "company_id": 1,
+      "document_id": 6,
+      "evidence_id": "K3",
+      "is_previous": false,
+      "target_date": null,
+      "document_url": "/api/documents/6/file#page=6",
+      "published_at": "2026-09-29T14:38:09+00:00",
+      "target_period": null,
+      "actual_outcome": {
+        "note": "Management did not state an assessable reporting period; no deadline is inferred.",
+        "actual_value": null,
+        "evidence_ids": []
+      },
+      "evaluated_as_of": "2026-09-29",
+      "measurement_note": "Management did not state an assessable reporting period; no deadline is inferred.",
+      "created_period_id": 4,
+      "source_statement_id": "S28"
+    },
+    "K6": {
+      "id": 6,
+      "kind": "CHECKPOINT_RECORD",
+      "page": 16,
+      "unit": "INR_CRORE",
+      "scope": "CONSOLIDATED",
+      "topic": "CAPEX",
+      "metric": "CAPEX_SCOPE_UNCLEAR",
+      "status": "INSUFFICIENT_EVIDENCE",
+      "target": {
+        "lower": "1500",
+        "upper": "1500"
+      },
+      "commitment": "FY27, we are targeting to conclude around INR1,500 crores of capex, and additional INR1,500 crores, whatever has happened, I exactly don't have the numbers in front of me right now, but we will be doing additional INR1,500 crores of capex in FY27.",
+      "company_id": 1,
+      "document_id": 6,
+      "evidence_id": "K6",
+      "is_previous": false,
+      "target_date": "2027-03-31",
+      "document_url": "/api/documents/6/file#page=16",
+      "published_at": "2026-09-29T14:38:09+00:00",
+      "target_period": "FY27",
+      "actual_outcome": {
+        "note": "Total versus additional spending is unclear in the source. Confirm the budget basis before comparing actuals.",
+        "actual_value": null,
+        "evidence_ids": []
+      },
+      "evaluated_as_of": "2026-09-29",
+      "measurement_note": "Total versus additional spending is unclear in the source. Confirm the budget basis before comparing actuals.",
+      "created_period_id": 4,
+      "source_statement_id": "S84"
+    },
+    "F26": {
+      "kind": "FACT",
+      "page": 7,
+      "unit": "INR_CRORE",
+      "scope": "CONSOLIDATED",
+      "value": "133.657000",
+      "status": "VERIFIED_PDF",
+      "fact_id": 26,
+      "period_id": 4,
+      "period_end": "2026-06-30",
+      "document_id": 1,
+      "metric_code": "REVENUE_FROM_OPERATIONS",
+      "document_url": "/api/documents/1/file#page=7",
+      "source_label": "Revenue from operations",
+      "company_id": 1
+    },
+    "F35": {
+      "kind": "FACT",
+      "page": 7,
+      "unit": "INR_PER_SHARE",
+      "scope": "CONSOLIDATED",
+      "value": "2.920000",
+      "status": "VERIFIED_PDF",
+      "fact_id": 35,
+      "period_id": 4,
+      "period_end": "2026-06-30",
+      "document_id": 1,
+      "metric_code": "BASIC_EPS",
+      "document_url": "/api/documents/1/file#page=7",
+      "source_label": "Basic (in INFI)",
+      "company_id": 1
+    },
+    "M11": {
+      "kind": "METRIC",
+      "unit": "PERCENT",
+      "scope": "CONSOLIDATED",
+      "value": "21.904577",
+      "period_id": 4,
+      "metric_code": "PAT_MARGIN",
+      "input_evidence_ids": [
+        "F38",
+        "F26"
+      ],
+      "comparison_period_id": null,
+      "company_id": 1
+    },
+    "S24": {
+      "kind": "MANAGEMENT_STATEMENT",
+      "page": 5,
+      "topic": "REVENUE",
+      "excerpt": "Yes. So, there was obviously a delay. So, that September date had got postponed by almost a month, [number omitted]. So, from Q3 onwards, we will see the revenue coming in from the AI factory in Sydney.",
+      "authority": "MANAGEMENT_CLAIM",
+      "document_id": 6,
+      "document_url": "/api/documents/6/file#page=5",
+      "published_at": "2026-09-29T14:38:09+00:00",
+      "source_quote": "Yes. So, there was obviously a delay. So, that September date had got postponed by almost a month, 1.5. So, from Q3 onwards, we will see the revenue coming in from the AI factory in Sydney.",
+      "speaker_name": "Piyush Somani",
+      "speaker_role": "Managing Director",
+      "statement_type": "MANAGEMENT_CLAIM",
+      "materiality_reason": "EXECUTION_RISK",
+      "company_id": 1,
+      "scope": "CONSOLIDATED"
+    },
+    "S26": {
+      "kind": "MANAGEMENT_STATEMENT",
+      "page": 5,
+      "topic": "STRATEGY",
+      "excerpt": "Yes, we are scaling up that to higher number. The target is to touch around [number omitted] GPUs. We'll be deploying those by January or February next year, which will be mid of Q4. Mid of Q4 or end of Q4.",
+      "authority": "MANAGEMENT_CLAIM",
+      "document_id": 6,
+      "document_url": "/api/documents/6/file#page=5",
+      "published_at": "2026-09-29T14:38:09+00:00",
+      "source_quote": "Yes, we are scaling up that to higher number. The target is to touch around 1,500 GPUs. We'll be deploying those by January or February next year, which will be mid of Q4. Mid of Q4 or end of Q4.",
+      "speaker_name": "Piyush Somani",
+      "speaker_role": "Managing Director",
+      "statement_type": "OUTLOOK",
+      "materiality_reason": "COMMITMENT",
+      "company_id": 1,
+      "scope": "CONSOLIDATED"
+    },
+    "S28": {
+      "kind": "MANAGEMENT_STATEMENT",
+      "page": 6,
+      "topic": "MARGINS",
+      "excerpt": "We are targeting PAT margins in the range of [number omitted]% to [number omitted]%. So, that's our target PAT margin. We will not work for anything lesser than that.",
+      "authority": "MANAGEMENT_CLAIM",
+      "document_id": 6,
+      "document_url": "/api/documents/6/file#page=6",
+      "published_at": "2026-09-29T14:38:09+00:00",
+      "source_quote": "We are targeting PAT margins in the range of 15% to 20%. So, that's our target PAT margin. We will not work for anything lesser than that.",
+      "speaker_name": "Piyush Somani",
+      "speaker_role": "Managing Director",
+      "statement_type": "TARGET",
+      "materiality_reason": "COMMITMENT",
+      "company_id": 1,
+      "scope": "CONSOLIDATED"
+    },
+    "S43": {
+      "kind": "MANAGEMENT_STATEMENT",
+      "page": 8,
+      "topic": "DEBT",
+      "excerpt": "Yes. So, the new setup that we are doing in India is of a very small quantity, and that would be coming out of IPO proceeds and also some debt and some advance coming from the customers. So, we'll be putting a balance of [number omitted][number omitted][number omitted] each, advance from customer and lending and [number omitted]% coming from the IPO proceeds, so that is what the target is.",
+      "authority": "MANAGEMENT_CLAIM",
+      "document_id": 6,
+      "document_url": "/api/documents/6/file#page=8",
+      "published_at": "2026-09-29T14:38:09+00:00",
+      "source_quote": "Yes. So, the new setup that we are doing in India is of a very small quantity, and that would be coming out of IPO proceeds and also some debt and some advance coming from the customers. So, we'll be putting a balance of 30-30-30 each, advance from customer and lending and 30% coming from the IPO proceeds, so that is what the target is.",
+      "speaker_name": "Piyush Somani",
+      "speaker_role": "Managing Director",
+      "statement_type": "TARGET",
+      "materiality_reason": "COMMITMENT",
+      "company_id": 1,
+      "scope": "CONSOLIDATED"
+    },
+    "S47": {
+      "kind": "MANAGEMENT_STATEMENT",
+      "page": 9,
+      "topic": "STRATEGY",
+      "excerpt": "Yes. So, Yash, thanks. Wonderful question. We have a strong funnel of more than [number omitted] GPUs right now, and we are trying to figure out how we will deliver that, from where, all locations, which all locations we can deliver the pipeline.",
+      "authority": "MANAGEMENT_CLAIM",
+      "document_id": 6,
+      "document_url": "/api/documents/6/file#page=9",
+      "published_at": "2026-09-29T14:38:09+00:00",
+      "source_quote": "Yes. So, Yash, thanks. Wonderful question. We have a strong funnel of more than 50,000 GPUs right now, and we are trying to figure out how we will deliver that, from where, all locations, which all locations we can deliver the pipeline.",
+      "speaker_name": "Piyush Somani",
+      "speaker_role": "Managing Director",
+      "statement_type": "MANAGEMENT_CLAIM",
+      "materiality_reason": "ORDER_CONVERSION",
+      "company_id": 1,
+      "scope": "CONSOLIDATED"
+    },
+    "S57": {
+      "kind": "MANAGEMENT_STATEMENT",
+      "page": 11,
+      "topic": "CUSTOMERS",
+      "excerpt": "Actually -- yes, we actually focus on collecting maximum advance from the customer, and this is an appreciating asset. This is no longer a depreciating commodity. So, even if a customer who has paid you [number omitted] months-[number omitted] months of advance, if that customer walks out, you have another customer ready to pay you a higher price and take over that customer. And again, they are ready to give you more advance. So, that's why we don't see client concentration as it is at the moment.",
+      "authority": "MANAGEMENT_CLAIM",
+      "document_id": 6,
+      "document_url": "/api/documents/6/file#page=11",
+      "published_at": "2026-09-29T14:38:09+00:00",
+      "source_quote": "Actually -- yes, we actually focus on collecting maximum advance from the customer, and this is an appreciating asset. This is no longer a depreciating commodity. So, even if a customer who has paid you 15 months-18 months of advance, if that customer walks out, you have another customer ready to pay you a higher price and take over that customer. And again, they are ready to give you more advance. So, that's why we don't see client concentration as it is at the moment.",
+      "speaker_name": "Piyush Somani",
+      "speaker_role": "Managing Director",
+      "statement_type": "MANAGEMENT_CLAIM",
+      "materiality_reason": "EXECUTION_RISK",
+      "company_id": 1,
+      "scope": "CONSOLIDATED"
+    },
+    "S84": {
+      "kind": "MANAGEMENT_STATEMENT",
+      "page": 16,
+      "topic": "CAPEX",
+      "excerpt": "FY2[number omitted] we are targeting to conclude around INR1,[number omitted] crores of capex, and additional INR1,[number omitted] crores, whatever has happened, I exactly don't have the numbers in front of me right now, but we will be doing additional INR1,[number omitted] crores of capex in FY2[number omitted].",
+      "authority": "MANAGEMENT_CLAIM",
+      "document_id": 6,
+      "document_url": "/api/documents/6/file#page=16",
+      "published_at": "2026-09-29T14:38:09+00:00",
+      "source_quote": "FY27, we are targeting to conclude around INR1,500 crores of capex, and additional INR1,500 crores, whatever has happened, I exactly don't have the numbers in front of me right now, but we will be doing additional INR1,500 crores of capex in FY27.",
+      "speaker_name": "Piyush Somani",
+      "speaker_role": "Managing Director",
+      "statement_type": "TARGET",
+      "materiality_reason": "COMMITMENT",
+      "company_id": 1,
+      "scope": "CONSOLIDATED"
+    },
+    "A_BASE": {
+      "kind": "SCENARIO",
+      "unit": "MULTIPLE",
+      "value": "31.26",
+      "reverse": {
+        "label": "IMPLIED / REQUIRED GROWTH \u2014 not a forecast",
+        "required_future_eps": "78.324736",
+        "target_future_price": "2349.742080",
+        "required_eps_cagr_pct": "86.367934"
+      },
+      "as_of_date": "2026-09-28",
+      "assumptions": {
+        "years": 3,
+        "source": "Illustrative sensitivity: terminal P/E 20/30/40, horizon 3 years, required return 12%. Growth anchored to latest observed EPS YoY, scaled by 0.5/1/1.5; persistence is assumed.",
+        "terminal_pe": "30",
+        "eps_growth_pct": "13.545817",
+        "required_return_pct": "12"
+      },
+      "metric_code": "BASE",
+      "source_type": "SCENARIO_ASSUMPTION",
+      "valuation_verdict": "EXTREMELY_OVERVALUED",
+      "input_evidence_ids": [
+        "Q1",
+        "F75",
+        "F36",
+        "F61",
+        "F77",
+        "F38",
+        "F64",
+        "F36",
+        "F61"
+      ],
+      "company_id": 1,
+      "scope": "CONSOLIDATED"
+    },
+    "I_REVIEW": {
+      "kind": "REVIEW_CONTEXT",
+      "changes": [
+        {
+          "text": "Management reports a revision to its earlier execution timeline; verify the new milestone against subsequent disclosures.",
+          "type": "TIMELINE_DELAYED",
+          "basis": "MANAGEMENT_CLAIM",
+          "evidence_ids": [
+            "S24"
+          ],
+          "source_quote": "Yes. So, there was obviously a delay. So, that September date had got postponed by almost a month, 1.5. So, from Q3 onwards, we will see the revenue coming in from the AI factory in Sydney."
+        }
+      ],
+      "history_note": "Baseline established this quarter. Prior comparable commentary is unavailable, so repeated execution patterns cannot yet be established.",
+      "research_gaps": [
+        "Cash conversion: verified OCF and FCF are unavailable for a compatible earnings period.",
+        "Exceptional items and working-capital movements are not separately verified; no causal efficiency claim is made.",
+        "Historical valuation coverage is too short to establish a representative P/E range.",
+        "Verified comparable peer valuations are unavailable; no peer or quality premium is applied."
+      ],
+      "valuation_implication_status": "INSUFFICIENT_EVIDENCE",
+      "company_id": 1,
+      "scope": "CONSOLIDATED"
+    }
+  },
+  "expectation_gap": {
+    "classification": "INSUFFICIENT_EVIDENCE",
+    "required_eps_cagr_pct": "86.367934",
+    "observed_eps_cagr_pct": null,
+    "horizon_years": 3,
+    "evidence_ids": [
+      "A_BASE"
+    ],
+    "reason": "Horizon mismatch: quarterly YoY or a different CAGR horizon cannot establish a gap against the scenario horizon.",
+    "policy": {
+      "moderate_gap_pp": "10",
+      "high_gap_pp": "25"
+    },
+    "assumption_not_forecast": true
+  },
+  "note": "Proposed assumptions for your review. Accepting today establishes a new baseline; no earlier belief is inferred.",
+  "evaluation": {
+    "run_id": 4,
+    "analysis_id": 60,
+    "as_of_date": "2026-10-05",
+    "evidence_as_of": "2026-09-29",
+    "impacts": [
+      {
+        "pillar_id": 25,
+        "name": "Revenue commencement",
+        "previous_status": "UNPROVEN",
+        "new_status": "NOT_YET_TESTABLE",
+        "reason": "The linked milestone is pending or has no assessable deadline; management's commitment remains a claim awaiting measured delivery.",
+        "evidence_ids": [
+          "K1",
+          "F26",
+          "S24"
+        ],
+        "contradiction": false,
+        "method": "DETERMINISTIC",
+        "research_gaps": [],
+        "expectations": [
+          {
+            "expectation_key": "c1b71cae-a1c4-4d3e-9d35-5d5a68525a9a",
+            "revision_id": 22,
+            "description": "Verify the disclosed commitment through the existing management checkpoint.",
+            "status": "PENDING",
+            "actual_value": null,
+            "evidence_ids": [
+              "K1"
+            ],
+            "metric": "REVENUE_START",
+            "checkpoint_id": 1,
+            "comparison_basis": [
+              "CHECKPOINT",
+              1
+            ],
+            "note": "A future operating milestone. Require a dated disclosure of revenue commencement for this business."
+          }
+        ]
+      },
+      {
+        "pillar_id": 26,
+        "name": "Capacity deployment",
+        "previous_status": "UNPROVEN",
+        "new_status": "NOT_YET_TESTABLE",
+        "reason": "The linked milestone is pending or has no assessable deadline; management's commitment remains a claim awaiting measured delivery.",
+        "evidence_ids": [
+          "K2",
+          "S26"
+        ],
+        "contradiction": false,
+        "method": "DETERMINISTIC",
+        "research_gaps": [],
+        "expectations": [
+          {
+            "expectation_key": "6f303fd6-d3c8-40f7-b9f8-ccd5902131fc",
+            "revision_id": 23,
+            "description": "Verify the disclosed commitment through the existing management checkpoint.",
+            "status": "PENDING",
+            "actual_value": null,
+            "evidence_ids": [
+              "K2"
+            ],
+            "metric": "GPU_DEPLOYMENT",
+            "checkpoint_id": 2,
+            "comparison_basis": [
+              "CHECKPOINT",
+              2
+            ],
+            "note": "Deployment requires a verified operating disclosure; financial totals cannot establish GPU count."
+          }
+        ]
+      },
+      {
+        "pillar_id": 27,
+        "name": "Profitability",
+        "previous_status": "UNPROVEN",
+        "new_status": "NOT_YET_TESTABLE",
+        "reason": "The linked milestone is pending or has no assessable deadline; management's commitment remains a claim awaiting measured delivery.",
+        "evidence_ids": [
+          "K3",
+          "M11",
+          "S28"
+        ],
+        "contradiction": false,
+        "method": "DETERMINISTIC",
+        "research_gaps": [
+          "Management did not state an assessable reporting period; no deadline is inferred."
+        ],
+        "expectations": [
+          {
+            "expectation_key": "7fa6653e-d3e6-460a-a6ba-415c05430901",
+            "revision_id": 24,
+            "description": "Verify the disclosed commitment through the existing management checkpoint.",
+            "status": "NOT_YET_ASSESSABLE",
+            "actual_value": null,
+            "evidence_ids": [
+              "K3"
+            ],
+            "metric": "PAT_MARGIN",
+            "checkpoint_id": 3,
+            "comparison_basis": [
+              "CHECKPOINT",
+              3
+            ],
+            "note": "Management did not state an assessable reporting period; no deadline is inferred."
+          }
+        ]
+      },
+      {
+        "pillar_id": 28,
+        "name": "Capital spending",
+        "previous_status": "UNPROVEN",
+        "new_status": "UNPROVEN",
+        "reason": "The available evidence does not directly demonstrate or contradict this investment requirement; the stored state is retained.",
+        "evidence_ids": [
+          "K6",
+          "S84"
+        ],
+        "contradiction": false,
+        "method": "DETERMINISTIC",
+        "research_gaps": [
+          "Total versus additional spending is unclear in the source. Confirm the budget basis before comparing actuals.",
+          "Cash conversion: verified OCF and FCF are unavailable for a compatible earnings period.",
+          "Exceptional items and working-capital movements are not separately verified; no causal efficiency claim is made."
+        ],
+        "expectations": [
+          {
+            "expectation_key": "1db82a26-a864-44e2-bee2-39771013b5ce",
+            "revision_id": 25,
+            "description": "Verify the disclosed commitment through the existing management checkpoint.",
+            "status": "INSUFFICIENT_EVIDENCE",
+            "actual_value": null,
+            "evidence_ids": [
+              "K6"
+            ],
+            "metric": "CAPEX_SCOPE_UNCLEAR",
+            "checkpoint_id": 6,
+            "comparison_basis": [
+              "CHECKPOINT",
+              6
+            ],
+            "note": "Total versus additional spending is unclear in the source. Confirm the budget basis before comparing actuals."
+          }
+        ]
+      },
+      {
+        "pillar_id": 29,
+        "name": "Asset economics",
+        "previous_status": "UNPROVEN",
+        "new_status": "UNPROVEN",
+        "reason": "The available evidence does not directly demonstrate or contradict this investment requirement; the stored state is retained.",
+        "evidence_ids": [
+          "S57"
+        ],
+        "contradiction": false,
+        "method": "DETERMINISTIC",
+        "research_gaps": [
+          "Obtain evidence directly measuring this investor requirement.",
+          "Cash conversion: verified OCF and FCF are unavailable for a compatible earnings period.",
+          "Exceptional items and working-capital movements are not separately verified; no causal efficiency claim is made."
+        ],
+        "expectations": [
+          {
+            "expectation_key": "76f66004-cf92-4b5c-9d8c-f2adc304558b",
+            "revision_id": 26,
+            "description": "The investment case requires realized utilization, pricing and cash returns to substantiate management's asset economics assumptions.",
+            "status": "INSUFFICIENT_EVIDENCE",
+            "actual_value": null,
+            "evidence_ids": [],
+            "metric": null,
+            "checkpoint_id": null,
+            "comparison_basis": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      {
+        "pillar_id": 30,
+        "name": "Funding capacity",
+        "previous_status": "UNPROVEN",
+        "new_status": "UNPROVEN",
+        "reason": "The available evidence does not directly demonstrate or contradict this investment requirement; the stored state is retained.",
+        "evidence_ids": [
+          "S43"
+        ],
+        "contradiction": false,
+        "method": "DETERMINISTIC",
+        "research_gaps": [
+          "Obtain evidence directly measuring this investor requirement.",
+          "Cash conversion: verified OCF and FCF are unavailable for a compatible earnings period.",
+          "Exceptional items and working-capital movements are not separately verified; no causal efficiency claim is made."
+        ],
+        "expectations": [
+          {
+            "expectation_key": "25055280-9aa2-4aa6-ba50-1c839178cb59",
+            "revision_id": 27,
+            "description": "The investment case requires funding and cash generation to support planned investment without unproven financing assumptions.",
+            "status": "INSUFFICIENT_EVIDENCE",
+            "actual_value": null,
+            "evidence_ids": [],
+            "metric": null,
+            "checkpoint_id": null,
+            "comparison_basis": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      {
+        "pillar_id": 31,
+        "name": "Demand conversion",
+        "previous_status": "UNPROVEN",
+        "new_status": "UNPROVEN",
+        "reason": "The available evidence does not directly demonstrate or contradict this investment requirement; the stored state is retained.",
+        "evidence_ids": [
+          "S47"
+        ],
+        "contradiction": false,
+        "method": "DETERMINISTIC",
+        "research_gaps": [
+          "Obtain evidence directly measuring this investor requirement."
+        ],
+        "expectations": [
+          {
+            "expectation_key": "6d82567b-ee36-4d88-902c-c695176508b6",
+            "revision_id": 28,
+            "description": "The investment case requires disclosed demand to convert into signed business, revenue and cash; a management funnel is not earned revenue.",
+            "status": "INSUFFICIENT_EVIDENCE",
+            "actual_value": null,
+            "evidence_ids": [],
+            "metric": null,
+            "checkpoint_id": null,
+            "comparison_basis": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      {
+        "pillar_id": 32,
+        "name": "Valuation expectations",
+        "previous_status": "UNPROVEN",
+        "new_status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Horizon mismatch: quarterly YoY or a different CAGR horizon cannot establish a gap against the scenario horizon.",
+        "evidence_ids": [
+          "A_BASE",
+          "F35",
+          "I_REVIEW"
+        ],
+        "contradiction": false,
+        "method": "DETERMINISTIC",
+        "research_gaps": [
+          "Horizon mismatch: quarterly YoY or a different CAGR horizon cannot establish a gap against the scenario horizon."
+        ],
+        "expectations": []
+      }
+    ],
+    "expectation_gap": {
+      "classification": "INSUFFICIENT_EVIDENCE",
+      "required_eps_cagr_pct": "86.367934",
+      "observed_eps_cagr_pct": null,
+      "horizon_years": 3,
+      "evidence_ids": [
+        "A_BASE"
+      ],
+      "reason": "Horizon mismatch: quarterly YoY or a different CAGR horizon cannot establish a gap against the scenario horizon.",
+      "policy": {
+        "moderate_gap_pp": "10",
+        "high_gap_pp": "25"
+      },
+      "assumption_not_forecast": true
+    },
+    "diagnostics": [
+      {
+        "pillar_id": 25,
+        "proposed_evidence_ids": [
+          "K1"
+        ],
+        "reason": "MANAGEMENT_QUOTE_NOT_IN_SOURCE"
+      },
+      {
+        "pillar_id": 26,
+        "proposed_evidence_ids": [
+          "K2"
+        ],
+        "reason": "MANAGEMENT_ATTRIBUTION_REQUIRED"
+      },
+      {
+        "pillar_id": 27,
+        "proposed_evidence_ids": [
+          "K3"
+        ],
+        "reason": "MANAGEMENT_ATTRIBUTION_REQUIRED"
+      },
+      {
+        "pillar_id": 28,
+        "proposed_evidence_ids": [
+          "K6"
+        ],
+        "reason": "MANAGEMENT_ATTRIBUTION_REQUIRED"
+      },
+      {
+        "pillar_id": 29,
+        "proposed_evidence_ids": [
+          "S57"
+        ],
+        "reason": "MANAGEMENT_ATTRIBUTION_REQUIRED"
+      },
+      {
+        "pillar_id": 30,
+        "proposed_evidence_ids": [
+          "S43"
+        ],
+        "reason": "MANAGEMENT_QUOTE_NOT_IN_SOURCE"
+      },
+      {
+        "pillar_id": 31,
+        "proposed_evidence_ids": [
+          "S47"
+        ],
+        "reason": "MANAGEMENT_ATTRIBUTION_REQUIRED"
+      },
+      {
+        "pillar_id": 32,
+        "proposed_evidence_ids": [
+          "A_BASE"
+        ],
+        "reason": "PRICE_OR_SCENARIO_ALONE_IS_NOT_THESIS_DELIVERY"
+      }
+    ]
+  },
+  "regression_note": "Temporary proposal acceptance and evaluations were rolled back; no production investment beliefs were created."
+}

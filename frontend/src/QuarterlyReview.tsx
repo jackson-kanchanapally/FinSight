@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ThesisImpact } from "./ThesisPanel";
 import type { AIAnalysis, InvestorReport, QuarterlyReview, ReviewItem } from "./api";
 
 export function QuarterlyReviewPanel({ analysis, report, review, evidence }: {
@@ -8,6 +9,12 @@ export function QuarterlyReviewPanel({ analysis, report, review, evidence }: {
   evidence: (ids: string[]) => ReactNode;
 }) {
   const label = (value: string) => value.replaceAll("_", " ");
+  const checkpointTone = (status: string) => {
+    if (["DELIVERED", "PARTIALLY_DELIVERED"].includes(status)) return "positive";
+    if (["MISSED", "DELAYED", "WITHDRAWN"].includes(status)) return "negative";
+    if (["PENDING", "NOT_YET_ASSESSABLE"].includes(status)) return "pending";
+    return "neutral";
+  };
   const item = (row: ReviewItem, index: number) => (
     <article key={index} className="quarterly-review-item">
       <small>{label(row.basis)}{row.basis === "MANAGEMENT_CLAIM" ? ` · ${row.signal}` : ""}</small>
@@ -60,16 +67,39 @@ export function QuarterlyReviewPanel({ analysis, report, review, evidence }: {
       </section>
       {section("Key Risks", review.key_risks)}
       {section("Watch Next Quarter", review.watch_next_quarter)}
-      {!!report.checkpoints?.length && <details className="ai-supporting">
-        <summary>Investor checkpoints · {report.checkpoints.length}</summary>
-        {report.checkpoints.map(row => <article key={row.id}>
-          <strong>{label(row.metric)} · {label(row.status)}</strong>
-          <p>{row.commitment}</p>
-          <p>Target: {row.target_period || "No explicit period"}{row.target_date && ` · deadline ${row.target_date}`}. Evaluated as of {row.evaluated_as_of}.</p>
-          {row.measurement_note && <p>{row.measurement_note}</p>}
-          <a href={row.document_url} target="_blank" rel="noreferrer">Commitment source · page {row.page}</a>
-          {evidence(row.actual_outcome.evidence_ids)}
-        </article>)}
+      {!!report.checkpoints?.length && <details className="ai-supporting checkpoint-panel" open>
+        <summary>
+          <span className="checkpoint-summary-title">
+            <span className="checkpoint-summary-icon" aria-hidden="true">✓</span>
+            <span><strong>Investor checkpoints</strong><small>Track management promises against reported outcomes</small></span>
+          </span>
+          <span className="checkpoint-count">{report.checkpoints.length}</span>
+        </summary>
+        <div className="checkpoint-grid">
+          {report.checkpoints.map(row => {
+            const tone = checkpointTone(row.status);
+            return <article className={`checkpoint-card checkpoint-card-${tone}`} key={row.id}>
+              <header className="checkpoint-card-header">
+                <div>
+                  <small>{row.is_previous ? "PRIOR COMMITMENT" : "ACTIVE CHECKPOINT"}</small>
+                  <h5>{label(row.metric)}</h5>
+                </div>
+                <span className={`checkpoint-status checkpoint-status-${tone}`}><i aria-hidden="true" />{label(row.status)}</span>
+              </header>
+              <p className="checkpoint-commitment">{row.commitment}</p>
+              <dl className="checkpoint-meta">
+                <div><dt>Target</dt><dd>{row.target_period || row.target_date || "No explicit period"}</dd></div>
+                <div><dt>Reviewed through</dt><dd>{row.evaluated_as_of}</dd></div>
+                {row.actual_outcome.actual_value != null && <div><dt>Reported outcome</dt><dd>{row.actual_outcome.actual_value}</dd></div>}
+              </dl>
+              {row.measurement_note && <p className="checkpoint-note">{row.measurement_note}</p>}
+              <footer className="checkpoint-footer">
+                <a href={row.document_url} target="_blank" rel="noreferrer">View commitment · page {row.page} <span aria-hidden="true">↗</span></a>
+                {evidence(row.actual_outcome.evidence_ids)}
+              </footer>
+            </article>;
+          })}
+        </div>
       </details>}
       <section className="ai-group investor-conclusion">
         <h4>Investor Conclusion</h4>
@@ -86,6 +116,7 @@ export function QuarterlyReviewPanel({ analysis, report, review, evidence }: {
         </article>)}
       </details>
       {analysis.status === "VERIFIED_FALLBACK" && <p className="financial-footnote">{analysis.model_provider === "deterministic" ? "This review was generated from the verified evidence and deterministic calculations. Use Generate AI analysis for a model interpretation." : "The model interpretation was unavailable or did not pass evidence checks. Results, valuation and checkpoint outcomes above come from the verified evidence review."}</p>}
+      <ThesisImpact analysisId={analysis.id} />
     </div>
   );
 }

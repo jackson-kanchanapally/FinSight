@@ -3,8 +3,9 @@ import re
 from decimal import Decimal
 from sqlalchemy import select
 from app.models.commentary import ManagementStatement
-from app.models.financial import FinancialPeriod, FinancialStatus
-from app.services.materiality import materiality, select_material, short_quote
+from app.models.financial import (FinancialPeriod, FinancialStatus, FinancialFact, FactStatus,
+                                  PeriodType, MetricCode, FinancialUnit)
+from app.services.materiality import materiality, materiality_details, select_material, short_quote
 from app.services.checkpoints import checkpoint_review, review_as_of
 
 
@@ -27,14 +28,28 @@ def note(text, ids, basis="INTERPRETATION", quote=None, signal="WATCH"):
 
 def build_review(db, period, registry, report):
     statements = list(db.scalars(select(ManagementStatement).where(ManagementStatement.financial_period_id == period.id)))
-    selected = select_material(statements)
     checkpoints = checkpoint_review(db, period)
-    # Explicit commitments must survive the bounded selection even when they
-    # were discussed late in the call.
     required = {c["source_statement_id"] for c in checkpoints if not c["is_previous"]}
-    required_statements = [(s, materiality(s.raw_statement) or "COMMITMENT") for s in statements if s.evidence_id in required]
-    selected = required_statements + [(s, c) for s, c in selected if s.evidence_id not in required]
-    selected = selected[:14]
+    # Compare only with a verified annual revenue fact of the same company and
+    # scope, published by this review's as-of date. No inferred TTM denominator.
+    as_of = review_as_of(db, period)
+    annual = list(db.scalars(select(FinancialPeriod).where(
+        FinancialPeriod.company_id == period.company_id, FinancialPeriod.scope == period.scope,
+        FinancialPeriod.period_type == PeriodType.ANNUAL, FinancialPeriod.period_end < period.period_end,
+        FinancialPeriod.status == FinancialStatus.VALIDATED).order_by(FinancialPeriod.period_end.desc())))
+    annual_revenue = None
+    for candidate in annual:
+        if review_as_of(db, candidate) > as_of:
+            continue
+        fact = db.scalar(select(FinancialFact).where(
+            FinancialFact.financial_period_id == candidate.id,
+            FinancialFact.metric_code == MetricCode.REVENUE_FROM_OPERATIONS,
+            FinancialFact.unit == FinancialUnit.INR_CRORE,
+            FinancialFact.status.in_([FactStatus.VERIFIED_PDF, FactStatus.VERIFIED_STRUCTURED, FactStatus.MANUALLY_VERIFIED])))
+        if fact and fact.value > 0:
+            annual_revenue = fact.value
+            break
+    selected = select_material(statements, annual_revenue_crore=annual_revenue, required_ids=required)
     for statement, category in selected:
         registry[statement.evidence_id] = statement_evidence(statement, category)
     for row in checkpoints:
@@ -62,9 +77,12 @@ def build_review(db, period, registry, report):
     for statement, category in selected:
         quote = short_quote(statement.raw_statement)
         lower = statement.raw_statement.lower()
+        factors = set(materiality_details(statement.raw_statement)["factors"])
         cp = current_checkpoints.get(statement.evidence_id)
         ids = [statement.evidence_id]
-        theme = cp['metric'] if cp else category
+        theme = cp['metric'] if cp else next((factor for factor in (
+            "ASSET_ASSUMPTION", "SUPPLY_RISK", "FUNDING", "DEMAND_CLAIM", "PRICING_ASSUMPTION")
+            if factor in factors), category)
         if theme in used_themes:
             continue
         used_themes.add(theme)
@@ -84,6 +102,15 @@ def build_review(db, period, registry, report):
                 text = f"Management outlined capex for {target}, but total versus additional spending is unclear. Confirm the budget before comparing execution."
             else:
                 text = f"Management targets {cp['metric'].lower().replace('_', ' ')} of {amount} {cp['unit'].lower().replace('_', ' ')} for {target}; this is a commitment, not a verified outcome."
+        elif 'ASSET_ASSUMPTION' in factors:
+            text = ("Management treats the asset's future value as favorable; test this claim against utilization, "
+                    "realized pricing, depreciation and cash returns as the investment is deployed.")
+        elif 'SUPPLY_RISK' in factors:
+            text = ("Management reports supply or delivery constraints; check whether capacity arrives in time "
+                    "for the disclosed revenue milestones.")
+        elif 'FUNDING' in factors:
+            text = ("Management describes proposed funding sources; verify actual customer advances, debt "
+                    "and cash outlays before assuming the expansion is financed.")
         elif category == 'GUIDANCE_BOUNDARY':
             text = ('Management declined to provide numerical guidance; future growth expectations require follow-up.'
                     if re.search(r'guidance|forward-looking numbers', lower) else
@@ -99,7 +126,9 @@ def build_review(db, period, registry, report):
         elif category == 'OPERATING_CONTEXT' and 'seasonality' in lower:
             text = 'Management describes seasonality in quarterly performance; its explanation needs to be checked against comparable historical results.'
         elif category == 'ORDER_CONVERSION':
-            text = 'Management cites an order book or pipeline; monitor conversion into reported revenue rather than treating demand claims as earned revenue.'
+            text = ('Management describes a demand funnel; verify conversion into signed contracts, '
+                    'customer advances and reported revenue.' if 'funnel' in lower else
+                    'Management cites an order book; verify conversion into reported revenue and cash collection.')
         elif category == 'BUSINESS_CHANGE':
             text = 'Management describes a product or business expansion; monitor the contribution to reported revenue and earnings.'
         elif category == 'ECONOMICS':
@@ -108,39 +137,31 @@ def build_review(db, period, registry, report):
             continue  # Ambiguous timing or an unmeasurable promise stays in source drill-down.
         signal = "NEGATIVE" if category == "EXECUTION_RISK" else "WATCH" if category in {"COMMITMENT", "CAPITAL_ALLOCATION", "GUIDANCE_BOUNDARY"} else "MIXED"
         entry = note(text, ids, "MANAGEMENT_CLAIM", quote.rstrip("…"), signal)
-        if category in {"EXECUTION_RISK", "CAPITAL_ALLOCATION", "GUIDANCE_BOUNDARY"} and len(risks) < 4:
+        if ('ASSET_ASSUMPTION' in factors or 'SUPPLY_RISK' in factors or
+                category in {"EXECUTION_RISK", "CAPITAL_ALLOCATION", "GUIDANCE_BOUNDARY"}) and len(risks) < 4:
             risks.append(entry)
-        elif category in {"COMMITMENT", "BUSINESS_CHANGE", "OPERATING_CONTEXT", "ORDER_CONVERSION"} and len(developments) < 7:
+        elif category in {"COMMITMENT", "BUSINESS_CHANGE", "OPERATING_CONTEXT", "ORDER_CONVERSION"} and len(developments) < 6:
             developments.append(entry)
-        elif len(signals) < 3:
+        elif len(signals) < 4:
             signals.append(entry)
     previous = list(db.scalars(select(FinancialPeriod).where(
         FinancialPeriod.company_id == period.company_id, FinancialPeriod.scope == period.scope,
         FinancialPeriod.period_end < period.period_end, FinancialPeriod.period_type == period.period_type,
         FinancialPeriod.status == FinancialStatus.VALIDATED).order_by(FinancialPeriod.period_end.desc())))
-    as_of = review_as_of(db, period)
     previous = [p for p in previous if review_as_of(db, p) <= as_of]
     previous_statements = list(db.scalars(select(ManagementStatement).where(
         ManagementStatement.financial_period_id == previous[0].id))) if previous else []
     changes = []
-    for code, label in (("REVENUE_QOQ", "Revenue"), ("PAT_QOQ", "PAT")):
-        if code not in metrics or not previous:
-            continue
-        key, item = metrics[code]
-        if item.get("comparison_period_id") != previous[0].id:
-            continue
-        value = Decimal(item['value'])
-        if value:
-            changes.append({"type": "SEQUENTIAL_INCREASE" if value > 0 else "SEQUENTIAL_DECLINE",
-                "text": f"{label} {'rose' if value > 0 else 'fell'} {abs(value):.2f}% QoQ versus the previous available quarter.",
-                "evidence_ids": [key]})
-    for code, labels in (("EBITDA_MARGIN_CHANGE_BPS", ("MARGIN_IMPROVEMENT", "MARGIN_PRESSURE")),):
-        if code in metrics:
-            key, item = metrics[code]
-            value = Decimal(item["value"])
-            if value and previous and item.get("comparison_period_id") == previous[0].id:
-                changes.append({"type": labels[0] if value > 0 else labels[1],
-                    "text": f"EBITDA margin changed by {value:.2f} {item['unit'].lower().replace('_', ' ')} versus the previous available quarter.", "evidence_ids": [key]})
+    # A reported revision is useful even before a prior transcript is in our
+    # database, but remains an attributed claim about the earlier schedule.
+    for statement in statements:
+        if re.search(r"\b(?:delay|postpon|defer|slipp)\w*\b", statement.raw_statement, re.I) and re.search(
+                r"\b(?:earlier|previous|original|date|schedule|timeline)\b", statement.raw_statement, re.I):
+            changes.append({"type": "TIMELINE_DELAYED", "text":
+                "Management reports a revision to its earlier execution timeline; verify the new milestone against subsequent disclosures.",
+                "evidence_ids": [statement.evidence_id], "source_quote": short_quote(statement.raw_statement, 220).rstrip("…"),
+                "basis": "MANAGEMENT_CLAIM"})
+            break
     for cp in checkpoints:
         change = cp["actual_outcome"].get("change")
         if change in {"GUIDANCE_RAISED", "GUIDANCE_CUT", "GUIDANCE_MAINTAINED"}:
@@ -149,7 +170,7 @@ def build_review(db, period, registry, report):
             changes.append({"type": "TIMELINE_DELAYED" if cp["status"] == "DELAYED" else "GUIDANCE_WITHDRAWN",
                 "text": cp["actual_outcome"]["note"], "evidence_ids": [cp["evidence_id"], *cp["actual_outcome"]["evidence_ids"]]})
     # A single quarter's commentary cannot establish a change in strategy or a recurring problem.
-    history_note = ("Prior comparable commentary is unavailable; changes in management's message and repeated execution patterns cannot yet be established."
+    history_note = ("Baseline established this quarter. Prior comparable commentary is unavailable, so repeated execution patterns cannot yet be established."
                     if not previous_statements else "Prior comparable commentary is available; only supported changes are listed.")
     assessed = [c for c in checkpoints if c["is_previous"] and c["status"] in {"DELIVERED", "MISSED", "DELAYED", "WITHDRAWN", "PARTIALLY_DELIVERED"}]
     delivered = [c for c in assessed if c["status"] == "DELIVERED"]
@@ -175,15 +196,34 @@ def build_review(db, period, registry, report):
     elif earnings_delivered:
         valuation_text += " Verified delivery adds support for execution of the disclosed assumptions."
     watch = []
-    for cp in checkpoints:
-        if cp["status"] in {"PENDING", "NOT_YET_ASSESSABLE", "NOT_DISCLOSED", "INSUFFICIENT_EVIDENCE"} and len(watch) < 5:
+    watch_priority = {"REVENUE_START": 0, "CAPEX_SCOPE_UNCLEAR": 1, "GPU_DEPLOYMENT": 2}
+    for cp in sorted(checkpoints, key=lambda item: (
+            watch_priority.get(item["metric"], 3), item["target_period"] is None and item["target_date"] is None)):
+        if cp["status"] in {"PENDING", "NOT_YET_ASSESSABLE", "NOT_DISCLOSED", "INSUFFICIENT_EVIDENCE"} and len(watch) < 3:
             target = cp["target_period"] or cp["target_date"] or "an explicit reporting deadline"
-            text = f"Verify {cp['metric'].lower().replace('_', ' ')} against {target}; confirm the measurement basis and obtain the outcome disclosure."
+            if cp["metric"] == "REVENUE_START":
+                text = f"Verify whether the disclosed business began earning revenue by {target}."
+            elif cp["metric"] == "CAPEX_SCOPE_UNCLEAR":
+                text = f"Verify {target} capex spending and whether the disclosed amount is total or additional."
+            elif cp["metric"] == "GPU_DEPLOYMENT":
+                text = f"Verify deployed GPU count against management's {target} target."
+            else:
+                text = f"Verify {cp['metric'].lower().replace('_', ' ')} against {target}; confirm the measurement basis and obtain the outcome disclosure."
             matching = next((n for n in watch if n['text'] == text), None)
             if matching:
                 matching['evidence_ids'].append(cp['evidence_id'])
             else:
                 watch.append(note(text, [cp["evidence_id"]]))
+    for statement, _ in selected:
+        if len(watch) >= 5:
+            break
+        factors = set(materiality_details(statement.raw_statement)["factors"])
+        if "ASSET_ASSUMPTION" in factors:
+            watch.append(note("Compare realized asset utilization, pricing and depreciation with management's stated economics.",
+                              [statement.evidence_id], "MANAGEMENT_CLAIM", short_quote(statement.raw_statement, 220).rstrip("…")))
+        elif "DEMAND_CLAIM" in factors and not any("contracts" in row["text"] for row in watch):
+            watch.append(note("Check whether management's demand funnel converts into signed contracts and reported revenue.",
+                              [statement.evidence_id], "MANAGEMENT_CLAIM", short_quote(statement.raw_statement, 220).rstrip("…")))
     if not watch:
         watch.append(note("Check whether the next comparable results confirm the operating trend and provide cash-conversion evidence.", report["results"]["evidence_ids"][:4]))
     result_text = report["investor_conclusion"]["text"].split("The dated P/E")[0].split("The valuation cannot")[0].strip()
@@ -201,14 +241,38 @@ def build_review(db, period, registry, report):
         next_ids = [s.evidence_id for s, _ in selected[:3]] or result_ids
         next_quote = short_quote(selected[0][0].raw_statement, 300).rstrip("…") if selected else None
     paragraphs = [note(result_text, result_ids), note(next_text, next_ids, quote=next_quote)]
-    conclusion = note(("The quarter's operating evidence should be weighed alongside the outstanding commitments. " if checkpoints else
-        "There are no source-backed management commitments to evaluate for this period. ") + credibility + " " + valuation_text,
-        list(dict.fromkeys(result_ids[:2] + valuation_ids))[:8])
+    if checkpoints:
+        dated = next((c for c in checkpoints if c["target_period"] or c["target_date"]), None)
+        capex = next((c for c in checkpoints if c["metric"] == "CAPEX_SCOPE_UNCLEAR"), None)
+        cash_gap = any("cash conversion" in gap.lower() for gap in report.get("research_gaps", []))
+        tests = ["the next dated operating milestone" if dated else "the next reported operating milestone"]
+        if capex:
+            tests.append("clarification of the capital-spending plan")
+        if cash_gap:
+            tests.append("verified cash conversion")
+        test_text = tests[0] if len(tests) == 1 else ", ".join(tests[:-1]) + " and " + tests[-1]
+        conclusion_text = ("Verified results establish this quarter's operating baseline; management's material "
+            "commitments still need measured outcomes. " + credibility + " Evidence on " +
+            test_text + " would materially change confidence in the disclosed growth assumptions.")
+        conclusion_ids = list(dict.fromkeys(result_ids[:2] + [c["evidence_id"] for c in (dated, capex)
+            if c] + valuation_ids))[:8]
+    else:
+        conclusion_text = "There are no source-backed management commitments to evaluate for this period. " + credibility + " " + valuation_text
+        conclusion_ids = list(dict.fromkeys(result_ids[:2] + valuation_ids))[:8]
+    conclusion = note(conclusion_text, conclusion_ids)
     review = {"quarterly_investor_view": paragraphs, "key_developments": developments[:7],
-        "management_signals": signals, "what_changed": [note(c["text"], c["evidence_ids"]) for c in changes[:6]],
+        "management_signals": signals, "what_changed": [note(c["text"], c["evidence_ids"],
+            c.get("basis", "INTERPRETATION"), c.get("source_quote")) for c in changes[:5]],
         "valuation_implication": {"status": valuation_status, **note(valuation_text, valuation_ids)},
         "key_risks": risks[:4], "watch_next_quarter": watch[:6], "investor_conclusion": conclusion}
+    def priority(statement, category):
+        details = materiality_details(statement.raw_statement, annual_revenue_crore=annual_revenue)
+        return details if details["category"] else {
+            "category": category, "tier": "HIGH", "factors": ["TRACKED_CHECKPOINT"]}
+
     packet = {"material_statements": [{"evidence_id": s.evidence_id, "category": category,
+        "tier": priority(s, category)["tier"],
+        "priority_factors": priority(s, category)["factors"],
         "source_quote": short_quote(s.raw_statement, 300).rstrip("…"),
         "speaker": s.speaker_name, "page": s.page_number} for s, category in selected],
         "checkpoints": [{k: c[k] for k in ("evidence_id", "source_statement_id", "metric", "target_period", "target_date", "target", "unit", "status", "actual_outcome", "is_previous", "measurement_note")} for c in checkpoints],

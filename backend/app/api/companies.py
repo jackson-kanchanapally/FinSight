@@ -66,6 +66,10 @@ def delete_company(symbol: str, db: Session = Depends(get_db)) -> None:
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
 
+    from app.models.thesis import ThesisPillar
+    if db.scalar(select(ThesisPillar.id).where(ThesisPillar.company_id == company.id).limit(1)):
+        raise HTTPException(status_code=409, detail="This company has immutable thesis history. Deactivate its pillars to retain the investment audit trail.")
+
     company_id = company.id
     company_symbol = company.symbol
     document_paths = {

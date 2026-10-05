@@ -20,6 +20,8 @@ from app.models.financial import (
 from app.models.analysis import AIAnalysis
 from app.models.memory import DocumentMemoryIndex
 from app.models.checkpoint import InvestorCheckpoint, CheckpointEvaluation
+from app.models.thesis import (ThesisPillar, ThesisPillarRevision, ThesisExpectationRevision,
+                              ThesisEvaluationRun, ThesisPillarEvaluation)
 from app.models.event_analysis import EventAnalysis
 from app.models.market import MarketSnapshot, ValuationSnapshot, ReferenceMetric
 from app.models.commentary import (

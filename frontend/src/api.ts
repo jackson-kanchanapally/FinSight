@@ -725,7 +725,7 @@ function describeError(detail: unknown): string {
   return "The request could not be completed.";
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+export async function request<T>(path: string, options?: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(path, {

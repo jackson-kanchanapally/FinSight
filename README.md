@@ -369,3 +369,13 @@ Apply migration `0017_investor_checkpoints` with `alembic upgrade head`. Results
 ## Phase 7.3 evidence-safe synthesis
 
 The existing AI analysis action now sends Qwen a compact, attributed investor packet and checks each quarterly-review item independently. Supported interpretation survives when another item fails; one bounded repair attempts to fix rejected items. The saved analysis includes item diagnostics and a `review_trace`. Financial values, checkpoint outcomes and valuation verdicts remain Python outputs. `QUARTERLY_REVIEW_TIMEOUT_SECONDS` defaults to 360 for the local quarterly model. See [Phase 7.3 diagnosis, ESDS comparison and tests](docs/phase73-report.md).
+
+## Phase 7.4 investor materiality
+
+The quarterly review now prioritizes dated milestones, capex, funding, demand, and unusual management assumptions before Qwen. “What Changed” describes supported investment-story revisions. The existing validator rejects invented target periods and uncited delays. See [the Phase 7.4 ESDS comparison and tests](docs/phase74-report.md).
+
+## Phase 8 living investment thesis
+
+Financial performance includes **Investment Thesis** for the selected company and scope. When sufficient verified quarterly research exists, Almonds creates a grouped thesis and evaluates it from the saved review automatically. The main view shows the investment case, pillar cards, what is working, what needs proof, risks, and the next big test. **Edit thesis** retains the optional Phase 8 controls for corrections and investor-defined requirements. Revisions and evidence-backed state changes are append-only; historical views read stored records without backdating beliefs. Quarterly reviews include **Thesis Impact**.
+
+Apply `alembic upgrade head` in `backend` for migration `0018_living_thesis`. Companies with retained thesis history must keep that audit trail; deactivate their pillars instead of deleting the company. Run the isolated UI regression with `cd frontend && node scripts/thesis-check.mjs`. See the [Phase 8 implementation report](docs/phase8-report.md) and [Phase 8.1 zero-touch validation](docs/phase81-report.md).
