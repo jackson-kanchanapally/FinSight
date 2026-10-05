@@ -39,6 +39,10 @@ class AnalystNote(StrictText):
     evidence_ids: list[str] = Field(min_length=1, max_length=8)
 
 
+class HistoricalNote(AnalystNote):
+    source_quote: str = Field(min_length=15, max_length=500)
+
+
 class ResultView(StrictText):
     sentiment: Literal["POSITIVE", "NEGATIVE", "NEUTRAL"]
     reason: str = Field(min_length=1, max_length=900)
@@ -174,6 +178,7 @@ class CommentaryDocumentRead(BaseModel):
     source_url: str | None
     document_url: str
     source_priority: int
+    source_references: list[dict[str, str]] = Field(default_factory=list)
 
 
 class GuidanceRead(StrictText):
@@ -209,7 +214,42 @@ class EvidenceNoteRead(StrictText):
     evidence_ids: list[str]
 
 
+class ReviewItem(StrictText):
+    text: str = Field(min_length=1, max_length=800)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=8)
+    basis: Literal["VERIFIED_FACT", "MANAGEMENT_CLAIM", "INTERPRETATION"] = "INTERPRETATION"
+    source_quote: str | None = Field(default=None, max_length=600)
+    signal: Literal["POSITIVE", "NEGATIVE", "MIXED", "WATCH"] = "WATCH"
+    causal_basis: Literal["ESTABLISHED_CAUSE", "MANAGEMENT_EXPLANATION", "INVESTOR_HYPOTHESIS", "UNKNOWN_CAUSE"] | None = None
+
+
+class ReviewValuation(ReviewItem):
+    status: Literal["MORE_CREDIBLE", "UNCHANGED", "LESS_CREDIBLE", "INSUFFICIENT_EVIDENCE"]
+
+
+class QuarterlyInvestorReview(StrictText):
+    quarterly_investor_view: list[ReviewItem] = Field(min_length=2, max_length=4)
+    key_developments: list[ReviewItem] = Field(max_length=7)
+    management_signals: list[ReviewItem] = Field(max_length=5)
+    what_changed: list[ReviewItem] = Field(max_length=6)
+    valuation_implication: ReviewValuation
+    key_risks: list[ReviewItem] = Field(max_length=5)
+    watch_next_quarter: list[ReviewItem] = Field(max_length=6)
+    investor_conclusion: ReviewItem
+
+
+class GeneratedQuarterlyReview(StrictText):
+    quarterly_review: QuarterlyInvestorReview
+
+
 class InvestorReport(StrictText):
+    quarterly_review: QuarterlyInvestorReview | None = None
+    checkpoints: list[dict] = Field(default_factory=list)
+    review_packet: dict = Field(default_factory=dict)
+    execution_summary: str = ""
+    history_note: str = ""
+    material_statement_count: int = 0
+    full_statement_count: int = 0
     results: DeterministicResults
     valuation: DeterministicValuation
     source_documents: list[CommentaryDocumentRead] = Field(default_factory=list)
@@ -218,6 +258,8 @@ class InvestorReport(StrictText):
     management_statements: list[ManagementStatementRead]
     management_guidance: list[GuidanceRead]
     guidance_changes: list[GuidanceChangeRead] = Field(default_factory=list)
+    management_execution_history: list[dict] = Field(default_factory=list)
+    commentary_availability: dict = Field(default_factory=dict)
     claim_comparisons: list[ClaimComparisonRead]
     investor_stance: str = "INSUFFICIENT_EVIDENCE"
     investor_conclusion: EvidenceNoteRead | None = None
@@ -229,6 +271,9 @@ class InvestorReport(StrictText):
 
 
 class AnalystOutput(StrictText):
+    quarterly_review: QuarterlyInvestorReview | None = None
+    review_trace: dict | None = None
+    historical_context: list[HistoricalNote] = Field(default_factory=list, max_length=4)
     summary: str = Field(min_length=1, max_length=1500)
     summary_evidence_ids: list[str] = Field(min_length=1, max_length=8)
     positives: list[Claim] = Field(max_length=8)
@@ -270,6 +315,7 @@ class GeneratedAnalystOutput(AnalystOutput):
     result_view: ResultView
     valuation_assessment: GeneratedValuationView
     research_action: ResearchAction
+    quarterly_review: QuarterlyInvestorReview
 
 
 class AnalysisRead(BaseModel):

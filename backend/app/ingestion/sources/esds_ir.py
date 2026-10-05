@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urljoin, urlsplit
 from zoneinfo import ZoneInfo
 
@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 IR_URL = "https://www.esds.co.in/investor"
 IR_COMPANY_ID = "544898"
 ANNOUNCEMENT_PATH = "/assets/images/investor-relations/Announcements/"
+TRANSCRIPT_PATH = "/assets/images/investor-relations/Quarterly-Financial/"
 MAX_PAGE_BYTES = 1_000_000
 MAX_NEW_DOCUMENTS = 10
 INDIA_TIME = ZoneInfo("Asia/Kolkata")
@@ -46,12 +47,17 @@ def parse_esds_announcement_rows(payload: bytes) -> list[tuple[str, str]]:
         ),
         None,
     )
-    if section is None:
-        raise SourceUnavailableError("ESDS IR announcements section is missing")
     rows = []
-    for row in section.select("tr.esds-vtab-A-v1__doc-row"):
-        title_node = row.select_one(".esds-vtab-A-v1__doc-name")
-        link_node = row.select_one("a.esds-vtab-A-v1__btn-dl[href]")
+    if section is not None:
+        entries = [(row.select_one(".esds-vtab-A-v1__doc-name"),
+                    row.select_one("a.esds-vtab-A-v1__btn-dl[href]"))
+                   for row in section.select("tr.esds-vtab-A-v1__doc-row")]
+    elif current := soup.select_one("#announcements[data-category-panel]"):
+        entries = [(link.select_one("strong"), link)
+                   for link in current.select("a[href]")]
+    else:
+        raise SourceUnavailableError("ESDS IR announcements section is missing")
+    for title_node, link_node in entries:
         if title_node is None or link_node is None:
             raise SourceUnavailableError("ESDS IR announcement row changed")
         title = title_node.get_text(" ", strip=True)
@@ -71,6 +77,78 @@ def parse_esds_announcement_rows(payload: bytes) -> list[tuple[str, str]]:
             )
         rows.append((title, url))
     return rows
+
+
+def parse_esds_transcript_rows(payload: bytes) -> list[tuple[str, str]]:
+    """Read enabled call transcripts from the quarterly financials panel."""
+    if len(payload) > MAX_PAGE_BYTES:
+        raise SourceUnavailableError("ESDS IR page exceeds the size limit")
+    soup = BeautifulSoup(payload, "html.parser")
+    if "ESDS Software Solution Limited" not in soup.get_text(" ", strip=True):
+        raise SourceUnavailableError("ESDS IR issuer identity is missing")
+    panel = soup.select_one("#panel-financial-0")
+    if panel is None:
+        return []
+    periods = {
+        match.group(0).upper().replace(" ", "")
+        for node in panel.select("a[data-quarter-result] [data-quarter-status]")
+        if (match := re.search(r"Q[1-4]\s*FY\s*\d{2,4}", node.get_text(" ", strip=True), re.I))
+    }
+    rows = []
+    for link in panel.select("a[href]"):
+        if link.get("aria-disabled") == "true" or "transcript" not in link.get_text(" ", strip=True).casefold():
+            continue
+        url = urljoin(IR_URL, link["href"])
+        parts = urlsplit(url)
+        if (
+            parts.scheme != "https"
+            or parts.hostname != "www.esds.co.in"
+            or parts.username or parts.password
+            or parts.port not in (None, 443)
+            or not parts.path.startswith(TRANSCRIPT_PATH)
+            or not parts.path.lower().endswith(".pdf")
+        ):
+            raise SourceUnavailableError("ESDS IR transcript has an unapproved document URL")
+        # The current tab has one quarter. Ambiguous tabs need explicit labels.
+        own = re.search(r"Q[1-4]\s*FY\s*\d{2,4}", link.get_text(" ", strip=True), re.I)
+        period = own.group(0).upper().replace(" ", "") if own else next(iter(periods)) if len(periods) == 1 else None
+        if period is None:
+            raise SourceUnavailableError("ESDS IR transcript quarter is ambiguous")
+        rows.append((f"{period} Earnings Call Transcript", url))
+    return rows
+
+
+def _transcript_facts(document: DownloadedDocument, title: str) -> dict:
+    try:
+        with pymupdf.open(stream=document.content, filetype="pdf") as pdf:
+            first_page = pdf[0].get_text() if len(pdf) else ""
+    except Exception as exc:
+        raise SourceUnavailableError("ESDS transcript PDF cannot be read") from exc
+    if not re.search(r"ESDS Software Solution Limited", first_page, re.I):
+        raise SourceUnavailableError("ESDS transcript issuer does not match")
+    period = re.search(r"Q([1-4])\s*FY\s*(20\d{2}|\d{2})", title, re.I)
+    actual = re.search(r"Q([1-4])\s*FY\s*(20\d{2}|\d{2})\s+Earnings Conference Call", first_page, re.I)
+    if not period or not actual or period.group(1) != actual.group(1) or period.group(2)[-2:] != actual.group(2)[-2:]:
+        raise SourceUnavailableError("ESDS transcript reporting period does not match")
+    date_match = re.search(r"\b([A-Za-z]+\s+\d{1,2},\s*20\d{2})\b", first_page)
+    if not date_match:
+        raise SourceUnavailableError("ESDS transcript has no call date")
+    try:
+        call_date = datetime.strptime(date_match.group(1), "%B %d, %Y").date()
+    except ValueError as exc:
+        raise SourceUnavailableError("ESDS transcript call date is malformed") from exc
+    # Last-Modified is a conservative availability bound, not a claim that
+    # the document was first published at that instant.
+    available_at = document.last_modified or datetime.now(timezone.utc)
+    if available_at.date() < call_date:
+        raise SourceUnavailableError("ESDS transcript was modified before its call date")
+    return {
+        "published_at": available_at,
+        "date_basis": "http_last_modified" if document.last_modified else "first_observed",
+        "call_date": call_date.isoformat(),
+        "quarter": int(period.group(1)),
+        "fiscal_year": f"FY20{period.group(2)[-2:]}",
+    }
 
 
 def _pdf_facts(
@@ -239,12 +317,15 @@ class ESDSIRSource(EventSource):
         )
         if company is None:
             return []
-        rows = parse_esds_announcement_rows(await self._fetch_page())
-        self.received_count = len(rows)
+        page = await self._fetch_page()
+        rows = parse_esds_announcement_rows(page)
+        transcript_rows = parse_esds_transcript_rows(page)
+        self.received_count = len(rows) + len(transcript_rows)
         self._documents.clear()
         events: list[SourceEvent] = []
         new_documents = 0
-        for title, url in rows:
+        for title, url in rows + transcript_rows:
+            is_transcript = (title, url) in transcript_rows
             published = company.known_documents.get(url)
             if published is not None and published.tzinfo is None:
                 # SQLite drops timezone data in offline tests; IR dates are local dates.
@@ -254,7 +335,7 @@ class ESDSIRSource(EventSource):
             facts = (
                 {
                     "published_at": published,
-                    "publication_precision": PublicationPrecision.DATE,
+                    "publication_precision": PublicationPrecision.TIMESTAMP if is_transcript else PublicationPrecision.DATE,
                 }
                 if published
                 else None
@@ -268,8 +349,9 @@ class ESDSIRSource(EventSource):
                     break
                 document = await self.downloader.download(url)
                 self._documents[url] = document
-                facts = _pdf_facts(
-                    document, company.external_symbol, company.source_company_id, title
+                facts = (
+                    _transcript_facts(document, title) if is_transcript else
+                    _pdf_facts(document, company.external_symbol, company.source_company_id, title)
                 )
                 new_documents += 1
             if self.bootstrap_since and facts["published_at"] < self.bootstrap_since:
@@ -280,7 +362,7 @@ class ESDSIRSource(EventSource):
                     title=title[:500],
                     description=title,
                     published_at=facts["published_at"],
-                    publication_precision=PublicationPrecision.DATE,
+                    publication_precision=facts.get("publication_precision", PublicationPrecision.TIMESTAMP if is_transcript else PublicationPrecision.DATE),
                     period_end_date=facts.get("period_end_date"),
                     fiscal_year=facts.get("fiscal_year"),
                     quarter=facts.get("quarter"),
@@ -292,8 +374,9 @@ class ESDSIRSource(EventSource):
                         "ir_url": IR_URL,
                         "document_title": title,
                         "document_url": url,
-                        "date_basis": "pdf_letter_date",
+                        "date_basis": facts.get("date_basis", "pdf_letter_date"),
                         "document_date": facts["published_at"].date().isoformat(),
+                        **({"call_date": facts["call_date"]} if "call_date" in facts else {}),
                     },
                 )
             )

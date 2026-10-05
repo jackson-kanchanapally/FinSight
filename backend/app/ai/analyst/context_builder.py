@@ -31,6 +31,9 @@ from app.market.valuation import calculate_valuation
 from app.market.service import latest_snapshot
 from app.services.investor_evidence import extend_results_evidence
 from app.services.investor_report import build_investor_report
+from app.services.memory.analyst import historical_context
+from app.services.materiality import select_material
+from app.services.quarterly_review import statement_evidence
 
 VERIFIED = {
     FactStatus.VERIFIED_PDF,
@@ -227,38 +230,17 @@ def build_context(
     earnings_quality = extend_results_evidence(db, period, registry)
     reasoning = _reasoning_context(db, period, registry, fresh_snapshot)
 
-    statements = list(
+    all_statements = list(
         db.scalars(
             select(ManagementStatement)
             .where(ManagementStatement.financial_period_id == period.id)
             .order_by(
                 ManagementStatement.published_at.desc(), ManagementStatement.id.desc()
             )
-            .limit(12)
         )
     )
-    commentary_items = []
-    for statement in statements:
-        evidence_id = statement.evidence_id
-        excerpt = re.sub(
-            r"(?<![A-Za-z])[-+]?\d[\d,]*(?:\.\d+)?",
-            "[number omitted]",
-            statement.raw_statement,
-        )[:500]
-        item = {
-            "kind": "MANAGEMENT_STATEMENT",
-            "document_id": statement.document_id,
-            "page": statement.page_number,
-            "speaker_name": statement.speaker_name,
-            "speaker_role": statement.speaker_role,
-            "statement_type": statement.statement_type,
-            "topic": statement.topic,
-            "published_at": statement.published_at.isoformat(),
-            "excerpt": excerpt,
-            "document_url": f"/api/documents/{statement.document_id}/file#page={statement.page_number}",
-        }
-        registry[evidence_id] = item
-        commentary_items.append({"evidence_id": evidence_id, **item})
+    for statement, category in select_material(all_statements):
+        registry[statement.evidence_id] = statement_evidence(statement, category)
 
     pages = list(
         db.scalars(
@@ -339,7 +321,13 @@ def build_context(
                 and owner.scope == period.scope
             ):
                 registry[key] = _fact_item(fact, owner)
+    memory = historical_context(db, period, event, registry, report)
+    registry["I_REVIEW"] = {"kind": "REVIEW_CONTEXT",
+        "valuation_implication_status": report["review_packet"]["valuation_implication_status"],
+        "changes": report["review_packet"]["changes"], "history_note": report["history_note"],
+        "research_gaps": report["research_gaps"]}
     payload = {
+        "company_memory": memory,
         "company": company_name,
         "symbol": symbol,
         "period": {
@@ -373,7 +361,8 @@ def build_context(
             if key.startswith("F") and item["period_id"] != period.id
         ],
         "source_excerpts": excerpts,
-        "official_management_commentary": commentary_items,
+        "official_management_commentary": [],
+        "investor_review_packet": json.loads(json.dumps(report["review_packet"])),
         "market_snapshot": (
             {
                 "evidence_id": f"Q{fresh_snapshot.id}",
@@ -399,6 +388,15 @@ def build_context(
             "gap": assessment["expectations_gap"],
         },
         "guidance_execution": report["management_guidance"],
+        "management_execution_history": [
+            {key: row[key] for key in (
+                "evidence_id", "metric", "target_period", "lower_bound",
+                "upper_bound", "unit", "scope", "published_at", "change",
+                "actual_value", "execution_outcome",
+            )}
+            for row in report["management_execution_history"]
+        ],
+        "commentary_availability": report["commentary_availability"],
         "research_gaps": report["research_gaps"],
         "market_data_note": (
             "Use CALCULATED_VALUATION IDs for authoritative ratios. The quote's P/E and legacy PEG "
@@ -483,6 +481,66 @@ def build_context(
             for key, value in (assessment["historical_pe"] or {}).items()
             if key in {"one_year", "three_year", "available_points"}
         }
+        text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    if len(text) > max_chars:
+        # These explanations already live in the system prompt / rendered report.
+        payload.pop("market_data_note", None)
+        payload["research_gaps"] = payload["research_gaps"][:3]
+        payload["growth_comparisons"] = []
+        text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    if len(text) > max_chars:
+        # Build the compact investor packet from the same authoritative inputs.
+        # The full registry and deterministic report remain available for validation.
+        payload.pop("growth_comparisons", None)
+        payload.pop("historical_valuation", None)
+        payload.pop("source_excerpts", None)
+        payload.pop("comparison_facts", None)
+        payload.pop("official_management_commentary", None)
+        payload.pop("research_gaps", None)
+        payload.pop("guidance_execution", None)
+        payload.pop("management_execution_history", None)
+        payload.pop("market_data_note", None)
+        payload["investor_reasoning"] = {k: reasoning[k] for k in (
+            "relationships", "seasonality", "materiality") if k in reasoning}
+        payload["earnings_quality"] = {k: earnings_quality[k] for k in (
+            "text", "evidence_ids", "signals", "basis") if k in earnings_quality}
+        payload["results_signals"] = {k: report["results"][k] for k in ("verdict", "reasons", "evidence_ids")}
+        packet = payload["investor_review_packet"]
+        # Locators and calculation lineage stay in the server evidence registry;
+        # repeating them beside every value displaces useful historical context.
+        for section in ("verified_facts", "deterministic_metrics", "calculated_valuation"):
+            for item in payload[section]:
+                item.pop("input_evidence_ids", None)
+        payload["source"] = {k: v for k, v in payload["source"].items() if k in {"published_at", "document_id"}}
+        packet["checkpoints"] = [{k: c[k] for k in ("evidence_id", "source_statement_id", "metric", "target_period", "target_date", "target", "unit", "status", "is_previous", "measurement_note", "actual_outcome")} for c in packet["checkpoints"]]
+        for checkpoint in packet["checkpoints"]:
+            checkpoint["actual_outcome"] = {k: v for k, v in checkpoint["actual_outcome"].items()
+                if k in {"actual_value", "evidence_ids", "change", "revised_target"} and v is not None and v != []}
+        for statement in packet["material_statements"]:
+            statement.pop("speaker", None)
+            statement.pop("page", None)
+            if len(statement["source_quote"]) > 260:
+                statement["source_quote"] = statement["source_quote"][:260].rsplit(" ", 1)[0]
+        payload["deterministic_metrics"] = [m for m in payload["deterministic_metrics"] if m["metric_code"] in {
+            "REVENUE_YOY", "REVENUE_QOQ", "PAT_YOY", "PAT_QOQ", "EBITDA_MARGIN", "PAT_MARGIN", "EBITDA_MARGIN_CHANGE_BPS"}]
+        text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    while len(text) > max_chars and memory["passages"]:
+        removed = memory["passages"].pop()
+        registry.pop(removed["evidence_id"], None)
+        memory["conflicts"] = [item for item in memory["conflicts"] if item["evidence_id"] != removed["evidence_id"]]
+        retained_guidance = []
+        for item in memory["structured_guidance"]:
+            if any(p["document_id"] == item["document_id"] and p["page"] == item["page"] for p in memory["passages"]):
+                retained_guidance.append(item)
+            else:
+                if item["evidence_id"] not in {
+                    row["evidence_id"] for row in report["management_execution_history"]
+                }:
+                    registry.pop(item["evidence_id"], None)
+        memory["structured_guidance"] = retained_guidance
+        text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    while len(text) > max_chars and len(payload["investor_review_packet"]["material_statements"]) > 7:
+        payload["investor_review_packet"]["material_statements"].pop()
         text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if len(text) > max_chars:
         raise ValueError("CONTEXT_LIMIT_EXCEEDED")

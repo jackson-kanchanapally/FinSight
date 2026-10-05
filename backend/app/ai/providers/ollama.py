@@ -4,6 +4,7 @@ from app.ai.providers.base import LLMError, LLMProvider
 
 
 class OllamaProvider(LLMProvider):
+    supports_quarterly_review = True
     name = "ollama"
 
     def __init__(

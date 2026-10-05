@@ -16,5 +16,14 @@ services:
       timeout: 5s
       retries: 10
 
+  qdrant:
+    image: qdrant/qdrant:v1.18.2
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"
+    volumes:
+      - almonds_qdrant:/qdrant/storage
+
 volumes:
   finsight_postgres:
+  almonds_qdrant:

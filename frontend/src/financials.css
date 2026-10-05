@@ -515,3 +515,15 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+.quarterly-review-item + .quarterly-review-item {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border, #e2e5e9);
+}
+.quarterly-review-item > small {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--muted, #64748b);
+}
+.quarterly-review-item > p { margin: 0.4rem 0; }
+.quarterly-review .ai-supporting article + article { margin-top: 1rem; }

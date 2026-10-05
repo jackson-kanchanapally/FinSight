@@ -20,6 +20,7 @@ import {
 import { displayDate, money, quantity, todayLocal } from "./format";
 import { EventDetails, EventsSection } from "./EventsView";
 import { FinancialsSection } from "./FinancialsView";
+import { CompanyMemory } from "./CompanyMemory";
 
 type DashboardData = {
   companies: Company[];
@@ -772,7 +773,10 @@ function App() {
     setFinancialSymbol(symbol);
     window.location.hash = "valuation";
     setNavHash("#valuation");
-    window.setTimeout(() => document.getElementById("valuation")?.scrollIntoView(), 0);
+    window.setTimeout(
+      () => document.getElementById("valuation")?.scrollIntoView(),
+      0,
+    );
   }
 
   const companies = data?.companies ?? [];
@@ -860,6 +864,9 @@ function App() {
           >
             <Icon name="wallet" /> Companies
           </a>
+          <a href="#memory" className={navHash === "#memory" ? "active" : ""}>
+            <Icon name="search" /> Company Memory
+          </a>
         </nav>
         <div className="sidebar-spacer" />
         <div className="sidebar-note">
@@ -868,7 +875,7 @@ function App() {
           <p>Every position starts with a well-recorded transaction.</p>
         </div>
         <div className="sidebar-footer">
-          <span className="status-dot" /> LOCAL WORKSPACE <span>PHASE 06</span>
+          <span className="status-dot" /> LOCAL WORKSPACE <span>PHASE 07</span>
         </div>
       </aside>
 
@@ -894,8 +901,11 @@ function App() {
         </header>
         <div className="page-content">
           {selectedEventId !== null ? (
-            <EventDetails eventId={selectedEventId} onBack={closeEvent}
-              onViewValuation={viewCompanyValuation} />
+            <EventDetails
+              eventId={selectedEventId}
+              onBack={closeEvent}
+              onViewValuation={viewCompanyValuation}
+            />
           ) : (
             <>
               <div className="hero">
@@ -1124,9 +1134,16 @@ function App() {
                     error={eventsError}
                     onCheck={checkEvents}
                     onOpen={openEvent}
-                    onUploaded={async id => { await loadEvents(); openEvent(id); }}
+                    onUploaded={async (id) => {
+                      await loadEvents();
+                      openEvent(id);
+                    }}
                   />
-                  <FinancialsSection companies={companies} requestedSymbol={financialSymbol} />
+                  <FinancialsSection
+                    companies={companies}
+                    requestedSymbol={financialSymbol}
+                  />
+                  <CompanyMemory companies={companies} />
 
                   <section id="holdings" className="section-block">
                     <div className="section-heading">

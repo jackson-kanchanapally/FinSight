@@ -53,6 +53,7 @@ class DownloadedDocument:
     content: bytes
     mime_type: str
     file_name: str
+    last_modified: datetime | None = None
 
 
 class EventSource(ABC):

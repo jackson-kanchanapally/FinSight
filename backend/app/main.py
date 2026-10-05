@@ -11,6 +11,7 @@ from app.api import (
     events,
     financials,
     market,
+    memory,
     portfolio,
     transactions,
     valuation,
@@ -108,6 +109,7 @@ app.include_router(financials.router)
 app.include_router(analysis.router)
 app.include_router(market.router)
 app.include_router(valuation.router)
+app.include_router(memory.router)
 
 
 @app.get("/health", tags=["health"])

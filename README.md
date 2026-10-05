@@ -354,6 +354,18 @@ The results report separates business results, scenario valuation and investor s
 
 Apply migration `0014_investor_scenarios` with `alembic upgrade head`. See [Phase 6.3 implementation and regression results](docs/phase63-report.md) for the assumptions, ESDS/Eternal outcomes, tests and limitations.
 
-## Next phase
+## Phase 7 company memory
 
-Phase 6 can add company memory and retrieval over historical official documents. Additional PDF formats need source-specific validation. Authentication is required before exposing monitoring outside a local environment.
+Company Memory indexes existing parsed document pages into local Qdrant with `nomic-embed-text` embeddings. PostgreSQL remains authoritative for structured facts and guidance. Company/date filters, source-page references and bounded historical context feed the existing analyst; financial analysis remains usable when retrieval is unavailable.
+
+Apply migration `0015_company_memory` with `alembic upgrade head`. Start a local Qdrant instance (`docker compose up -d qdrant` for a fresh setup), run `ollama pull nomic-embed-text`, then select **Company Memory → Index / update documents**. The existing local Qdrant instance can be reused through `QDRANT_BASE_URL`; do not start a second service on the same port. See [Phase 7 architecture, APIs, evaluation and corpus limitations](docs/phase7-report.md).
+
+## Phase 7.2 quarterly investor review
+
+In **Financial performance → company → consolidated/standalone period → AI analysis**, the primary report is now a concise quarterly investor review. **View full commentary** retains the complete transcript and page links; calculations and valuation scenarios remain in a separate disclosure panel.
+
+Apply migration `0017_investor_checkpoints` with `alembic upgrade head`. Results/commentary updates refresh the deterministic review and source-backed checkpoints. Use the existing AI analysis action for Qwen interpretation; rejected model output preserves the deterministic review. See [Phase 7.2 implementation, ESDS checkpoints and validation](docs/phase72-report.md).
+
+## Phase 7.3 evidence-safe synthesis
+
+The existing AI analysis action now sends Qwen a compact, attributed investor packet and checks each quarterly-review item independently. Supported interpretation survives when another item fails; one bounded repair attempts to fix rejected items. The saved analysis includes item diagnostics and a `review_trace`. Financial values, checkpoint outcomes and valuation verdicts remain Python outputs. `QUARTERLY_REVIEW_TIMEOUT_SECONDS` defaults to 360 for the local quarterly model. See [Phase 7.3 diagnosis, ESDS comparison and tests](docs/phase73-report.md).

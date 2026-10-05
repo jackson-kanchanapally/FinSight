@@ -174,6 +174,14 @@ def validate_output(
     )
     _check_semantics(result.summary, result.summary_evidence_ids, registry, "summary")
     all_text = [result.summary, *result.questions, *result.data_quality_notes]
+    for note in result.historical_context:
+        _require_known(note.evidence_ids, registry, "historical_context")
+        sources = [registry[key] for key in note.evidence_ids if registry[key]["kind"] == "MEMORY_CHUNK"]
+        if not sources or not any(note.source_quote in item.get("excerpt", "") for item in sources):
+            raise InvalidAnalysis("HISTORICAL_QUOTE_NOT_IN_SOURCE", field="historical_context")
+        _check_numbers(note.text, registry, period_year, note.evidence_ids, "historical_context")
+        _check_semantics(note.text, note.evidence_ids, registry, "historical_context")
+        all_text.append(note.text)
     for field, claims in (
         ("positives", result.positives),
         ("concerns", result.concerns),
@@ -314,7 +322,7 @@ def validate_output(
             )
             all_text.append(gap.question)
     if result.management_commentary and not any(
-        registry[item].get("kind") in {"DOCUMENT_PAGE", "MANAGEMENT_STATEMENT"}
+        registry[item].get("kind") in {"DOCUMENT_PAGE", "MANAGEMENT_STATEMENT", "MEMORY_CHUNK"}
         and re.search(
             r"\b(?:management|director|ceo|cfo|chairman|guidance|outlook)\b",
             registry[item].get("excerpt", ""),
@@ -332,11 +340,13 @@ def validate_output(
     )
     if RECOMMENDATION.search(" ".join(all_text)):
         raise InvalidAnalysis("RECOMMENDATION_FORBIDDEN")
+    if result.quarterly_review is not None:
+        validate_quarterly_review(result.quarterly_review, registry, period_year)
     for text in [*result.questions, *result.data_quality_notes]:
         _check_valuation_judgment(text, [], registry, "questions_or_data_quality_notes")
     for phrase in UNSUPPORTED_CAUSE.finditer(" ".join(all_text)):
         if not any(
-            item["kind"] in {"DOCUMENT_PAGE", "MANAGEMENT_STATEMENT"}
+            item["kind"] in {"DOCUMENT_PAGE", "MANAGEMENT_STATEMENT", "MEMORY_CHUNK"}
             and phrase.group().lower() in item.get("excerpt", "").lower()
             for item in registry.values()
         ):
@@ -351,6 +361,97 @@ def _claim_text(claim) -> str:
         return " ".join((claim.title, claim.explanation))
     return " ".join((claim.metric, claim.change, claim.interpretation))
 
+
+def validate_quarterly_review(review, registry, period_year):
+    sections = ("quarterly_investor_view", "key_developments", "management_signals",
+                "what_changed", "key_risks", "watch_next_quarter")
+    notes = [(section, note) for section in sections for note in getattr(review, section)]
+    notes += [("valuation_implication", review.valuation_implication), ("investor_conclusion", review.investor_conclusion)]
+    if sum(len(note.text.split()) for _, note in notes) > 750:
+        raise InvalidAnalysis("REVIEW_NOT_CONCISE", field="quarterly_review")
+    for section, note in notes:
+        validate_review_item(note, section, registry, period_year)
+
+
+def validate_review_item(note, section, registry, period_year):
+    """Apply the existing strict checks to one generated investor claim."""
+    field = "quarterly_review." + section
+    if section == "valuation_implication":
+        expected = registry.get("I_REVIEW", {}).get("valuation_implication_status")
+        if expected and note.status != expected:
+            raise InvalidAnalysis("DETERMINISTIC_FIELD_MISMATCH", field=field, expected=expected)
+        if expected and "I_REVIEW" not in note.evidence_ids:
+            raise InvalidAnalysis("REVIEW_EVIDENCE_REQUIRED", field=field, expected="I_REVIEW")
+    if not note.evidence_ids:
+        raise InvalidAnalysis("REVIEW_EVIDENCE_REQUIRED", field=field)
+    _require_known(note.evidence_ids, registry, field)
+    _check_numbers(note.text, registry, period_year, note.evidence_ids, field)
+    _check_semantics(note.text, note.evidence_ids, registry, field)
+    if RECOMMENDATION.search(note.text):
+        raise InvalidAnalysis("RECOMMENDATION_FORBIDDEN", field=field)
+    sources = [registry[k] for k in note.evidence_ids]
+    statements = [s for s in sources if s["kind"] == "MANAGEMENT_STATEMENT"]
+    linked_statements = [registry[s["source_statement_id"]] for s in sources
+        if s["kind"] == "CHECKPOINT_RECORD" and s.get("source_statement_id") in registry]
+    attributable = statements + linked_statements
+    memory = [s for s in sources if s["kind"] == "MEMORY_CHUNK"]
+    if note.source_quote and not any(note.source_quote in s.get("source_quote", s.get("excerpt", "")) for s in attributable + memory):
+        raise InvalidAnalysis("MANAGEMENT_QUOTE_NOT_IN_SOURCE" if attributable else "QUOTE_NOT_IN_CITED_EVIDENCE", field=field)
+    if memory and not statements and (not note.source_quote or not any(note.source_quote in s.get("excerpt", "") for s in memory)):
+        raise InvalidAnalysis("HISTORICAL_QUOTE_NOT_IN_SOURCE", field=field)
+    if note.basis == "VERIFIED_FACT" and (not any(s["kind"] in {"FACT", "METRIC", "VALUATION"} for s in sources)
+            or any(s["kind"] in {"MANAGEMENT_STATEMENT", "MEMORY_CHUNK", "CHECKPOINT_RECORD"} for s in sources)):
+        raise InvalidAnalysis("MANAGEMENT_CLAIM_IS_NOT_FACT", field=field)
+    if note.basis == "VERIFIED_FACT" and re.search(
+        r"\b(?:suggests?|suggested|suggesting|may|might|could|possible|potential)\b", note.text, re.I
+    ):
+        raise InvalidAnalysis("INTERPRETATION_MISCLASSIFIED", field=field)
+    attributed = bool(re.search(r"management|company (?:says|said|expects|targets|plans)|according to", note.text, re.I))
+    attributed = attributed or any(s.get("speaker_name") and re.search(
+        r"\b" + re.escape(s["speaker_name"]) + r"\b", note.text, re.I)
+        for s in attributable)
+    if note.basis == "MANAGEMENT_CLAIM" or statements:
+        if not note.source_quote or not any(note.source_quote in s.get("source_quote", s.get("excerpt", "")) for s in attributable):
+            raise InvalidAnalysis("MANAGEMENT_QUOTE_NOT_IN_SOURCE", field=field)
+        if not attributed:
+            raise InvalidAnalysis("MANAGEMENT_ATTRIBUTION_REQUIRED", field=field)
+    # Causal language needs a declared evidence basis. Arithmetic PAT bridges
+    # establish component contributions, not explanations of operations.
+    causal = note.causal_basis
+    if causal == "ESTABLISHED_CAUSE":
+        if note.basis != "VERIFIED_FACT" or not any(
+            s.get("metric_code", "").startswith("PAT_BRIDGE_") for s in sources
+        ):
+            raise InvalidAnalysis("CAUSAL_BASIS_UNSUPPORTED", field=field)
+        if re.search(r"\brevenue\b[^.;]{0,90}\b(?:driven by|due to|because of|aided by|boosted by)\b",
+                     note.text, re.I):
+            raise InvalidAnalysis("CAUSAL_BASIS_UNSUPPORTED", field=field)
+    elif causal == "MANAGEMENT_EXPLANATION":
+        if not attributable or not note.source_quote or not attributed:
+            raise InvalidAnalysis("CAUSAL_ATTRIBUTION_REQUIRED", field=field)
+    elif causal == "INVESTOR_HYPOTHESIS":
+        if note.basis != "INTERPRETATION" or not re.search(r"\b(could|may|might|if|would|depends|requires?)\b", note.text, re.I):
+            raise InvalidAnalysis("CAUSAL_HYPOTHESIS_NOT_CONDITIONAL", field=field)
+    elif causal == "UNKNOWN_CAUSE":
+        if not re.search(r"\b(unknown|unverified|not established|not known|cannot establish|unclear)\b", note.text, re.I):
+            raise InvalidAnalysis("UNKNOWN_CAUSE_NOT_STATED", field=field)
+    elif re.search(r"\b(driven by|due to|because of|resulted from|caused by|aided by|supported by|helped by|boosted by|lifted by)\b", note.text, re.I):
+        raise InvalidAnalysis("CAUSAL_BASIS_REQUIRED", field=field)
+    for match in re.finditer(r"\b(delivered|missed|delayed|withdrawn|on track)\b", note.text, re.I):
+        status = match[1].upper().replace(" ", "_")
+        records = [s for s in sources if s["kind"] == "CHECKPOINT_RECORD" and s["status"] == status]
+        # A directly quoted reported delay is a claim, not a checkpoint outcome.
+        reported_delay = status == "DELAYED" and note.basis == "MANAGEMENT_CLAIM" and re.search(r"delay|postpon", note.source_quote or "", re.I)
+        if not records and not reported_delay:
+            raise InvalidAnalysis("CHECKPOINT_OUTCOME_UNSUPPORTED", field=field)
+        if re.search(r"repeated|consistently|recurring", note.text, re.I) and len({r.get("target_period") for r in records}) < 2:
+            raise InvalidAnalysis("HISTORICAL_EXECUTION_UNSUPPORTED", field=field)
+    if section == "what_changed":
+        known = registry.get("I_REVIEW", {}).get("changes", [])
+        supported = any(set(item["evidence_ids"]).issubset(note.evidence_ids) for item in known)
+        dated = {s.get("published_at", "")[:10] for s in sources if s["kind"] in {"MEMORY_CHUNK", "MANAGEMENT_STATEMENT"}} - {""}
+        if not supported and len(dated) < 2:
+            raise InvalidAnalysis("HISTORICAL_CHANGE_UNSUPPORTED", field=field)
 
 def _validate_claim_numbers(
     claim, field: str, registry: dict[str, dict], period_year: int
@@ -420,7 +521,41 @@ def _check_semantics(
     text: str, evidence_ids: list[str], registry: dict[str, dict], field: str
 ) -> None:
     _check_valuation_judgment(text, evidence_ids, registry, field)
+    if any(registry[key]["kind"] in {"MEMORY_CHUNK", "GUIDANCE_RECORD"} for key in evidence_ids):
+        for claim in re.finditer(r"\b(missed|achieved|delivered|exceeded)\b", text, re.I):
+            required = {"missed": {"MISSED"}, "achieved": {"ACHIEVED", "EXCEEDED"},
+                        "delivered": {"ACHIEVED", "EXCEEDED"}, "exceeded": {"EXCEEDED"}}[claim.group().lower()]
+            outcomes = [registry[key] for key in evidence_ids if registry[key]["kind"] == "GUIDANCE_RECORD"
+                        and registry[key].get("execution_outcome") in required]
+            periods = {item["target_period"] for item in outcomes}
+            minimum = 2 if re.search(r"\b(?:repeatedly|consistently|recurring)\b", text, re.I) else 1
+            if len(periods) < minimum:
+                raise InvalidAnalysis("HISTORICAL_EXECUTION_UNSUPPORTED", field=field)
+    for phrase in UNSUPPORTED_CAUSE.finditer(text):
+        if not any(registry[key]["kind"] in {"DOCUMENT_PAGE", "MANAGEMENT_STATEMENT", "MEMORY_CHUNK"}
+                   and phrase.group().lower() in registry[key].get("excerpt", "").lower() for key in evidence_ids):
+            raise InvalidAnalysis("UNSUPPORTED_CAUSAL_EXPLANATION", token=phrase.group(), field=field)
     lowered = text.lower()
+    if field.startswith("quarterly_review.") and re.search(
+        r"\bno (?:(?:prior|previous)\s+)?comparable (?:data|period|results)\b", lowered
+    ) and any(item["kind"] == "METRIC" and item.get("metric_code", "").endswith(("_YOY", "_QOQ"))
+              for item in registry.values()):
+        raise InvalidAnalysis("COMPARABLE_DATA_CONTRADICTION", field=field)
+    if field.startswith("quarterly_review.") and re.search(
+        r"\b(?:strong|robust|exceptional|weak)\s+(?:(?:yoy|qoq|revenue|pat|earnings)\s+)*growth\b",
+        lowered,
+    ):
+        raise InvalidAnalysis("UNSUPPORTED_QUALITATIVE_STRENGTH", field=field)
+    if field.startswith("quarterly_review.") and re.search(
+        r"\b(?:unavailable|not (?:separately )?verified|too short|insufficient coverage)\b", lowered
+    ):
+        gap_text = " ".join(registry.get("I_REVIEW", {}).get("research_gaps", [])).lower()
+        gap_topics = ("cash conversion", "working-capital", "historical valuation",
+                      "representative p/e range", "peer valuation", "peer or quality premium")
+        for topic in gap_topics:
+            if topic in lowered:
+                if "I_REVIEW" not in evidence_ids or topic not in gap_text:
+                    raise InvalidAnalysis("RESEARCH_GAP_UNSUPPORTED", token=topic, field=field)
     codes = {
         registry[item]["metric_code"]
         for item in evidence_ids
@@ -592,6 +727,20 @@ def _check_numbers(
         item = registry[evidence_id]
         if item.get("period_end"):
             supported_dates.add(item["period_end"])
+        if item["kind"] in {"MEMORY_CHUNK", "GUIDANCE_RECORD"} and item.get("published_at"):
+            supported_dates.add(item["published_at"][:10])
+        if item["kind"] == "GUIDANCE_RECORD":
+            for key in ("lower_bound", "upper_bound", "actual_value"):
+                if item.get(key) is not None:
+                    _add_value(allowed, item[key])
+                    _add_negative_value(negative_allowed, item[key])
+        if item["kind"] == "CHECKPOINT_RECORD":
+            for value in [*item.get("target", {}).values(), item.get("actual_outcome", {}).get("actual_value")]:
+                if value is not None:
+                    _add_value(allowed, str(value))
+                    _add_negative_value(negative_allowed, str(value))
+            if item.get("target_date"):
+                supported_dates.add(item["target_date"])
         if item["kind"] in {"FACT", "METRIC"}:
             _add_value(allowed, item["value"])
             _add_negative_value(negative_allowed, item["value"])

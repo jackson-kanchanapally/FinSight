@@ -170,13 +170,12 @@ def save_event(
         )
         db.add(event)
         db.flush()
-    elif (
-        matching_document
-        and normalized.event_type == EventType.FINANCIAL_RESULTS
-        and event.event_type != EventType.FINANCIAL_RESULTS
+    elif matching_document and (
+        normalized.event_type == EventType.FINANCIAL_RESULTS
+        or event.event_type == EventType.OTHER and normalized.event_type != EventType.OTHER
     ):
-        # A later official reference can classify an earlier manual upload without
-        # replacing the original event/document provenance.
+        # A later official reference can classify an earlier manual upload
+        # without replacing the original event/document provenance.
         event.event_type = normalized.event_type
     same_observation = not normalized.external_id and db.scalar(
         select(EventReference).where(

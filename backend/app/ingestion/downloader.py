@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import re
+from email.utils import parsedate_to_datetime
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
@@ -114,10 +115,19 @@ class SafePdfDownloader:
                             PurePosixPath(urlsplit(url).path).name or "document.pdf"
                         )
                         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", raw_name)[:100]
+                        last_modified = None
+                        if header := response.headers.get("last-modified"):
+                            try:
+                                parsed = parsedate_to_datetime(header)
+                                if parsed.tzinfo is not None:
+                                    last_modified = parsed
+                            except (TypeError, ValueError):
+                                pass
                         document = DownloadedDocument(
                             bytes(content),
                             response.headers.get("content-type", ""),
                             safe_name,
+                            last_modified,
                         )
                         validate_pdf(document, self.max_bytes)
                         return document

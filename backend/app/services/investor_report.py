@@ -10,9 +10,10 @@ from app.models.commentary import (
     ManagementGuidance,
     ManagementStatement,
 )
-from app.models.event import Document
-from app.models.financial import FinancialPeriod, MetricCode, PeriodType
-from app.services.commentary import guidance_change, guidance_vs_actual
+from app.models.event import CompanyEvent, Document
+from app.models.financial import FinancialPeriod
+from app.services.commentary import commentary_availability
+from app.services.memory.service import guidance_record, local_day
 from app.services.investor_verdict import results_verdict
 from app.market.expectations import scenario_assessment
 
@@ -35,6 +36,7 @@ def build_investor_report(
     source_documents = []
     for link in associated:
         document = db.get(Document, link.document_id)
+        event = db.get(CompanyEvent, link.event_id)
         source_documents.append(
             {
                 "document_id": link.document_id,
@@ -45,6 +47,10 @@ def build_investor_report(
                 "source_url": document.source_url if document else None,
                 "document_url": f"/api/documents/{link.document_id}/file",
                 "source_priority": link.source_priority,
+                "source_references": [
+                    {"source": ref.source, "source_url": ref.source_url}
+                    for ref in event.references
+                ] if event else [],
             }
         )
     statements = list(
@@ -61,7 +67,9 @@ def build_investor_report(
             .order_by(ManagementGuidance.published_at, ManagementGuidance.id)
         )
     )
-    metric_values = {item.metric_code: item.value for item in period.metrics}
+    result_event = db.get(CompanyEvent, period.source_event_id)
+    as_of_date = max([local_day(result_event.published_at)] +
+        [local_day(link.published_at) for link in associated])
     metric_registry = {
         item["metric_code"]: (key, Decimal(item["value"]))
         for key, item in registry.items()
@@ -135,37 +143,8 @@ def build_investor_report(
         )
     guidance_items = []
     for item in guidance:
-        earlier = db.scalar(
-            select(ManagementGuidance)
-            .where(
-                ManagementGuidance.company_id == item.company_id,
-                ManagementGuidance.metric == item.metric,
-                ManagementGuidance.target_period == item.target_period,
-                ManagementGuidance.published_at < item.published_at,
-            )
-            .order_by(
-                ManagementGuidance.published_at.desc(), ManagementGuidance.id.desc()
-            )
-        )
-        actual = None
-        if period.period_type == PeriodType.ANNUAL:
-            code = {
-                "REVENUE_GROWTH": MetricCode.REVENUE_YOY,
-                "PAT_GROWTH": MetricCode.PAT_YOY,
-            }.get(item.metric)
-            actual = metric_values.get(code) if code else None
-        actual_period = (
-            "FY" + period.fiscal_year[-2:]
-            if period.period_type == PeriodType.ANNUAL
-            else None
-        )
-        actual_comparison = guidance_vs_actual(item, actual, actual_period)
-        execution = {
-            "ABOVE_GUIDANCE": "EXCEEDED",
-            "WITHIN_GUIDANCE": "ACHIEVED",
-            "BELOW_GUIDANCE": "MISSED",
-            "TOO_EARLY_TO_ASSESS": "NOT_YET_ASSESSABLE",
-        }.get(actual_comparison, "INSUFFICIENT_DATA")
+        statement = db.get(ManagementStatement, item.statement_id)
+        record = guidance_record(db, item, statement, as_of_date)
         guidance_items.append(
             {
                 "id": item.id,
@@ -176,13 +155,25 @@ def build_investor_report(
                 "upper_bound": str(item.upper_bound),
                 "unit": item.unit,
                 "published_at": item.published_at.isoformat(),
-                "change": (
-                    guidance_change(earlier, item) if earlier else "FIRST_OBSERVATION"
-                ),
-                "actual_comparison": actual_comparison,
-                "execution_outcome": execution,
+                "change": record["change"],
+                "actual_comparison": record["actual_comparison"],
+                "execution_outcome": record["execution_outcome"],
             }
         )
+    history = []
+    all_guidance = db.execute(select(ManagementGuidance, ManagementStatement)
+        .join(ManagementStatement, ManagementGuidance.statement_id == ManagementStatement.id)
+        .join(FinancialPeriod, ManagementGuidance.financial_period_id == FinancialPeriod.id)
+        .where(ManagementGuidance.company_id == period.company_id,
+               FinancialPeriod.scope == period.scope,
+               ManagementGuidance.published_at <= max([result_event.published_at] +
+                   [link.published_at for link in associated]))
+        .order_by(ManagementGuidance.published_at.desc(), ManagementGuidance.id.desc())
+        .limit(24)).all()
+    for row, statement in reversed(all_guidance):
+        record = guidance_record(db, row, statement, as_of_date)
+        history.append(record)
+        registry[record["evidence_id"]] = record
     guidance_changes = []
     for statement in statements:
         if statement.statement_type == "GUIDANCE_WITHDRAWN":
@@ -302,7 +293,7 @@ def build_investor_report(
     research_gaps.append(
         "Verified comparable peer valuations are unavailable; no peer or quality premium is applied."
     )
-    return {
+    report = {
         "results": results,
         "valuation": {
             "verdict": verdict,
@@ -330,6 +321,11 @@ def build_investor_report(
         "valuation_challenges": valuation_challenges,
         "management_statements": statement_items,
         "management_guidance": guidance_items,
+        "management_execution_history": history,
+        "commentary_availability": commentary_availability(db, period),
         "guidance_changes": guidance_changes,
         "claim_comparisons": comparisons,
     }
+    from app.services.quarterly_review import build_review
+    report.update(build_review(db, period, registry, report))
+    return report

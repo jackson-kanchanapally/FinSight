@@ -34,6 +34,7 @@ from app.models.event import (
 )
 from app.services.events.event_service import save_event
 from app.services.financials.service import process_financial_event
+from app.services.commentary import is_commentary_candidate, refresh_commentary_for_company
 from app.services.portfolio import get_positions
 
 logger = logging.getLogger(__name__)
@@ -217,6 +218,9 @@ async def check_for_events(
                     )
                     if normalized is None:
                         continue
+                    was_known = existing_reference(
+                        db, normalized.source, normalized.external_id
+                    ) is not None
                     summary.company_matches += 1
                     summary.portfolio_matches += 1
                     source_matches += 1
@@ -267,6 +271,19 @@ async def check_for_events(
                                         "source": source.name,
                                     },
                                 )
+                    if (stored or not was_known) and is_commentary_candidate(
+                        normalized.event_type, normalized.title
+                    ):
+                        try:
+                            await asyncio.to_thread(
+                                refresh_commentary_for_company,
+                                db.get_bind(), normalized.company_id,
+                            )
+                        except Exception:
+                            logger.exception("commentary.auto_process_failed", extra={
+                                "company_id": normalized.company_id,
+                                "source": source.name,
+                            })
                     summary.new_events += int(is_new)
                     source_new += int(is_new)
                     summary.documents_downloaded += int(stored)

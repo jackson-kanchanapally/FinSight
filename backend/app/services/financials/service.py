@@ -612,6 +612,8 @@ def process_financial_event(
             else None
         ),
     )
+    from app.services.quarterly_review import refresh_quarterly_reviews
+    refresh_quarterly_reviews(db, event.company_id)
     return {
         "event_id": event.id,
         "document_id": document.id,

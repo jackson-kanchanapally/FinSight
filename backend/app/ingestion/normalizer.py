@@ -7,6 +7,10 @@ from app.ingestion.sources.base import MonitoredCompany, SourceEvent
 from app.models.event import DataOrigin, EventType, PublicationPrecision, ReportingBasis
 
 RULES: tuple[tuple[EventType, str], ...] = (
+    (EventType.CONCALL_TRANSCRIPT, r"(?:con\.?\s*call|earnings|conference call|analyst call).{0,35}transcript|transcript.{0,35}(?:con\.?\s*call|earnings|conference call)"),
+    (EventType.CONCALL_AUDIO, r"(?:con\.?\s*call|earnings|conference call).{0,45}(?:audio|video|recording)|(?:audio|video)\s*(?:recording|link).{0,45}(?:con\.?\s*call|earnings|conference call)"),
+    (EventType.EARNINGS_RELEASE, r"earnings\s*(?:/|and|&)\s*press release|(?:earnings|results|press)\s+release|press release.{0,35}(?:results|earnings)"),
+    (EventType.INVESTOR_PRESENTATION, r"investor presentation|earnings presentation|corporate presentation"),
     (
         EventType.FINANCIAL_RESULTS,
         r"financial results|quarterly results|annual results|\bq[1-4]\s*fy\s*\d{2,4}\s+results\b",
@@ -14,9 +18,8 @@ RULES: tuple[tuple[EventType, str], ...] = (
     (EventType.BOARD_MEETING, r"board meeting"),
     (
         EventType.EARNINGS_CALL,
-        r"earnings call|earnings conference call|analyst call|investor call|analysts?/institutional investor meet|investor meet",
+        r"earnings call|earnings conference call|analyst call|investor call|analysts?/institutional investor meet|investor meet|con\.?\s*call updates?",
     ),
-    (EventType.INVESTOR_PRESENTATION, r"investor presentation|earnings presentation"),
     (EventType.ANNUAL_REPORT, r"annual report"),
     (EventType.ORDER_CANCELLATION, r"order cancellation|contract cancellation"),
     (EventType.ORDER_WIN, r"order win|contract award|new order"),

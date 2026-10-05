@@ -31,10 +31,22 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:8b"
     ollama_timeout_seconds: float = Field(default=120, ge=1, le=600)
+    quarterly_review_timeout_seconds: float = Field(default=360, ge=30, le=900)
     ollama_num_ctx: int = Field(default=8192, ge=4096, le=32768)
     ai_temperature: float = Field(default=0.1, ge=0, le=1)
     ai_max_context_chars: int = Field(default=24000, ge=2000, le=50000)
     ai_max_document_chars: int = Field(default=1800, ge=0, le=10000)
+    company_memory_enabled: bool = True
+    qdrant_base_url: str = "http://localhost:6333"
+    memory_collection: str = "almonds_company_memory_v1"
+    memory_embedding_model: str = "nomic-embed-text:latest"
+    memory_embedding_dimensions: int = Field(default=768, ge=1)
+    memory_timeout_seconds: float = Field(default=5, ge=0.1, le=60)
+    memory_embedding_timeout_seconds: float = Field(default=45, ge=1, le=120)
+    memory_chunk_chars: int = Field(default=1600, ge=400, le=4000)
+    memory_overlap_chars: int = Field(default=160, ge=0, le=300)
+    memory_context_chars: int = Field(default=2400, ge=400, le=6000)
+    memory_min_score: float = Field(default=0.35, ge=0, le=1)
 
     model_config = SettingsConfigDict(
         env_file="../.env", env_file_encoding="utf-8", extra="ignore"

@@ -18,6 +18,8 @@ from app.models.financial import (
     FinancialProcessingRun,
 )
 from app.models.analysis import AIAnalysis
+from app.models.memory import DocumentMemoryIndex
+from app.models.checkpoint import InvestorCheckpoint, CheckpointEvaluation
 from app.models.event_analysis import EventAnalysis
 from app.models.market import MarketSnapshot, ValuationSnapshot, ReferenceMetric
 from app.models.commentary import (
@@ -44,6 +46,7 @@ __all__ = [
     "FinancialMetric",
     "FinancialProcessingRun",
     "AIAnalysis",
+    "DocumentMemoryIndex",
     "EventAnalysis",
     "MarketSnapshot",
     "ValuationSnapshot",

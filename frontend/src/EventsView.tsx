@@ -143,7 +143,7 @@ export function EventsSection({
         short AI brief.
       </p>
       <details className="event-upload">
-        <summary>Upload a company PDF for testing</summary>
+        <summary>Upload a company PDF</summary>
         <form className="event-upload-form" onSubmit={upload}>
           <label>Company<select required value={uploadSymbol} onChange={event => setUploadSymbol(event.target.value)}>
             <option value="">Select a company</option>
@@ -153,7 +153,9 @@ export function EventsSection({
           <label>Document date<input required type="date" max={todayLocal()} value={uploadDate} onChange={event => setUploadDate(event.target.value)} /></label>
           <label>Event type<select value={uploadType} onChange={event => setUploadType(event.target.value)}>
             <option value="OTHER">Other</option><option value="FINANCIAL_RESULTS">Financial results</option>
-            <option value="EARNINGS_CALL">Earnings call or transcript</option>
+            <option value="EARNINGS_CALL">Earnings call document</option>
+            <option value="CONCALL_TRANSCRIPT">Earnings call transcript</option>
+            <option value="EARNINGS_RELEASE">Earnings or results release</option>
             <option value="INVESTOR_PRESENTATION">Investor presentation</option>
             <option value="ANNUAL_REPORT">Annual report</option>
           </select></label>
@@ -161,7 +163,7 @@ export function EventsSection({
           <label>PDF file<input required type="file" accept="application/pdf,.pdf" onChange={event => setUploadFile(event.target.files?.[0] || null)} /></label>
           <button className="button button-outline button-small" disabled={uploading || !companies.length}>{uploading ? "Uploading…" : "Add PDF"}</button>
         </form>
-        <p className="events-intro">Uploads retain manual provenance. Select Financial results for a results PDF, then open its event and process it. Values are checked against readable PDF tables before they appear in Financials. Image-only PDFs need OCR, which is not enabled.</p>
+        <p className="events-intro">Uploads retain manual provenance. Select Financial results for a results PDF, then open its event and process it. Presentation, release, and transcript PDFs are linked to a matching result period and indexed for Management Commentary when their date and period can be established. Image-only PDFs need OCR, which is not enabled.</p>
         {uploadError && <p className="event-error" role="alert">{uploadError}</p>}
       </details>
       {summary && (

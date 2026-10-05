@@ -1,8 +1,26 @@
 import { useState, type ReactNode } from "react";
 import type { AIAnalysis, InvestorReport, TestedPERange } from "./api";
 import { TestedPEPanel } from "./TestedPEPanel";
+import { QuarterlyReviewPanel } from "./QuarterlyReview";
 
-export function InvestorJudgmentReport({
+type ReportProps = {
+  analysis: AIAnalysis; report: InvestorReport; symbol: string; scope: string;
+  evidence: (ids: string[]) => ReactNode; onScenarioSaved: () => void;
+};
+
+export function InvestorJudgmentReport(props: ReportProps) {
+  const review = props.analysis.structured_output?.quarterly_review || props.report.quarterly_review;
+  if (!review) return <InvestorJudgmentDetails {...props} />;
+  return <>
+    <QuarterlyReviewPanel analysis={props.analysis} report={props.report} review={review} evidence={props.evidence} />
+    <details className="ai-supporting">
+      <summary>Financial calculations, valuation scenarios and full evidence</summary>
+      <InvestorJudgmentDetails {...props} />
+    </details>
+  </>;
+}
+
+function InvestorJudgmentDetails({
   analysis,
   report,
   symbol,

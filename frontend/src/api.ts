@@ -401,7 +401,39 @@ export type TestedPERange = {
     available_points: number;
   };
 };
+export type ReviewItem = {
+  text: string;
+  evidence_ids: string[];
+  basis: "VERIFIED_FACT" | "MANAGEMENT_CLAIM" | "INTERPRETATION";
+  source_quote?: string | null;
+  signal: "POSITIVE" | "NEGATIVE" | "MIXED" | "WATCH";
+  causal_basis?: "ESTABLISHED_CAUSE" | "MANAGEMENT_EXPLANATION" | "INVESTOR_HYPOTHESIS" | "UNKNOWN_CAUSE" | null;
+};
+export type QuarterlyReview = {
+  quarterly_investor_view: ReviewItem[];
+  key_developments: ReviewItem[];
+  management_signals: ReviewItem[];
+  what_changed: ReviewItem[];
+  valuation_implication: ReviewItem & { status: string };
+  key_risks: ReviewItem[];
+  watch_next_quarter: ReviewItem[];
+  investor_conclusion: ReviewItem;
+};
+export type InvestorCheckpoint = {
+  id: number; evidence_id: string; commitment: string; metric: string;
+  target_period: string | null; target_date: string | null;
+  status: string; is_previous: boolean; document_url: string;
+  page: number; evaluated_as_of: string; measurement_note: string | null;
+  actual_outcome: { actual_value: string | null; evidence_ids: string[]; note: string;
+    actual_sources?: { fact_id: number; page: number | null; document_url: string }[] };
+};
 export type InvestorReport = {
+  quarterly_review?: QuarterlyReview | null;
+  checkpoints?: InvestorCheckpoint[];
+  execution_summary?: string;
+  history_note?: string;
+  material_statement_count?: number;
+  full_statement_count?: number;
   investor_stance?: string;
   investor_conclusion?: AIQualityNote | null;
   tested_pe?: TestedPERange;
@@ -443,6 +475,7 @@ export type InvestorReport = {
     source_url: string | null;
     document_url: string;
     source_priority: number;
+    source_references: { source: string; source_url: string }[];
   }[];
   valuation_support: AIQualityNote[];
   valuation_challenges: AIQualityNote[];
@@ -470,6 +503,28 @@ export type InvestorReport = {
     change: string;
     actual_comparison: string;
     execution_outcome: string;
+  }[];
+  commentary_availability: {
+    status: string;
+    audio_sources: { event_id: number; source: string; url: string; published_at: string }[];
+  };
+  management_execution_history: {
+    evidence_id: string;
+    metric: string;
+    target_period: string;
+    lower_bound: string;
+    upper_bound: string;
+    unit: string;
+    scope: string;
+    published_at: string;
+    change: string;
+    actual_value: string | null;
+    actual_comparison: string;
+    execution_outcome: string;
+    document_url: string;
+    actual_sources: { document_url: string; page: number | null }[];
+    speaker_name: string | null;
+    speaker_role: string | null;
   }[];
   guidance_changes: {
     status: string;
@@ -591,6 +646,12 @@ export type AIAnalysis = {
       relationship?: string;
       status?: string;
       role?: string;
+      title?: string;
+      excerpt?: string;
+      published_at?: string;
+      section?: string | null;
+      data_origin?: string;
+      retrieval_reason?: string;
       reference_status?: string;
       primary_value?: string;
       reference_value?: string;
@@ -598,6 +659,11 @@ export type AIAnalysis = {
     }
   >;
   structured_output: {
+    historical_context?: {
+      text: string;
+      source_quote: string;
+      evidence_ids: string[];
+    }[];
     summary: string;
     summary_evidence_ids: string[];
     positives: AIClaim[];
@@ -624,6 +690,19 @@ export type AIAnalysis = {
       evidence_ids: string[];
     } | null;
     quality_report?: AIQualityReport | null;
+    quarterly_review?: QuarterlyReview | null;
+    review_trace?: {
+      prompt_context_chars: number;
+      evidence_ids_supplied: string[];
+      retrieval_count: number;
+      model_items_accepted: number;
+      items_rejected_initially: number;
+      items_rejected_finally: number;
+      fallback_items: number;
+      repair_attempted: boolean;
+      generation_status: string;
+      fallback_reason: string | null;
+    } | null;
     investor_report?: InvestorReport | null;
   } | null;
 };
@@ -669,7 +748,90 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export type MemoryPassage = {
+  evidence_id: string;
+  text: string;
+  score: number;
+  document_id: number;
+  title: string;
+  published_at: string;
+  page: number;
+  section: string | null;
+  source: string;
+  data_origin: string;
+  document_type: string;
+  document_url: string;
+  speaker: string | null;
+  topics: string[];
+};
+export type MemoryStatus = {
+  status: string;
+  embedding_model: string;
+  collection: string;
+  documents: {
+    document_id: number;
+    title: string;
+    document_type: string;
+    status: string;
+    chunks: number;
+    last_error: string | null;
+  }[];
+};
+export type MemoryResult = {
+  as_of_date: string | null;
+  status: string;
+  reason?: string;
+  results: MemoryPassage[];
+  authority: string;
+  conflicts: {
+    type: string;
+    evidence_id: string;
+    structured_evidence_id: string;
+    resolution: string;
+  }[];
+  structured_evidence: {
+    evidence_id: string;
+    kind: string;
+    metric_code?: string;
+    metric?: string;
+    value?: string;
+    unit: string;
+    scope?: string;
+    period_end?: string;
+    lower_bound?: string;
+    upper_bound?: string;
+    target_period?: string;
+    execution_outcome?: string;
+    actual_value?: string | null;
+    actual_sources?: { fact_id: number; document_url: string }[];
+    document_id: number;
+    page: number;
+  }[];
+};
+
 export const api = {
+  memoryStatus: (symbol: string) =>
+    request<MemoryStatus>(
+      `/api/companies/${encodeURIComponent(symbol)}/memory`,
+    ),
+  indexMemory: (symbol: string, force = false) =>
+    request<{ status: string; reason?: string }>(
+      `/api/companies/${encodeURIComponent(symbol)}/memory/index?force=${force}`,
+      { method: "POST" },
+    ),
+  queryMemory: (
+    symbol: string,
+    query: {
+      query: string;
+      as_of_date?: string;
+      document_type?: string;
+      topic?: string;
+    },
+  ) =>
+    request<MemoryResult>(
+      `/api/companies/${encodeURIComponent(symbol)}/memory/query`,
+      { method: "POST", body: JSON.stringify(query) },
+    ),
   companies: () => request<Company[]>("/api/companies"),
   transactions: () => request<Transaction[]>("/api/transactions"),
   portfolio: () => request<Portfolio>("/api/portfolio"),

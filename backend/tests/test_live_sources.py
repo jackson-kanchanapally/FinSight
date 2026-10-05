@@ -28,6 +28,7 @@ from app.ingestion.sources.esds_ir import (
     IR_COMPANY_ID,
     IR_URL,
     parse_esds_announcement_rows,
+    parse_esds_transcript_rows,
 )
 from app.ingestion.sources.nse import NSESource, parse_nse_announcements
 from app.ingestion.storage import LocalDocumentStorage
@@ -50,6 +51,7 @@ ESDS_HTML = (FIXTURES / "esds_ir.html").read_bytes()
 RESULTS_URL = (
     "https://www.esds.co.in/assets/images/investor-relations/Announcements/results.pdf"
 )
+TRANSCRIPT_URL = "https://www.esds.co.in/assets/images/investor-relations/Quarterly-Financial/call.pdf"
 
 
 @pytest.fixture
@@ -131,6 +133,16 @@ def sample_pdf():
         )
         first.insert_text((72, 187), "for the quarter ended June 30, 2026")
         pdf.new_page().insert_text((72, 72), "Page 2 results")
+        return pdf.tobytes()
+
+
+def sample_transcript_pdf():
+    with pymupdf.open() as pdf:
+        first = pdf.new_page()
+        first.insert_text((72, 72), "ESDS Software Solution Limited")
+        first.insert_text((72, 95), "Q1 FY27 Earnings Conference Call")
+        first.insert_text((72, 118), "September 25, 2026")
+        pdf.new_page().insert_text((72, 72), "Piyush Somani: Management commentary")
         return pdf.tobytes()
 
 
@@ -249,6 +261,73 @@ def test_esds_ir_parser_rejects_unsafe_or_changed_page():
         )
     with pytest.raises(SourceUnavailableError):
         parse_esds_announcement_rows(b"<html><body>unrelated page</body></html>")
+    current_markup = (
+        b'<h1>ESDS Software Solution Limited</h1>'
+        b'<section id="announcements" data-category-panel>'
+        b'<a href="assets/images/investor-relations/Announcements/results.pdf">'
+        b'<strong>Board Meeting Outcome &amp; Q1 FY27 Results</strong></a></section>'
+    )
+    assert parse_esds_announcement_rows(current_markup) == [
+        ("Board Meeting Outcome & Q1 FY27 Results", RESULTS_URL)
+    ]
+
+
+def test_esds_ir_quarterly_transcript_discovery_and_ingestion(live_env):
+    client, db, storage = live_env
+    source_config(
+        client, "ESDS_IR", external_symbol="ESDS",
+        source_company_id=IR_COMPANY_ID, ir_url=IR_URL,
+    )
+    quarterly = (
+        '<div id="panel-financial-0">'
+        '<a data-quarter-result href="results.pdf"><small data-quarter-status>Q1 FY27</small></a>'
+        '<a href="assets/images/investor-relations/Quarterly-Financial/call.pdf">Transcript</a>'
+        '<a aria-disabled="true" href="audio.mp3">Earnings Call Audio</a>'
+        '</div>'
+    )
+    html = ESDS_HTML.replace(b"</body>", quarterly.encode() + b"</body>")
+    assert parse_esds_transcript_rows(html) == [("Q1FY27 Earnings Call Transcript", TRANSCRIPT_URL)]
+    assert classify_event("Q1FY27 Earnings Call Transcript") == EventType.CONCALL_TRANSCRIPT
+    with pytest.raises(SourceUnavailableError):
+        parse_esds_transcript_rows(html.replace(
+            b"assets/images/investor-relations/Quarterly-Financial/call.pdf",
+            b"https://evil.example/call.pdf",
+        ))
+    calls = {"transcript": 0}
+
+    def respond(request):
+        if request.url.path == "/investor":
+            return httpx.Response(200, headers={"content-type": "text/html"}, content=html)
+        if request.url.path.endswith("call.pdf"):
+            calls["transcript"] += 1
+            return httpx.Response(200, headers={
+                "content-type": "application/pdf",
+                "last-modified": "Tue, 29 Sep 2026 14:38:09 GMT",
+            }, content=sample_transcript_pdf())
+        return httpx.Response(200, headers={"content-type": "application/pdf"}, content=sample_pdf())
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http_client:
+            source = ESDSIRSource(client=http_client, downloader=SafePdfDownloader(
+                {"www.esds.co.in"}, client=http_client, retries=0,
+            ))
+            first = await check_for_events(db, sources=[source], storage=storage)
+            second = await check_for_events(db, sources=[source], storage=storage)
+            return first, second
+
+    first, second = asyncio.run(run())
+    assert first.new_events == 2 and first.documents_downloaded == 2
+    assert second.new_events == 0 and second.duplicates == 2
+    assert calls["transcript"] == 1
+    event = db.scalar(select(CompanyEvent).where(CompanyEvent.event_type == EventType.CONCALL_TRANSCRIPT))
+    assert event is not None
+    assert event.source == "ESDS_IR" and event.quarter == 1 and event.fiscal_year == "FY2027"
+    assert event.published_at.isoformat().startswith("2026-09-29T14:38:09")
+    assert event.publication_precision == PublicationPrecision.TIMESTAMP
+    reference = db.scalar(select(EventReference).where(EventReference.event_id == event.id))
+    assert reference.raw_payload["raw_payload"]["date_basis"] == "http_last_modified"
+    document = db.scalar(select(Document).where(Document.event_id == event.id))
+    assert len(list(db.scalars(select(DocumentPage).where(DocumentPage.document_id == document.id)))) == 2
 
 
 def test_esds_ir_live_adapter_and_pdf_pipeline(live_env):

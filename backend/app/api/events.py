@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import re
 import time as time_module
 from datetime import date, datetime, time, timedelta, timezone
@@ -30,6 +32,7 @@ from app.models.event import (
     PublicationPrecision,
 )
 from app.services.events.event_service import save_event
+from app.services.commentary import is_commentary_candidate, refresh_commentary_for_company
 from app.schemas.event import (
     BootstrapRequest,
     CompanySourceCreate,
@@ -42,6 +45,7 @@ from app.schemas.event import (
 )
 
 router = APIRouter(tags=["events"])
+logger = logging.getLogger(__name__)
 _last_bootstrap: dict[str, float] = {}
 BOOTSTRAP_COOLDOWN_SECONDS = 300
 MAX_MANUAL_PDF_BYTES = 10_000_000
@@ -284,6 +288,11 @@ async def upload_company_pdf(
         None,
         LocalDocumentStorage(settings.document_storage_path),
     )
+    if is_commentary_candidate(event_type, title):
+        try:
+            await asyncio.to_thread(refresh_commentary_for_company, db.get_bind(), company.id)
+        except Exception:
+            logger.exception("commentary.manual_process_failed", extra={"company_id": company.id})
     reference = db.scalar(
         select(EventReference).where(
             EventReference.source == "MANUAL_UPLOAD",

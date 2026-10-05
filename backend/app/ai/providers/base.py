@@ -8,6 +8,7 @@ class LLMError(Exception):
 
 
 class LLMProvider(ABC):
+    supports_quarterly_review = False
     name: str
     model: str
 

@@ -202,7 +202,11 @@ function EvidenceLinks({
         const item = analysis.evidence_registry[id];
         if (!item) return null;
         const title =
-          item.kind === "MARKET_SNAPSHOT"
+          item.kind === "CHECKPOINT_RECORD"
+            ? `Investor checkpoint · page ${item.page ?? "?"}`
+            : item.kind === "REVIEW_CONTEXT"
+              ? "Review context and research gaps"
+              : item.kind === "MARKET_SNAPSHOT"
             ? `Market snapshot · ${item.as_of_date}`
             : item.kind === "VALUATION"
               ? `${item.metric_code?.replaceAll("_", " ")} · Almonds calculated`
@@ -679,6 +683,8 @@ function AnalysisPanel({
             ? "Analyzing…"
             : retryCoolingDown
               ? "Retry available shortly"
+              : analysis?.model_provider === "deterministic"
+                ? "Generate AI analysis"
               : analysis?.status === "VERIFIED_FALLBACK"
                 ? "Retry AI analysis"
                 : analysis?.status === "SUCCESS"
@@ -860,6 +866,43 @@ function AnalysisPanel({
                 ids={output.summary_evidence_ids}
               />
             </div>
+            {output.historical_context?.length ||
+            Object.values(analysis!.evidence_registry).some(
+              (item) => item.kind === "MEMORY_CHUNK",
+            ) ? (
+              <div className="ai-group">
+                <h4>Historical company evidence</h4>
+                {output.historical_context?.map((note, i) => (
+                  <article key={i}>
+                    <p>{note.text}</p>
+                    <blockquote>{note.source_quote}</blockquote>
+                    <EvidenceLinks
+                      analysis={analysis!}
+                      ids={note.evidence_ids}
+                    />
+                  </article>
+                ))}
+                <details>
+                  <summary>Retrieved passages used as context</summary>
+                  {Object.entries(analysis!.evidence_registry)
+                    .filter(([, item]) => item.kind === "MEMORY_CHUNK")
+                    .map(([id, item]) => (
+                      <article key={id}>
+                        <strong>{item.title}</strong>
+                        <p>
+                          {item.published_at?.slice(0, 10)} · page {item.page} ·{" "}
+                          {item.section} · {item.data_origin}
+                        </p>
+                        <p>{item.excerpt}</p>
+                        <p className="muted">
+                          Retrieved for: {item.retrieval_reason}
+                        </p>
+                        <EvidenceLinks analysis={analysis!} ids={[id]} />
+                      </article>
+                    ))}
+                </details>
+              </div>
+            ) : null}
             {quality && (
               <>
                 {qualityNote(
@@ -1057,10 +1100,18 @@ function AnalysisPanel({
             )}
             {report && (
               <div className="ai-group">
-                <h4>Official management commentary</h4>
+                <h4>Management commentary</h4>
+                <p>Availability: {report.commentary_availability?.status?.replaceAll("_", " ") || "NO COMMENTARY FOUND"}</p>
+                {report.commentary_availability?.audio_sources?.map((source) => (
+                  <p key={source.event_id}>
+                    <a href={source.url} target="_blank" rel="noreferrer">
+                      {source.source} recording announcement · {indiaDate(source.published_at)} ↗
+                    </a>{" "}Audio has not been transcribed.
+                  </p>
+                ))}
                 {report.source_documents?.length > 0 && (
                   <p>
-                    Associated official documents:{" "}
+                    Associated documents:{" "}
                     {report.source_documents.map((document, index) => (
                       <span key={document.document_id}>
                         {index ? " · " : ""}
@@ -1073,6 +1124,9 @@ function AnalysisPanel({
                           {document.source} · {indiaDate(document.published_at)}{" "}
                           ↗
                         </a>
+                        {document.source_references?.filter((ref) => ref.source !== document.source).map((ref) => (
+                          <span key={`${document.document_id}-${ref.source}`}> · <a href={ref.source_url} target="_blank" rel="noreferrer">{ref.source} filing ↗</a></span>
+                        ))}
                       </span>
                     ))}
                   </p>
@@ -1095,7 +1149,10 @@ function AnalysisPanel({
                           statement.speaker_role ||
                           "Attributed management"}{" "}
                         · {indiaDate(statement.published_at)} · page{" "}
-                        {statement.page_number}
+                        {statement.page_number} ·{" "}
+                        <a href={statement.document_url} target="_blank" rel="noreferrer">
+                          Source page ↗
+                        </a>
                       </small>
                       <EvidenceLinks
                         analysis={analysis!}
@@ -1105,8 +1162,7 @@ function AnalysisPanel({
                   ))
                 ) : (
                   <p>
-                    No attributed statement was found in associated processed
-                    official documents.
+                    No attributed management statement was found in associated processed documents.
                   </p>
                 )}
               </div>
@@ -1130,6 +1186,24 @@ function AnalysisPanel({
                       analysis={analysis!}
                       ids={[item.statement_evidence_id]}
                     />
+                  </article>
+                ))}
+              </div>
+            )}
+            {report && report.management_execution_history?.length > 0 && (
+              <div className="ai-group">
+                <h4>Management execution history</h4>
+                {report.management_execution_history.map((item) => (
+                  <article key={item.evidence_id}>
+                    <strong>{item.target_period} · {item.metric.replaceAll("_", " ")} · {item.scope}</strong>
+                    <p>Management guided {item.lower_bound}–{item.upper_bound} {item.unit === "PERCENT" ? "%" : "₹ crore"}. Outcome: {item.execution_outcome.replaceAll("_", " ")}.
+                      {item.actual_value != null && ` Verified actual: ${item.actual_value}${item.unit === "PERCENT" ? "%" : " ₹ crore"}.`}
+                    </p>
+                    <small>{item.speaker_name || item.speaker_role || "Attributed management"} · {indiaDate(item.published_at)} · {item.change.replaceAll("_", " ")} · <a href={item.document_url} target="_blank" rel="noreferrer">Management source ↗</a>
+                      {item.actual_sources.map((source, index) => (
+                        <span key={index}> · <a href={source.document_url} target="_blank" rel="noreferrer">Actual evidence ↗</a></span>
+                      ))}
+                    </small>
                   </article>
                 ))}
               </div>
