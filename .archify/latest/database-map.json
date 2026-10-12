@@ -1,0 +1,345 @@
+{
+  "models": [
+    {
+      "class": "AIAnalysis",
+      "file": "backend/app/models/analysis.py",
+      "foreign_keys": [
+        "companies.id",
+        "financial_periods.id"
+      ],
+      "indexed_fields": [],
+      "line": 12,
+      "table": "ai_analyses"
+    },
+    {
+      "class": "InvestorCheckpoint",
+      "file": "backend/app/models/checkpoint.py",
+      "foreign_keys": [
+        "companies.id",
+        "financial_periods.id",
+        "management_guidance.id",
+        "management_statements.id"
+      ],
+      "indexed_fields": [],
+      "line": 8,
+      "table": "investor_checkpoints"
+    },
+    {
+      "class": "CheckpointEvaluation",
+      "file": "backend/app/models/checkpoint.py",
+      "foreign_keys": [
+        "financial_periods.id",
+        "investor_checkpoints.id"
+      ],
+      "indexed_fields": [],
+      "line": 28,
+      "table": "checkpoint_evaluations"
+    },
+    {
+      "class": "CommentaryDocument",
+      "file": "backend/app/models/commentary.py",
+      "foreign_keys": [
+        "companies.id",
+        "company_events.id",
+        "documents.id",
+        "financial_periods.id"
+      ],
+      "indexed_fields": [],
+      "line": 22,
+      "table": "commentary_documents"
+    },
+    {
+      "class": "ManagementStatement",
+      "file": "backend/app/models/commentary.py",
+      "foreign_keys": [
+        "companies.id",
+        "company_events.id",
+        "documents.id",
+        "financial_periods.id"
+      ],
+      "indexed_fields": [],
+      "line": 59,
+      "table": "management_statements"
+    },
+    {
+      "class": "ManagementGuidance",
+      "file": "backend/app/models/commentary.py",
+      "foreign_keys": [
+        "companies.id",
+        "financial_periods.id",
+        "management_statements.id"
+      ],
+      "indexed_fields": [],
+      "line": 109,
+      "table": "management_guidance"
+    },
+    {
+      "class": "Company",
+      "file": "backend/app/models/company.py",
+      "foreign_keys": [],
+      "indexed_fields": [
+        "symbol"
+      ],
+      "line": 9,
+      "table": "companies"
+    },
+    {
+      "class": "CompanyEvent",
+      "file": "backend/app/models/event.py",
+      "foreign_keys": [
+        "companies.id"
+      ],
+      "indexed_fields": [],
+      "line": 81,
+      "table": "company_events"
+    },
+    {
+      "class": "EventReference",
+      "file": "backend/app/models/event.py",
+      "foreign_keys": [
+        "company_events.id"
+      ],
+      "indexed_fields": [
+        "event_id"
+      ],
+      "line": 146,
+      "table": "event_references"
+    },
+    {
+      "class": "Document",
+      "file": "backend/app/models/event.py",
+      "foreign_keys": [
+        "companies.id",
+        "company_events.id"
+      ],
+      "indexed_fields": [
+        "event_id"
+      ],
+      "line": 182,
+      "table": "documents"
+    },
+    {
+      "class": "DocumentPage",
+      "file": "backend/app/models/event.py",
+      "foreign_keys": [
+        "documents.id"
+      ],
+      "indexed_fields": [],
+      "line": 221,
+      "table": "document_pages"
+    },
+    {
+      "class": "MonitoringState",
+      "file": "backend/app/models/event.py",
+      "foreign_keys": [],
+      "indexed_fields": [],
+      "line": 238,
+      "table": "monitoring_states"
+    },
+    {
+      "class": "CompanySource",
+      "file": "backend/app/models/event.py",
+      "foreign_keys": [
+        "companies.id"
+      ],
+      "indexed_fields": [],
+      "line": 262,
+      "table": "company_sources"
+    },
+    {
+      "class": "EventAnalysis",
+      "file": "backend/app/models/event_analysis.py",
+      "foreign_keys": [
+        "companies.id",
+        "company_events.id"
+      ],
+      "indexed_fields": [],
+      "line": 12,
+      "table": "event_analyses"
+    },
+    {
+      "class": "FinancialPeriod",
+      "file": "backend/app/models/financial.py",
+      "foreign_keys": [
+        "companies.id",
+        "company_events.id",
+        "documents.id"
+      ],
+      "indexed_fields": [],
+      "line": 105,
+      "table": "financial_periods"
+    },
+    {
+      "class": "FinancialFact",
+      "file": "backend/app/models/financial.py",
+      "foreign_keys": [
+        "documents.id",
+        "financial_periods.id"
+      ],
+      "indexed_fields": [],
+      "line": 161,
+      "table": "financial_facts"
+    },
+    {
+      "class": "FinancialFactCorrection",
+      "file": "backend/app/models/financial.py",
+      "foreign_keys": [
+        "financial_facts.id"
+      ],
+      "indexed_fields": [],
+      "line": 205,
+      "table": "financial_fact_corrections"
+    },
+    {
+      "class": "FinancialMetric",
+      "file": "backend/app/models/financial.py",
+      "foreign_keys": [
+        "financial_periods.id"
+      ],
+      "indexed_fields": [],
+      "line": 221,
+      "table": "financial_metrics"
+    },
+    {
+      "class": "FinancialProcessingRun",
+      "file": "backend/app/models/financial.py",
+      "foreign_keys": [
+        "company_events.id",
+        "documents.id"
+      ],
+      "indexed_fields": [],
+      "line": 253,
+      "table": "financial_processing_runs"
+    },
+    {
+      "class": "ValuationAssumptions",
+      "file": "backend/app/models/market.py",
+      "foreign_keys": [
+        "companies.id"
+      ],
+      "indexed_fields": [],
+      "line": 23,
+      "table": "valuation_assumptions"
+    },
+    {
+      "class": "MarketSnapshot",
+      "file": "backend/app/models/market.py",
+      "foreign_keys": [
+        "companies.id"
+      ],
+      "indexed_fields": [],
+      "line": 50,
+      "table": "market_snapshots"
+    },
+    {
+      "class": "ValuationSnapshot",
+      "file": "backend/app/models/market.py",
+      "foreign_keys": [
+        "companies.id",
+        "financial_periods.id",
+        "market_snapshots.id"
+      ],
+      "indexed_fields": [],
+      "line": 128,
+      "table": "valuation_snapshots"
+    },
+    {
+      "class": "ReferenceMetric",
+      "file": "backend/app/models/market.py",
+      "foreign_keys": [
+        "companies.id"
+      ],
+      "indexed_fields": [],
+      "line": 176,
+      "table": "reference_metrics"
+    },
+    {
+      "class": "DocumentMemoryIndex",
+      "file": "backend/app/models/memory.py",
+      "foreign_keys": [
+        "documents.id"
+      ],
+      "indexed_fields": [],
+      "line": 9,
+      "table": "document_memory_indexes"
+    },
+    {
+      "class": "ThesisPillar",
+      "file": "backend/app/models/thesis.py",
+      "foreign_keys": [
+        "companies.id"
+      ],
+      "indexed_fields": [
+        "company_id"
+      ],
+      "line": 8,
+      "table": "thesis_pillars"
+    },
+    {
+      "class": "ThesisPillarRevision",
+      "file": "backend/app/models/thesis.py",
+      "foreign_keys": [
+        "thesis_pillars.id"
+      ],
+      "indexed_fields": [
+        "pillar_id"
+      ],
+      "line": 16,
+      "table": "thesis_pillar_revisions"
+    },
+    {
+      "class": "ThesisExpectationRevision",
+      "file": "backend/app/models/thesis.py",
+      "foreign_keys": [
+        "investor_checkpoints.id",
+        "thesis_pillars.id"
+      ],
+      "indexed_fields": [
+        "expectation_key",
+        "pillar_id"
+      ],
+      "line": 30,
+      "table": "thesis_expectation_revisions"
+    },
+    {
+      "class": "ThesisEvaluationRun",
+      "file": "backend/app/models/thesis.py",
+      "foreign_keys": [
+        "ai_analyses.id",
+        "companies.id"
+      ],
+      "indexed_fields": [
+        "company_id"
+      ],
+      "line": 44,
+      "table": "thesis_evaluation_runs"
+    },
+    {
+      "class": "ThesisPillarEvaluation",
+      "file": "backend/app/models/thesis.py",
+      "foreign_keys": [
+        "thesis_evaluation_runs.id",
+        "thesis_pillar_revisions.id",
+        "thesis_pillars.id"
+      ],
+      "indexed_fields": [
+        "pillar_id"
+      ],
+      "line": 61,
+      "table": "thesis_pillar_evaluations"
+    },
+    {
+      "class": "Transaction",
+      "file": "backend/app/models/transaction.py",
+      "foreign_keys": [
+        "companies.id"
+      ],
+      "indexed_fields": [
+        "company_id"
+      ],
+      "line": 25,
+      "table": "transactions"
+    }
+  ],
+  "revision": "a33715ef34f83bb5fe4f35e3b64e15b38ad7c699"
+}

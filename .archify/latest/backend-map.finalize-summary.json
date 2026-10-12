@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/candidates/backend-map.json",
+    "sha256": "32a7b8ddd002acd920cb6b4f1c2f879faf9609dcecee788f5d2784536ea53450",
+    "bytes": 8658
+  },
+  "artifact": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/backend-map.html",
+    "sha256": "3d8bd035e22080db5d95a1ec86592870ec22b2b56f68eabbf341ff37b2e82033",
+    "bytes": 787315
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/backend-map.finalize.json",
+    "summaryReceipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/backend-map.finalize-summary.json",
+    "browserCheckReceipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/backend-map.browser-check.json"
+  },
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "disabled"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 2757,
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "routesOverSuggestedBends": 4
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [],
+      "detours": [
+        {
+          "relationship": {
+            "id": "main-core",
+            "from": "fastapi",
+            "to": "core_api",
+            "label": "register routes",
+            "collectionIndex": 0,
+            "artifactIndex": 1
+          },
+          "bends": 3,
+          "stretch": 1
+        },
+        {
+          "relationship": {
+            "id": "analyst-ollama",
+            "from": "analyst",
+            "to": "ollama",
+            "label": "validated JSON",
+            "collectionIndex": 12,
+            "artifactIndex": 13
+          },
+          "bends": 3,
+          "stretch": 1.107
+        },
+        {
+          "relationship": {
+            "id": "memory-ollama",
+            "from": "memory",
+            "to": "ollama",
+            "label": "embed",
+            "collectionIndex": 13,
+            "artifactIndex": 14
+          },
+          "bends": 4,
+          "stretch": 1
+        },
+        {
+          "relationship": {
+            "id": "event-db",
+            "from": "events",
+            "to": "postgres",
+            "label": "events/documents",
+            "collectionIndex": 15,
+            "artifactIndex": 16
+          },
+          "bends": 4,
+          "stretch": 1
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "fastapi → core_api needs 3 bends: move node fastapi or core_api so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "analyst → ollama needs 3 bends: move node analyst or ollama so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "memory → ollama needs 4 bends: move node memory or ollama so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "events → postgres needs 4 bends: move node events or postgres so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

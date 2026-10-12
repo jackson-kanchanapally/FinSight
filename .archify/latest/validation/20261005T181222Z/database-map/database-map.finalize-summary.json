@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/candidates/database-map.json",
+    "sha256": "4c654350211209122ee3fc6d85e70cf47f025d31c45a95e1e017ce6304e6f803",
+    "bytes": 8563
+  },
+  "artifact": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/database-map.html",
+    "sha256": "42527d5c1e9439425402f8c08f40a09cb4cd0bc1fb4f0e4f9d8f7164bad0c3b8",
+    "bytes": 790006
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/validation/20261005T181222Z/database-map/database-map.finalize.json",
+    "summaryReceipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/validation/20261005T181222Z/database-map/database-map.finalize-summary.json",
+    "browserCheckReceipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/validation/20261005T181222Z/database-map/database-map.browser-check.json"
+  },
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "disabled"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 2396,
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 3,
+      "routesOverSuggestedBends": 5,
+      "routesOverSuggestedStretch": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "period-fact",
+            "from": "period",
+            "to": "fact",
+            "label": "1:N",
+            "collectionIndex": 7,
+            "artifactIndex": 8
+          },
+          "right": {
+            "id": "document-memory",
+            "from": "document",
+            "to": "memory",
+            "label": "index status",
+            "collectionIndex": 19,
+            "artifactIndex": 20
+          },
+          "point": [
+            820,
+            188
+          ]
+        },
+        {
+          "left": {
+            "id": "commentary-statement",
+            "from": "commentary",
+            "to": "statement",
+            "label": "extracts",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "right": {
+            "id": "period-valuation",
+            "from": "period",
+            "to": "valuation",
+            "label": "eligible period",
+            "collectionIndex": 15,
+            "artifactIndex": 16
+          },
+          "point": [
+            699,
+            389
+          ]
+        },
+        {
+          "left": {
+            "id": "commentary-statement",
+            "from": "commentary",
+            "to": "statement",
+            "label": "extracts",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "right": {
+            "id": "period-analysis",
+            "from": "period",
+            "to": "analysis",
+            "label": "review",
+            "collectionIndex": 16,
+            "artifactIndex": 17
+          },
+          "point": [
+            724.4000000000001,
+            389
+          ]
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "event-processing",
+            "from": "event",
+            "to": "processing",
+            "label": "run",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "bends": 3,
+          "stretch": 1
+        },
+        {
+          "relationship": {
+            "id": "period-fact",
+            "from": "period",
+            "to": "fact",
+            "label": "1:N",
+            "collectionIndex": 7,
+            "artifactIndex": 8
+          },
+          "bends": 3,
+          "stretch": 1
+        },
+        {
+          "relationship": {
+            "id": "period-valuation",
+            "from": "period",
+            "to": "valuation",
+            "label": "eligible period",
+            "collectionIndex": 15,
+            "artifactIndex": 16
+          },
+          "bends": 3,
+          "stretch": 1
+        },
+        {
+          "relationship": {
+            "id": "period-analysis",
+            "from": "period",
+            "to": "analysis",
+            "label": "review",
+            "collectionIndex": 16,
+            "artifactIndex": 17
+          },
+          "bends": 4,
+          "stretch": 1.768
+        },
+        {
+          "relationship": {
+            "id": "document-memory",
+            "from": "document",
+            "to": "memory",
+            "label": "index status",
+            "collectionIndex": 19,
+            "artifactIndex": 20
+          },
+          "bends": 4,
+          "stretch": 1.081,
+          "directCorridorBlockers": [
+            {
+              "id": "period",
+              "label": "financial_periods",
+              "box": [
+                735,
+                200,
+                170,
+                82
+              ]
+            },
+            {
+              "id": "metric",
+              "label": "financial_metrics",
+              "box": [
+                980,
+                205,
+                160,
+                78
+              ]
+            }
+          ]
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "period → fact crosses document → memory: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "commentary → statement crosses period → valuation: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "commentary → statement crosses period → analysis: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "event → processing needs 3 bends: move node event or processing so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "period → fact needs 3 bends: move node period or fact so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "period → valuation needs 3 bends: move node period or valuation so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "period → analysis needs 4 bends: move node period or analysis so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/candidates/system-overview.json",
+    "sha256": "0fedfea3b24ce836ba421989f80b7b00b7890b3d79bc85805b0dd9ba0ec1b042",
+    "bytes": 8528
+  },
+  "artifact": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/system-overview.html",
+    "sha256": "c18f593a7f680855c7ea505e7dc2a6d9e208eb1fa402e5ca85454d69e58fe625",
+    "bytes": 781759
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/validation/20261005T181222Z/system-overview/system-overview.finalize.json",
+    "summaryReceipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/validation/20261005T181222Z/system-overview/system-overview.finalize-summary.json",
+    "browserCheckReceipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/validation/20261005T181222Z/system-overview/system-overview.browser-check.json"
+  },
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "disabled"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 2510,
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "routesOverSuggestedBends": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [],
+      "detours": [
+        {
+          "relationship": {
+            "id": "intelligence-qdrant",
+            "from": "intelligence",
+            "to": "qdrant",
+            "label": "vector search",
+            "collectionIndex": 12,
+            "artifactIndex": 13
+          },
+          "bends": 4,
+          "stretch": 1.158
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "intelligence → qdrant needs 4 bends: move node intelligence or qdrant so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

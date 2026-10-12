@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Almonds Database and Entity Relationships",
+    "output": ".archify/latest/database-map.html",
+    "quality_profile": "showcase",
+    "visual_preset": "classic",
+    "repository": {"url": "https://github.com/jackson-kanchanapally/FinSight.git", "provider": "github", "link_mode": "web", "revision": "a33715ef34f83bb5fe4f35e3b64e15b38ad7c699"},
+    "views": [
+      {"id": "events", "label": "Event documents", "focus": ["company", "event", "document", "page", "source"], "note": "Companies own canonical events; events own references and stored documents; documents own pages."},
+      {"id": "financial", "label": "Verified financials", "focus": ["company", "event", "document", "period", "fact", "metric", "processing"], "note": "Periods bind company, source event, and document before facts and calculated metrics are stored."},
+      {"id": "commentary", "label": "Commentary and checkpoints", "focus": ["period", "commentary", "statement", "guidance", "checkpoint"], "note": "Statements and guidance are attributed to source documents; checkpoints track later outcomes."},
+      {"id": "valuation", "label": "Market and valuation", "focus": ["company", "market", "valuation", "period"], "note": "Valuation snapshots bind a market snapshot to the eligible financial period."},
+      {"id": "thesis", "label": "Analysis and thesis", "focus": ["period", "analysis", "thesis", "checkpoint", "memory"], "note": "Thesis revisions and evaluations are append-only; document memory tracks vector indexing."}
+    ]
+  },
+  "components": [
+    {"id": "company", "type": "database", "label": "companies", "sublabel": "Company", "pos": [30, 290], "size": [145, 70], "sources": [{"path": "backend/app/models/company.py", "line": 9, "end_line": 24}]},
+    {"id": "source", "type": "database", "label": "company_sources", "sublabel": "IR source configuration", "pos": [30, 80], "size": [160, 74], "sources": [{"path": "backend/app/models/event.py", "line": 262, "end_line": 280}]},
+    {"id": "transaction", "type": "database", "label": "transactions", "sublabel": "BUY / SELL ledger", "pos": [30, 500], "size": [150, 74], "sources": [{"path": "backend/app/models/transaction.py", "line": 25, "end_line": 49}]},
+    {"id": "event", "type": "database", "label": "company_events", "sublabel": "+ event_references", "pos": [255, 170], "size": [170, 80], "sources": [{"path": "backend/app/models/event.py", "line": 81, "end_line": 179}]},
+    {"id": "document", "type": "database", "label": "documents", "sublabel": "Canonical PDF metadata", "pos": [500, 170], "size": [165, 80], "sources": [{"path": "backend/app/models/event.py", "line": 182, "end_line": 218}]},
+    {"id": "page", "type": "database", "label": "document_pages", "sublabel": "Page text", "pos": [735, 45], "size": [160, 74], "sources": [{"path": "backend/app/models/event.py", "line": 221, "end_line": 235}]},
+    {"id": "period", "type": "database", "label": "financial_periods", "sublabel": "Period + scope + source", "pos": [735, 200], "size": [170, 82], "sources": [{"path": "backend/app/models/financial.py", "line": 105, "end_line": 159}]},
+    {"id": "fact", "type": "database", "label": "financial_facts", "sublabel": "+ corrections", "pos": [980, 80], "size": [160, 78], "sources": [{"path": "backend/app/models/financial.py", "line": 161, "end_line": 218}]},
+    {"id": "metric", "type": "database", "label": "financial_metrics", "sublabel": "Growth · margins · bps", "pos": [980, 205], "size": [160, 78], "sources": [{"path": "backend/app/models/financial.py", "line": 221, "end_line": 251}]},
+    {"id": "processing", "type": "database", "label": "financial_processing_runs", "sublabel": "Idempotent run status", "pos": [500, 30], "size": [175, 78], "sources": [{"path": "backend/app/models/financial.py", "line": 253, "end_line": 277}]},
+
+    {"id": "commentary", "type": "database", "label": "commentary_documents", "sublabel": "Document-period association", "pos": [500, 350], "size": [180, 78], "sources": [{"path": "backend/app/models/commentary.py", "line": 22, "end_line": 57}]},
+    {"id": "statement", "type": "database", "label": "management_statements", "sublabel": "Attributed source claims", "pos": [735, 350], "size": [180, 78], "sources": [{"path": "backend/app/models/commentary.py", "line": 59, "end_line": 107}]},
+    {"id": "guidance", "type": "database", "label": "management_guidance", "sublabel": "Targets parsed from claims", "pos": [980, 350], "size": [175, 78], "sources": [{"path": "backend/app/models/commentary.py", "line": 109, "end_line": 137}]},
+    {"id": "checkpoint", "type": "database", "label": "investor_checkpoints", "sublabel": "+ checkpoint_evaluations", "pos": [1210, 350], "size": [180, 82], "sources": [{"path": "backend/app/models/checkpoint.py", "line": 8, "end_line": 37}]},
+
+    {"id": "market", "type": "database", "label": "market_snapshots", "sublabel": "+ assumptions + references", "pos": [255, 505], "size": [180, 80], "sources": [{"path": "backend/app/models/market.py", "line": 23, "end_line": 126}, {"path": "backend/app/models/market.py", "line": 176, "end_line": 199}]},
+    {"id": "valuation", "type": "database", "label": "valuation_snapshots", "sublabel": "Market + eligible period", "pos": [500, 505], "size": [175, 80], "sources": [{"path": "backend/app/models/market.py", "line": 128, "end_line": 174}]},
+    {"id": "analysis", "type": "database", "label": "ai_analyses", "sublabel": "Structured output + evidence", "pos": [735, 515], "size": [165, 78], "sources": [{"path": "backend/app/models/analysis.py", "line": 12, "end_line": 48}]},
+    {"id": "thesis", "type": "database", "label": "thesis_*", "sublabel": "Pillars · revisions · runs · evaluations", "pos": [980, 500], "size": [185, 96], "sources": [{"path": "backend/app/models/thesis.py", "line": 8, "end_line": 79}]},
+    {"id": "memory", "type": "database", "label": "document_memory_indexes", "sublabel": "Qdrant index manifest", "pos": [1210, 170], "size": [180, 80], "sources": [{"path": "backend/app/models/memory.py", "line": 9, "end_line": 23}]}
+  ],
+  "connections": [
+    {"id": "company-source", "from": "company", "to": "source", "label": "1:N"},
+    {"id": "company-transactions", "from": "company", "to": "transaction", "label": "1:N"},
+    {"id": "company-events", "from": "company", "to": "event", "label": "1:N"},
+    {"id": "event-doc", "from": "event", "to": "document", "label": "1:N"},
+    {"id": "doc-page", "from": "document", "to": "page", "label": "1:N"},
+    {"id": "event-processing", "from": "event", "to": "processing", "label": "run"},
+    {"id": "doc-period", "from": "document", "to": "period", "label": "source"},
+    {"id": "period-fact", "from": "period", "to": "fact", "label": "1:N"},
+    {"id": "period-metric", "from": "period", "to": "metric", "label": "1:N"},
+    {"id": "doc-commentary", "from": "document", "to": "commentary", "label": "associated"},
+    {"id": "commentary-statement", "from": "commentary", "to": "statement", "label": "extracts", "labelAt": [666, 442]},
+    {"id": "statement-guidance", "from": "statement", "to": "guidance", "label": "0:N"},
+    {"id": "guidance-checkpoint", "from": "guidance", "to": "checkpoint", "label": "tracks"},
+    {"id": "company-market", "from": "company", "to": "market", "label": "1:N"},
+    {"id": "market-valuation", "from": "market", "to": "valuation", "label": "1:N"},
+    {"id": "period-valuation", "from": "period", "to": "valuation", "label": "eligible period"},
+    {"id": "period-analysis", "from": "period", "to": "analysis", "label": "review"},
+    {"id": "analysis-thesis", "from": "analysis", "to": "thesis", "label": "evaluation run"},
+    {"id": "checkpoint-thesis", "from": "checkpoint", "to": "thesis", "label": "linked test"},
+    {"id": "document-memory", "from": "document", "to": "memory", "label": "index status"}
+  ],
+  "cards": [
+    {"dot": "emerald", "title": "Authoritative chain", "items": ["CompanyEvent and Document preserve provenance before FinancialPeriod", "FinancialFact stores extracted values and page evidence; FinancialMetric stores deterministic calculations"]},
+    {"dot": "rose", "title": "History protections", "items": ["Thesis revisions and evaluations use RESTRICT foreign keys", "Migration 0018 installs immutable-history protections; application edits create new revisions"]},
+    {"dot": "slate", "title": "Complete inventory", "items": ["All 30 model/table definitions and foreign keys are listed in .archify/latest/database-map.json"]}
+  ]
+}

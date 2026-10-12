@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "86c57837-192c-49f1-97b9-027aa61c781f",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/candidates/processing-pipelines.json",
+  "output": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/processing-pipelines.html",
+  "specification": {
+    "sha256": "db9587b60ac0bdc11d914878511d86481b7f0c596bf774e3b24d43f4b381ad39",
+    "bytes": 9408
+  },
+  "artifact": {
+    "sha256": "766fc2739a362ad2168952c886c7ae7ec929a5a89a3a96cfe7e5b466ede9ed50",
+    "bytes": 790800
+  }
+}

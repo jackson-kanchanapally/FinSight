@@ -1,0 +1,21 @@
+{
+  "tool": "tt-a1i/archify",
+  "schema_version": 1,
+  "source_roots": [
+    "backend/app",
+    "backend/alembic",
+    "backend/tests",
+    "frontend/src",
+    "frontend/scripts"
+  ],
+  "exclude_file": ".archifyignore",
+  "main_entry": ".archify/latest/system-overview.html",
+  "supplementary_report": "docs/architecture/README.md",
+  "generated_inventories": [
+    ".archify/latest/inventory.json",
+    ".archify/latest/file-dependencies.json",
+    ".archify/latest/function-calls.json",
+    ".archify/latest/api-map.json",
+    ".archify/latest/database-map.json"
+  ]
+}

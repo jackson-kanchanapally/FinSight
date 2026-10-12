@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/candidates/processing-pipelines.json",
+    "sha256": "db9587b60ac0bdc11d914878511d86481b7f0c596bf774e3b24d43f4b381ad39",
+    "bytes": 9408
+  },
+  "artifact": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/processing-pipelines.html",
+    "sha256": "766fc2739a362ad2168952c886c7ae7ec929a5a89a3a96cfe7e5b466ede9ed50",
+    "bytes": 790800
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "fail"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/evidence-path-conflict",
+      "severity": "error",
+      "message": "browser-check will not replace the existing unowned evidence path \"/Users/olivemac9/Desktop/portfolioAI/.archify/latest/processing-pipelines.browser-check.json\".",
+      "subject": {
+        "artifact": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/processing-pipelines.html",
+        "evidencePath": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/processing-pipelines.browser-check.json"
+      },
+      "evidence": {
+        "reason": {
+          "code": "ownership-artifact-mismatch"
+        }
+      },
+      "supportedFixes": [
+        "move the conflicting file aside, or choose a separate --out-dir, then rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/processing-pipelines.finalize.json",
+    "summaryReceipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/processing-pipelines.finalize-summary.json",
+    "browserCheckReceipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/processing-pipelines.browser-check.json"
+  },
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "disabled"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 919
+}

@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "startedAt": "2026-10-05T18:04:48.095Z",
+  "specification": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/candidates/database-map.json",
+    "sha256": "bb68e001cea7c62740c6785bc1ad09d9068a47aa910b273a3759477db7bead21",
+    "bytes": 8563
+  },
+  "artifact": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/database-map.html",
+    "sha256": "42527d5c1e9439425402f8c08f40a09cb4cd0bc1fb4f0e4f9d8f7164bad0c3b8",
+    "bytes": 790006
+  },
+  "stages": {
+    "validate": {
+      "status": "fail",
+      "exitCode": 1,
+      "durationMs": null,
+      "command": [
+        "/Users/olivemac9/.nvm/versions/node/v22.22.3/bin/node",
+        "/Users/olivemac9/Desktop/portfolioAI/.agents/skills/archify/bin/archify.mjs",
+        "deliver",
+        "architecture",
+        "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/candidates/database-map.json",
+        "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/database-map.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "/Users/olivemac9/Desktop/portfolioAI",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": false,
+        "command": "deliver",
+        "receiptId": "5dd2f6ca-7000-4d9e-93aa-4f10bef9aa8c",
+        "stage": "render",
+        "type": "architecture",
+        "input": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/candidates/database-map.json",
+        "output": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/database-map.html",
+        "error": "Architecture layout validation failed:\n- [composition/label-route-clearance] showcase architecture label \"0:N\" on connections[11] id \"statement-guidance\" \"statement\" -> \"guidance\" label \"0:N\" is 0px from connections[16] id \"period-analysis\" \"period\" -> \"analysis\" label \"review\" segment 1 [948, 255] -> [948, 497] (label rect [933, 369, 30, 14]; minimum 4px) — adjust labelAt, labelDx, labelDy, or labelSegment; otherwise adjust the other relationship route/via/channel.",
+        "diagnostics": [
+          {
+            "code": "composition/label-route-clearance",
+            "severity": "error",
+            "message": "[composition/label-route-clearance] showcase architecture label \"0:N\" on connections[11] id \"statement-guidance\" \"statement\" -> \"guidance\" label \"0:N\" is 0px from connections[16] id \"period-analysis\" \"period\" -> \"analysis\" label \"review\" segment 1 [948, 255] -> [948, 497] (label rect [933, 369, 30, 14]; minimum 4px) — adjust labelAt, labelDx, labelDy, or labelSegment; otherwise adjust the other relationship route/via/channel.",
+            "subject": {
+              "diagramType": "architecture",
+              "collection": "connections",
+              "index": 11,
+              "id": "statement-guidance",
+              "from": "statement",
+              "to": "guidance"
+            },
+            "evidence": {
+              "label": "0:N",
+              "otherRelationship": {
+                "diagramType": "architecture",
+                "collection": "connections",
+                "index": 16,
+                "id": "period-analysis",
+                "from": "period",
+                "to": "analysis"
+              },
+              "segmentIndex": 1,
+              "clearancePx": 0,
+              "minimumPx": 4,
+              "labelRect": {
+                "relation": {
+                  "id": "statement-guidance",
+                  "from": "statement",
+                  "to": "guidance",
+                  "label": "0:N"
+                },
+                "relationIndex": 11,
+                "label": "0:N",
+                "x": 932.5,
+                "y": 369,
+                "width": 30,
+                "height": 14,
+                "lx": 947.5,
+                "ly": 379
+              },
+              "from": [
+                948,
+                255
+              ],
+              "to": [
+                948,
+                497
+              ]
+            },
+            "supportedFixes": [
+              "adjust labelAt, labelDx, labelDy, or labelSegment; otherwise adjust the other relationship route/via/channel"
+            ]
+          }
+        ],
+        "provenance": "failed",
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      },
+      "execution": "embedded-in-deliver"
+    },
+    "deliver": {
+      "status": "not-run",
+      "execution": "blocked-by-validate"
+    }
+  },
+  "diagnostics": [
+    {
+      "code": "composition/label-route-clearance",
+      "severity": "error",
+      "message": "[composition/label-route-clearance] showcase architecture label \"0:N\" on connections[11] id \"statement-guidance\" \"statement\" -> \"guidance\" label \"0:N\" is 0px from connections[16] id \"period-analysis\" \"period\" -> \"analysis\" label \"review\" segment 1 [948, 255] -> [948, 497] (label rect [933, 369, 30, 14]; minimum 4px) — adjust labelAt, labelDx, labelDy, or labelSegment; otherwise adjust the other relationship route/via/channel.",
+      "subject": {
+        "diagramType": "architecture",
+        "collection": "connections",
+        "index": 11,
+        "id": "statement-guidance",
+        "from": "statement",
+        "to": "guidance"
+      },
+      "evidence": {
+        "label": "0:N",
+        "otherRelationship": {
+          "diagramType": "architecture",
+          "collection": "connections",
+          "index": 16,
+          "id": "period-analysis",
+          "from": "period",
+          "to": "analysis"
+        },
+        "segmentIndex": 1,
+        "clearancePx": 0,
+        "minimumPx": 4,
+        "labelRect": {
+          "relation": {
+            "id": "statement-guidance",
+            "from": "statement",
+            "to": "guidance",
+            "label": "0:N"
+          },
+          "relationIndex": 11,
+          "label": "0:N",
+          "x": 932.5,
+          "y": 369,
+          "width": 30,
+          "height": 14,
+          "lx": 947.5,
+          "ly": 379
+        },
+        "from": [
+          948,
+          255
+        ],
+        "to": [
+          948,
+          497
+        ]
+      },
+      "supportedFixes": [
+        "adjust labelAt, labelDx, labelDy, or labelSegment; otherwise adjust the other relationship route/via/channel"
+      ]
+    }
+  ],
+  "evidence": {
+    "receipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/database-review-2/database-map.finalize.json",
+    "summaryReceipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/database-review-2/database-map.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "failedStage": "validate",
+  "finishedAt": "2026-10-05T18:04:48.416Z",
+  "durationMs": 321,
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "disabled"
+  }
+}

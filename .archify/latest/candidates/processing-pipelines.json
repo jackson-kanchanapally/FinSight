@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Almonds Processing and Intelligence Pipelines",
+    "output": ".archify/latest/processing-pipelines.html",
+    "quality_profile": "showcase",
+    "visual_preset": "signal-flow",
+    "repository": {"url": "https://github.com/jackson-kanchanapally/FinSight.git", "provider": "github", "link_mode": "web", "revision": "a33715ef34f83bb5fe4f35e3b64e15b38ad7c699"},
+    "views": [
+      {"id": "event", "label": "Event ingestion", "focus": ["sources", "normalize", "event_doc", "postgres"], "note": "Source-specific clients normalize into one canonical event/document path."},
+      {"id": "financial", "label": "Financial results", "focus": ["event_doc", "pdf_extract", "facts", "metrics", "report", "frontend"], "note": "Verified PDF facts feed deterministic comparisons, verdicts, and the Financials screen."},
+      {"id": "commentary", "label": "Management commentary", "focus": ["event_doc", "commentary", "checkpoints", "report", "frontend"], "note": "Attributed statements become guidance, checkpoints, and material quarterly evidence."},
+      {"id": "llm", "label": "Validated LLM", "focus": ["report", "prompt", "ollama", "validate", "analysis", "frontend"], "note": "Qwen receives a bounded evidence packet; item validators and deterministic fallback guard persistence."},
+      {"id": "thesis", "label": "Living thesis", "focus": ["analysis", "thesis", "postgres", "frontend"], "note": "Saved reviews bootstrap and reevaluate evidence-linked thesis pillars idempotently."}
+    ]
+  },
+  "components": [
+    {"id": "sources", "type": "external", "label": "NSE · IR · Manual", "sublabel": "Announcements and PDF uploads", "pos": [30, 90], "size": [175, 80], "sources": [{"path": "backend/app/ingestion/sources/nse.py", "line": 159, "end_line": 255}, {"path": "backend/app/ingestion/sources/company_ir.py", "line": 11, "end_line": 20}, {"path": "backend/app/api/events.py", "line": 219, "end_line": 304}]},
+    {"id": "normalize", "type": "backend", "label": "Normalize & Deduplicate", "sublabel": "Classification · hash · source references", "pos": [290, 80], "size": [205, 96], "sources": [{"path": "backend/app/ingestion/normalizer.py", "line": 57, "end_line": 111}, {"path": "backend/app/ingestion/deduplicator.py", "line": 12, "end_line": 59}, {"path": "backend/app/ingestion/monitor.py", "line": 178, "end_line": 286}]},
+    {"id": "event_doc", "type": "backend", "label": "Canonical Event + Document", "sublabel": "Provenance · PDF bytes · page text", "pos": [585, 80], "size": [210, 96], "sources": [{"path": "backend/app/services/events/event_service.py", "line": 108, "end_line": 207}, {"path": "backend/app/ingestion/parsers/pdf.py", "line": 8, "end_line": 17}]},
+    {"id": "postgres", "type": "database", "label": "PostgreSQL", "sublabel": "Canonical application state", "pos": [1090, 70], "size": [180, 80], "sources": [{"path": "backend/app/database.py", "line": 1, "end_line": 22}]},
+
+    {"id": "pdf_extract", "type": "backend", "label": "Financial PDF Extractor", "sublabel": "Tables · periods · scope · units · evidence", "pos": [350, 305], "size": [210, 98], "sources": [{"path": "backend/app/services/financials/extractor.py", "line": 208, "end_line": 447}, {"path": "backend/app/services/financials/period.py", "line": 8, "end_line": 53}]},
+    {"id": "facts", "type": "backend", "label": "Verified Facts", "sublabel": "Validation · idempotent persistence", "pos": [650, 305], "size": [190, 92], "sources": [{"path": "backend/app/services/financials/service.py", "line": 109, "end_line": 232}, {"path": "backend/app/services/financials/service.py", "line": 416, "end_line": 487}]},
+    {"id": "metrics", "type": "backend", "label": "Deterministic Metrics", "sublabel": "Growth · margins · TTM · valuation", "pos": [900, 305], "size": [200, 92], "sources": [{"path": "backend/app/services/financials/service.py", "line": 280, "end_line": 414}, {"path": "backend/app/market/valuation.py", "line": 304, "end_line": 557}]},
+    {"id": "report", "type": "backend", "label": "Investor Report", "sublabel": "Results · valuation · material review", "pos": [1180, 300], "size": [200, 102], "sources": [{"path": "backend/app/services/investor_report.py", "line": 21, "end_line": 104}, {"path": "backend/app/services/quarterly_review.py", "line": 29, "end_line": 284}]},
+
+    {"id": "commentary", "type": "backend", "label": "Commentary Extraction", "sublabel": "Attributed statements · guidance", "pos": [120, 535], "size": [200, 92], "sources": [{"path": "backend/app/services/commentary.py", "line": 290, "end_line": 559}]},
+    {"id": "checkpoints", "type": "backend", "label": "Investor Checkpoints", "sublabel": "Commitments · later-period outcomes", "pos": [410, 535], "size": [200, 92], "sources": [{"path": "backend/app/services/checkpoints.py", "line": 84, "end_line": 189}, {"path": "backend/app/services/materiality.py", "line": 36, "end_line": 125}]},
+    {"id": "prompt", "type": "backend", "label": "Evidence Packet + Prompt", "sublabel": "Allowed IDs · bounded context", "pos": [680, 535], "size": [200, 92], "sources": [{"path": "backend/app/ai/analyst/quarterly_packet.py", "line": 13, "end_line": 75}, {"path": "backend/app/ai/analyst/prompts.py", "line": 46, "end_line": 185}]},
+    {"id": "ollama", "type": "external", "label": "Ollama / Qwen", "sublabel": "Structured JSON interpretation", "pos": [960, 520], "size": [180, 80], "sources": [{"path": "backend/app/ai/providers/ollama.py", "line": 6, "end_line": 40}]},
+    {"id": "validate", "type": "backend", "label": "Validation + Fallback", "sublabel": "Citations · numbers · semantics · repair", "pos": [1220, 515], "size": [205, 92], "sources": [{"path": "backend/app/ai/analyst/validator.py", "line": 136, "end_line": 358}, {"path": "backend/app/ai/analyst/quarterly_validation.py", "line": 44, "end_line": 306}, {"path": "backend/app/ai/analyst/fallback.py", "line": 27, "end_line": 427}]},
+    {"id": "analysis", "type": "database", "label": "AIAnalysis", "sublabel": "Saved evidence + structured output", "pos": [1190, 680], "size": [190, 84], "sources": [{"path": "backend/app/models/analysis.py", "line": 12, "end_line": 48}, {"path": "backend/app/ai/analyst/service.py", "line": 123, "end_line": 436}]},
+    {"id": "thesis", "type": "backend", "label": "Living Thesis", "sublabel": "Grouped pillars · deterministic refresh", "pos": [900, 680], "size": [195, 88], "sources": [{"path": "backend/app/services/thesis_auto.py", "line": 30, "end_line": 98}, {"path": "backend/app/services/thesis_evaluation.py", "line": 191, "end_line": 341}]},
+    {"id": "frontend", "type": "frontend", "label": "Financials UI", "sublabel": "Facts · review · valuation · thesis", "pos": [590, 700], "size": [190, 84], "sources": [{"path": "frontend/src/FinancialsView.tsx", "line": 1403, "end_line": 1678}, {"path": "frontend/src/QuarterlyReview.tsx", "line": 5, "end_line": 120}, {"path": "frontend/src/ThesisPanel.tsx", "line": 129, "end_line": 634}]}
+  ],
+  "connections": [
+    {"id": "source-normalize", "from": "sources", "to": "normalize", "label": "fetch/upload"},
+    {"id": "normalize-event", "from": "normalize", "to": "event_doc", "label": "canonicalize"},
+    {"id": "event-store", "from": "event_doc", "to": "postgres", "label": "persist provenance"},
+    {"id": "event-pdf", "from": "event_doc", "to": "pdf_extract", "label": "eligible result PDF"},
+    {"id": "pdf-facts", "from": "pdf_extract", "to": "facts", "label": "period rows", "labelAt": [500, 435]},
+    {"id": "facts-metrics", "from": "facts", "to": "metrics", "label": "calculate"},
+    {"id": "metrics-report", "from": "metrics", "to": "report", "label": "report inputs"},
+    {"id": "event-commentary", "from": "event_doc", "to": "commentary", "label": "transcript/presentation"},
+    {"id": "commentary-checkpoints", "from": "commentary", "to": "checkpoints", "label": "sync commitments"},
+    {"id": "checkpoints-report", "from": "checkpoints", "to": "report", "label": "execution evidence"},
+    {"id": "report-prompt", "from": "report", "to": "prompt", "label": "bounded packet"},
+    {"id": "prompt-model", "from": "prompt", "to": "ollama", "label": "generate JSON", "variant": "dashed"},
+    {"id": "model-validate", "from": "ollama", "to": "validate", "label": "model JSON", "labelAt": [1120, 475]},
+    {"id": "validate-analysis", "from": "validate", "to": "analysis", "label": "accepted/fallback"},
+    {"id": "analysis-thesis", "from": "analysis", "to": "thesis", "label": "refresh"},
+    {"id": "analysis-frontend", "from": "analysis", "to": "frontend", "label": "API response"},
+    {"id": "thesis-frontend", "from": "thesis", "to": "frontend", "label": "current case"},
+    {"id": "facts-postgres", "from": "facts", "to": "postgres", "label": "facts + periods"},
+    {"id": "analysis-postgres", "from": "analysis", "to": "postgres", "label": "structured output"}
+  ],
+  "cards": [
+    {"dot": "emerald", "title": "Trust boundary", "items": ["Management claims remain claims until later verified outcomes", "LLM output is untrusted until evidence, number, temporal, and semantic validation passes"]},
+    {"dot": "amber", "title": "Idempotency", "items": ["SHA-256 and event references deduplicate documents and source discoveries", "Financial runs and thesis evaluation fingerprints prevent duplicate downstream records"]}
+  ]
+}

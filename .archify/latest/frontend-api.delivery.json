@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "4578daf5-cad4-4091-a3a1-67b57024bc2d",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/candidates/frontend-api.json",
+  "output": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/frontend-api.html",
+  "specification": {
+    "sha256": "75a2bb98da2e398b00606a609d43db787f94878a8374a5b32e0131c8a27fe0e8",
+    "bytes": 6906
+  },
+  "artifact": {
+    "sha256": "a58e229b12f934ea18e497378f40a80086ca22825676579098e6e48469062aa7",
+    "bytes": 779850
+  }
+}

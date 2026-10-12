@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "0c54f520-aa50-43b9-b09d-30b4e0a30d88",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/candidates/backend-map.json",
+  "output": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/backend-map.html",
+  "specification": {
+    "sha256": "32a7b8ddd002acd920cb6b4f1c2f879faf9609dcecee788f5d2784536ea53450",
+    "bytes": 8658
+  },
+  "artifact": {
+    "sha256": "3d8bd035e22080db5d95a1ec86592870ec22b2b56f68eabbf341ff37b2e82033",
+    "bytes": 787315
+  }
+}

@@ -1,0 +1,2805 @@
+{
+  "edges": [
+    {
+      "from": "backend/alembic/env.py",
+      "kind": "direct-import",
+      "to": "backend/app/__init__.py"
+    },
+    {
+      "from": "backend/alembic/env.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/alembic/env.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/alembic/env.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/__init__.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/reasoning.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/service.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/valuation.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/investor_evidence.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/investor_report.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/materiality.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/analyst.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/context_builder.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/quarterly_review.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/fallback.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/quality.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/fallback.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/fallback.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/fallback.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/quality.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/quality.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/quarterly_validation.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/quarterly_validation.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/quarterly_validation.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/materiality.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/schemas.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/prompts.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/fallback.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/prompts.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/quarterly_packet.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/quarterly_validation.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/providers/base.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/providers/ollama.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/analysis.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/commentary.py"
+    },
+    {
+      "from": "backend/app/ai/analyst/validator.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/app/ai/evaluation/esds.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/app/ai/evaluation/esds.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/app/ai/events/context.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/ai/events/schemas.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/app/ai/events/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/service.py"
+    },
+    {
+      "from": "backend/app/ai/events/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/app/ai/events/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/events/context.py"
+    },
+    {
+      "from": "backend/app/ai/events/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/events/schemas.py"
+    },
+    {
+      "from": "backend/app/ai/events/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/events/validator.py"
+    },
+    {
+      "from": "backend/app/ai/events/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/providers/base.py"
+    },
+    {
+      "from": "backend/app/ai/events/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/ai/events/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event_analysis.py"
+    },
+    {
+      "from": "backend/app/ai/events/validator.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/app/ai/events/validator.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/events/context.py"
+    },
+    {
+      "from": "backend/app/ai/events/validator.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/events/schemas.py"
+    },
+    {
+      "from": "backend/app/ai/providers/ollama.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/providers/base.py"
+    },
+    {
+      "from": "backend/app/api/analysis.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/app/api/analysis.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/service.py"
+    },
+    {
+      "from": "backend/app/api/analysis.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/events/schemas.py"
+    },
+    {
+      "from": "backend/app/api/analysis.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/events/service.py"
+    },
+    {
+      "from": "backend/app/api/analysis.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/api/analysis.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/analysis.py"
+    },
+    {
+      "from": "backend/app/api/analysis.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/app/api/analysis.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/api/analysis.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/api/companies.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/api/companies.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/api/companies.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/storage.py"
+    },
+    {
+      "from": "backend/app/api/companies.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/__init__.py"
+    },
+    {
+      "from": "backend/app/api/companies.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/company.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/downloader.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/monitor.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/normalizer.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/parsers/pdf.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/esds_ir.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/storage.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/__init__.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/event.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/commentary.py"
+    },
+    {
+      "from": "backend/app/api/events.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/events/event_service.py"
+    },
+    {
+      "from": "backend/app/api/financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/api/financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/__init__.py"
+    },
+    {
+      "from": "backend/app/api/financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/api/financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/api/financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/financial.py"
+    },
+    {
+      "from": "backend/app/api/financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/service.py"
+    },
+    {
+      "from": "backend/app/api/market.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/api/market.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/api/market.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/providers.py"
+    },
+    {
+      "from": "backend/app/api/market.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/reference.py"
+    },
+    {
+      "from": "backend/app/api/market.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/service.py"
+    },
+    {
+      "from": "backend/app/api/market.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/valuation.py"
+    },
+    {
+      "from": "backend/app/api/market.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/app/api/market.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/api/market.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/app/api/market.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/market.py"
+    },
+    {
+      "from": "backend/app/api/memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/analysis.py"
+    },
+    {
+      "from": "backend/app/api/memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/api/memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/memory.py"
+    },
+    {
+      "from": "backend/app/api/memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/service.py"
+    },
+    {
+      "from": "backend/app/api/portfolio.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/api/portfolio.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/portfolio.py"
+    },
+    {
+      "from": "backend/app/api/portfolio.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/portfolio.py"
+    },
+    {
+      "from": "backend/app/api/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/analysis.py"
+    },
+    {
+      "from": "backend/app/api/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/api/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/analysis.py"
+    },
+    {
+      "from": "backend/app/api/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/api/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/thesis.py"
+    },
+    {
+      "from": "backend/app/api/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/thesis.py"
+    },
+    {
+      "from": "backend/app/api/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis.py"
+    },
+    {
+      "from": "backend/app/api/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis_evaluation.py"
+    },
+    {
+      "from": "backend/app/api/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis_evidence.py"
+    },
+    {
+      "from": "backend/app/api/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis_presentation.py"
+    },
+    {
+      "from": "backend/app/api/transactions.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/api/transactions.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/transaction.py"
+    },
+    {
+      "from": "backend/app/api/transactions.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/portfolio.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/reasoning.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/expectations.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/historical_pe.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/reference.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/service.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/valuation.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/market.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/valuation.py"
+    },
+    {
+      "from": "backend/app/api/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/investor_verdict.py"
+    },
+    {
+      "from": "backend/app/database.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/ingestion/deduplicator.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/normalizer.py"
+    },
+    {
+      "from": "backend/app/ingestion/deduplicator.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/deduplicator.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/downloader.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/normalizer.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/__init__.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/storage.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/__init__.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/commentary.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/events/event_service.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/service.py"
+    },
+    {
+      "from": "backend/app/ingestion/monitor.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/portfolio.py"
+    },
+    {
+      "from": "backend/app/ingestion/normalizer.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/app/ingestion/normalizer.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/bse.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/esds_ir.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/fixture.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/nse.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/base.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/bse.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/company_ir.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/esds_ir.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/esds_ir.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/downloader.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/esds_ir.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/esds_ir.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/fixture.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/fixture.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/nse.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/nse.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/downloader.py"
+    },
+    {
+      "from": "backend/app/ingestion/sources/nse.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/app/ingestion/storage.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/downloader.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/__init__.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/analysis.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/companies.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/events.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/financials.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/market.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/memory.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/portfolio.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/thesis.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/transactions.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/valuation.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/monitor.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/providers.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/service.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/valuation.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/app/main.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/market/expectations.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/historical_pe.py"
+    },
+    {
+      "from": "backend/app/market/expectations.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/service.py"
+    },
+    {
+      "from": "backend/app/market/expectations.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/valuation.py"
+    },
+    {
+      "from": "backend/app/market/expectations.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/market/expectations.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/market/expectations.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/app/market/expectations.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/investor_verdict.py"
+    },
+    {
+      "from": "backend/app/market/historical_pe.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/valuation.py"
+    },
+    {
+      "from": "backend/app/market/historical_pe.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/market/historical_pe.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/app/market/providers.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/app/market/reference.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/app/market/reference.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/app/market/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/market/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/providers.py"
+    },
+    {
+      "from": "backend/app/market/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/app/market/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/app/market/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/market.py"
+    },
+    {
+      "from": "backend/app/market/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/market/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/market/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/app/models/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/analysis.py"
+    },
+    {
+      "from": "backend/app/models/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/checkpoint.py"
+    },
+    {
+      "from": "backend/app/models/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/app/models/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/app/models/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/models/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event_analysis.py"
+    },
+    {
+      "from": "backend/app/models/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/models/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/app/models/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/memory.py"
+    },
+    {
+      "from": "backend/app/models/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/thesis.py"
+    },
+    {
+      "from": "backend/app/models/__init__.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/transaction.py"
+    },
+    {
+      "from": "backend/app/models/analysis.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/models/checkpoint.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/models/commentary.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/models/company.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/models/event.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/models/event_analysis.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/models/financial.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/models/market.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/models/memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/models/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/models/transaction.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/app/schemas/event.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/schemas/financial.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/schemas/memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/schemas/transaction.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/transaction.py"
+    },
+    {
+      "from": "backend/app/schemas/valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/market.py"
+    },
+    {
+      "from": "backend/app/services/checkpoints.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/checkpoint.py"
+    },
+    {
+      "from": "backend/app/services/checkpoints.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/app/services/checkpoints.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/services/checkpoints.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/checkpoints.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/commentary.py"
+    },
+    {
+      "from": "backend/app/services/checkpoints.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/service.py"
+    },
+    {
+      "from": "backend/app/services/commentary.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/app/services/commentary.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/services/commentary.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/events/event_service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/deduplicator.py"
+    },
+    {
+      "from": "backend/app/services/events/event_service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/downloader.py"
+    },
+    {
+      "from": "backend/app/services/events/event_service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/normalizer.py"
+    },
+    {
+      "from": "backend/app/services/events/event_service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/parsers/pdf.py"
+    },
+    {
+      "from": "backend/app/services/events/event_service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/app/services/events/event_service.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/storage.py"
+    },
+    {
+      "from": "backend/app/services/events/event_service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/services/financials/calculator.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/financials/extractor.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/financials/extractor.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/period.py"
+    },
+    {
+      "from": "backend/app/services/financials/period.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/financials/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/services/financials/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/app/services/financials/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/services/financials/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/financials/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/calculator.py"
+    },
+    {
+      "from": "backend/app/services/financials/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/extractor.py"
+    },
+    {
+      "from": "backend/app/services/financials/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/period.py"
+    },
+    {
+      "from": "backend/app/services/investor_evidence.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/valuation.py"
+    },
+    {
+      "from": "backend/app/services/investor_evidence.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/investor_report.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/expectations.py"
+    },
+    {
+      "from": "backend/app/services/investor_report.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/app/services/investor_report.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/services/investor_report.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/investor_report.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/commentary.py"
+    },
+    {
+      "from": "backend/app/services/investor_report.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/investor_verdict.py"
+    },
+    {
+      "from": "backend/app/services/investor_report.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/service.py"
+    },
+    {
+      "from": "backend/app/services/investor_verdict.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/valuation.py"
+    },
+    {
+      "from": "backend/app/services/memory/analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/memory.py"
+    },
+    {
+      "from": "backend/app/services/memory/analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/service.py"
+    },
+    {
+      "from": "backend/app/services/memory/clients.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/services/memory/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/app/services/memory/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/app/services/memory/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/services/memory/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/memory/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/memory.py"
+    },
+    {
+      "from": "backend/app/services/memory/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/memory.py"
+    },
+    {
+      "from": "backend/app/services/memory/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/commentary.py"
+    },
+    {
+      "from": "backend/app/services/memory/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/chunking.py"
+    },
+    {
+      "from": "backend/app/services/memory/service.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/clients.py"
+    },
+    {
+      "from": "backend/app/services/portfolio.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/__init__.py"
+    },
+    {
+      "from": "backend/app/services/quarterly_review.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/app/services/quarterly_review.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/quarterly_review.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/checkpoints.py"
+    },
+    {
+      "from": "backend/app/services/quarterly_review.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/materiality.py"
+    },
+    {
+      "from": "backend/app/services/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/checkpoint.py"
+    },
+    {
+      "from": "backend/app/services/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/app/services/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/thesis.py"
+    },
+    {
+      "from": "backend/app/services/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/thesis.py"
+    },
+    {
+      "from": "backend/app/services/thesis.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis_evidence.py"
+    },
+    {
+      "from": "backend/app/services/thesis_auto.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/analysis.py"
+    },
+    {
+      "from": "backend/app/services/thesis_auto.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/thesis_auto.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/thesis.py"
+    },
+    {
+      "from": "backend/app/services/thesis_auto.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/thesis.py"
+    },
+    {
+      "from": "backend/app/services/thesis_auto.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evaluation.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evaluation.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evaluation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/analysis.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evaluation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evaluation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/thesis.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evaluation.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/thesis.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evaluation.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evaluation.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis_evidence.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evidence.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/analysis.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evidence.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/checkpoint.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evidence.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evidence.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evidence.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evidence.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/app/services/thesis_evidence.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/service.py"
+    },
+    {
+      "from": "backend/tests/browser_app.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/tests/browser_app.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/browser_app.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/conftest.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/conftest.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/fallback.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/prompts.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/service.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/providers/base.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/providers/ollama.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/analysis.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/tests/test_ai_analyst.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/service.py"
+    },
+    {
+      "from": "backend/tests/test_ai_evaluation.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/tests/test_ai_evaluation.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/evaluation/esds.py"
+    },
+    {
+      "from": "backend/tests/test_ai_live_optional.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/tests/test_ai_live_optional.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/service.py"
+    },
+    {
+      "from": "backend/tests/test_ai_live_optional.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/evaluation/esds.py"
+    },
+    {
+      "from": "backend/tests/test_ai_live_optional.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_ai_live_optional.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/tests/test_ai_live_optional.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_ai_phase61.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/quality.py"
+    },
+    {
+      "from": "backend/tests/test_ai_phase61.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/reasoning.py"
+    },
+    {
+      "from": "backend/tests/test_ai_phase61.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/tests/test_ai_phase61.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/tests/test_ai_phase61.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/expectations.py"
+    },
+    {
+      "from": "backend/tests/test_ai_phase61.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/calculator.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/fallback.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/service.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/memory.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/memory.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/service.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/chunking.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/clients.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/service.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory_live.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory_live.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/memory.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory_live.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/clients.py"
+    },
+    {
+      "from": "backend/tests/test_company_memory_live.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/service.py"
+    },
+    {
+      "from": "backend/tests/test_esds_real_pdf.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_esds_real_pdf.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/extractor.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/deduplicator.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/downloader.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/monitor.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/normalizer.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/parsers/pdf.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/parsers/rss.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/nse.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/storage.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_events.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/downloader.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/monitor.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/storage.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/__init__.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/calculator.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/extractor.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/period.py"
+    },
+    {
+      "from": "backend/tests/test_financials.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/service.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/__init__.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/events.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/downloader.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/monitor.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/normalizer.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/esds_ir.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/nse.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/storage.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_live_sources.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/tests/test_manual_pdf_upload.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/tests/test_manual_pdf_upload.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/tests/test_manual_pdf_upload.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_manual_pdf_upload.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/monitor.py"
+    },
+    {
+      "from": "backend/tests/test_manual_pdf_upload.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/tests/test_manual_pdf_upload.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/storage.py"
+    },
+    {
+      "from": "backend/tests/test_manual_pdf_upload.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_manual_pdf_upload.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/tests/test_manual_pdf_upload.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_manual_pdf_upload.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/extractor.py"
+    },
+    {
+      "from": "backend/tests/test_market_phase6.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_market_phase6.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_market_phase6.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/providers.py"
+    },
+    {
+      "from": "backend/tests/test_market_phase6.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/reference.py"
+    },
+    {
+      "from": "backend/tests/test_market_phase6.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/service.py"
+    },
+    {
+      "from": "backend/tests/test_market_phase6.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/valuation.py"
+    },
+    {
+      "from": "backend/tests/test_market_phase6.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/tests/test_market_phase6.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_market_phase6.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/fallback.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/providers.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/service.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/valuation.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/__init__.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/market.py"
+    },
+    {
+      "from": "backend/tests/test_market_valuation.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/period.py"
+    },
+    {
+      "from": "backend/tests/test_phase62.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/reasoning.py"
+    },
+    {
+      "from": "backend/tests/test_phase62.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_phase62.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_phase62.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/historical_pe.py"
+    },
+    {
+      "from": "backend/tests/test_phase62.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/tests/test_phase62.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/tests/test_phase62.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/tests/test_phase62.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_phase62.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/commentary.py"
+    },
+    {
+      "from": "backend/tests/test_phase62.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/investor_verdict.py"
+    },
+    {
+      "from": "backend/tests/test_phase63.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/tests/test_phase63.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/service.py"
+    },
+    {
+      "from": "backend/tests/test_phase63.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/tests/test_phase63.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_phase63.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_phase63.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/expectations.py"
+    },
+    {
+      "from": "backend/tests/test_phase63.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/valuation.py"
+    },
+    {
+      "from": "backend/tests/test_phase63.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_phase63.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/tests/test_phase63.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/investor_verdict.py"
+    },
+    {
+      "from": "backend/tests/test_phase63_live.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/tests/test_phase63_live.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/fallback.py"
+    },
+    {
+      "from": "backend/tests/test_phase63_live.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_phase63_live.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/tests/test_phase63_live.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_phase64.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/tests/test_phase64.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_phase64.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_phase64.py",
+      "kind": "direct-import",
+      "to": "backend/app/market/expectations.py"
+    },
+    {
+      "from": "backend/tests/test_phase64.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_phase64.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/market.py"
+    },
+    {
+      "from": "backend/tests/test_phase64.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/financials/service.py"
+    },
+    {
+      "from": "backend/tests/test_phase64.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/investor_evidence.py"
+    },
+    {
+      "from": "backend/tests/test_phase64.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/investor_verdict.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/config.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/normalizer.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/base.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/sources/nse.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/ingestion/storage.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/main.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/company.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/memory.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/commentary.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/events/event_service.py"
+    },
+    {
+      "from": "backend/tests/test_phase71.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/memory/service.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/service.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/providers/base.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/analysis.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/checkpoint.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/commentary.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/event.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/checkpoints.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/commentary.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/materiality.py"
+    },
+    {
+      "from": "backend/tests/test_phase72.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/quarterly_review.py"
+    },
+    {
+      "from": "backend/tests/test_phase73.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/tests/test_phase73.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/prompts.py"
+    },
+    {
+      "from": "backend/tests/test_phase73.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/quarterly_packet.py"
+    },
+    {
+      "from": "backend/tests/test_phase73.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/quarterly_validation.py"
+    },
+    {
+      "from": "backend/tests/test_phase73.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/tests/test_phase73.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/service.py"
+    },
+    {
+      "from": "backend/tests/test_phase73.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/tests/test_phase73.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/providers/base.py"
+    },
+    {
+      "from": "backend/tests/test_phase74.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/tests/test_phase74.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/quarterly_packet.py"
+    },
+    {
+      "from": "backend/tests/test_phase74.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/quarterly_validation.py"
+    },
+    {
+      "from": "backend/tests/test_phase74.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/schemas.py"
+    },
+    {
+      "from": "backend/tests/test_phase74.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/validator.py"
+    },
+    {
+      "from": "backend/tests/test_phase74.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/materiality.py"
+    },
+    {
+      "from": "backend/tests/test_phase8.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/tests/test_phase8.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/service.py"
+    },
+    {
+      "from": "backend/tests/test_phase8.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/analysis.py"
+    },
+    {
+      "from": "backend/tests/test_phase8.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/financial.py"
+    },
+    {
+      "from": "backend/tests/test_phase8.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/thesis.py"
+    },
+    {
+      "from": "backend/tests/test_phase8.py",
+      "kind": "direct-import",
+      "to": "backend/app/schemas/thesis.py"
+    },
+    {
+      "from": "backend/tests/test_phase8.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis.py"
+    },
+    {
+      "from": "backend/tests/test_phase8.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis_evaluation.py"
+    },
+    {
+      "from": "backend/tests/test_phase8.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis_evidence.py"
+    },
+    {
+      "from": "backend/tests/test_phase81.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/context_builder.py"
+    },
+    {
+      "from": "backend/tests/test_phase81.py",
+      "kind": "direct-import",
+      "to": "backend/app/ai/analyst/service.py"
+    },
+    {
+      "from": "backend/tests/test_phase81.py",
+      "kind": "direct-import",
+      "to": "backend/app/api/thesis.py"
+    },
+    {
+      "from": "backend/tests/test_phase81.py",
+      "kind": "direct-import",
+      "to": "backend/app/models/thesis.py"
+    },
+    {
+      "from": "backend/tests/test_phase81.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis.py"
+    },
+    {
+      "from": "backend/tests/test_phase81.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis_auto.py"
+    },
+    {
+      "from": "backend/tests/test_phase81.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis_evaluation.py"
+    },
+    {
+      "from": "backend/tests/test_phase81.py",
+      "kind": "direct-import",
+      "to": "backend/app/services/thesis_presentation.py"
+    },
+    {
+      "from": "backend/tests/thesis_browser_app.py",
+      "kind": "direct-import",
+      "to": "backend/app/database.py"
+    },
+    {
+      "from": "frontend/src/App.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/CompanyMemory.tsx"
+    },
+    {
+      "from": "frontend/src/App.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/EventsView.tsx"
+    },
+    {
+      "from": "frontend/src/App.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/FinancialsView.tsx"
+    },
+    {
+      "from": "frontend/src/App.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/api.ts"
+    },
+    {
+      "from": "frontend/src/App.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/format.ts"
+    },
+    {
+      "from": "frontend/src/CompanyMemory.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/api.ts"
+    },
+    {
+      "from": "frontend/src/EventsView.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/api.ts"
+    },
+    {
+      "from": "frontend/src/EventsView.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/format.ts"
+    },
+    {
+      "from": "frontend/src/FinancialsView.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/InvestorJudgmentReport.tsx"
+    },
+    {
+      "from": "frontend/src/FinancialsView.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/TestedPEPanel.tsx"
+    },
+    {
+      "from": "frontend/src/FinancialsView.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/ThesisPanel.tsx"
+    },
+    {
+      "from": "frontend/src/FinancialsView.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/ValuationPanel.tsx"
+    },
+    {
+      "from": "frontend/src/FinancialsView.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/api.ts"
+    },
+    {
+      "from": "frontend/src/InvestorJudgmentReport.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/QuarterlyReview.tsx"
+    },
+    {
+      "from": "frontend/src/InvestorJudgmentReport.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/TestedPEPanel.tsx"
+    },
+    {
+      "from": "frontend/src/InvestorJudgmentReport.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/api.ts"
+    },
+    {
+      "from": "frontend/src/QuarterlyReview.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/ThesisPanel.tsx"
+    },
+    {
+      "from": "frontend/src/QuarterlyReview.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/api.ts"
+    },
+    {
+      "from": "frontend/src/TestedPEPanel.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/api.ts"
+    },
+    {
+      "from": "frontend/src/ThesisPanel.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/thesisApi.ts"
+    },
+    {
+      "from": "frontend/src/ValuationPanel.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/api.ts"
+    },
+    {
+      "from": "frontend/src/main.tsx",
+      "kind": "direct-import",
+      "to": "frontend/src/App.tsx"
+    },
+    {
+      "from": "frontend/src/thesisApi.ts",
+      "kind": "direct-import",
+      "to": "frontend/src/api.ts"
+    }
+  ],
+  "revision": "a33715ef34f83bb5fe4f35e3b64e15b38ad7c699"
+}

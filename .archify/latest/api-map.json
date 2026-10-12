@@ -1,0 +1,453 @@
+{
+  "backend_endpoints": [
+    {
+      "file": "backend/app/api/analysis.py",
+      "handler": "app.api.analysis.analyze_company_event",
+      "line": 19,
+      "method": "POST",
+      "path": "/api/events/{event_id}/analyze"
+    },
+    {
+      "file": "backend/app/api/analysis.py",
+      "handler": "app.api.analysis.analyze",
+      "line": 39,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/financials/{period_id}/analyze"
+    },
+    {
+      "file": "backend/app/api/analysis.py",
+      "handler": "app.api.analysis.company_analyses",
+      "line": 65,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/analysis"
+    },
+    {
+      "file": "backend/app/api/analysis.py",
+      "handler": "app.api.analysis.analysis_detail",
+      "line": 77,
+      "method": "GET",
+      "path": "/api/analysis/{analysis_id}"
+    },
+    {
+      "file": "backend/app/api/companies.py",
+      "handler": "app.api.companies.create_company",
+      "line": 36,
+      "method": "POST",
+      "path": "/api/companies"
+    },
+    {
+      "file": "backend/app/api/companies.py",
+      "handler": "app.api.companies.list_companies",
+      "line": 51,
+      "method": "GET",
+      "path": "/api/companies"
+    },
+    {
+      "file": "backend/app/api/companies.py",
+      "handler": "app.api.companies.company_by_symbol",
+      "line": 56,
+      "method": "GET",
+      "path": "/api/companies/{symbol}"
+    },
+    {
+      "file": "backend/app/api/companies.py",
+      "handler": "app.api.companies.delete_company",
+      "line": 64,
+      "method": "DELETE",
+      "path": "/api/companies/{symbol}"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.list_events",
+      "line": 112,
+      "method": "GET",
+      "path": "/api/events"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.source_status",
+      "line": 151,
+      "method": "GET",
+      "path": "/api/events/sources/status"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.event_detail",
+      "line": 194,
+      "method": "GET",
+      "path": "/api/events/{event_id}"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.company_events",
+      "line": 202,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/events"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.upload_company_pdf",
+      "line": 220,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/events/upload-pdf"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.manual_check",
+      "line": 307,
+      "method": "POST",
+      "path": "/api/events/check"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.bootstrap_events",
+      "line": 312,
+      "method": "POST",
+      "path": "/api/events/bootstrap"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.document_file",
+      "line": 347,
+      "method": "GET",
+      "path": "/api/documents/{document_id}/file"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.document_pages",
+      "line": 365,
+      "method": "GET",
+      "path": "/api/documents/{document_id}/pages"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.company_sources",
+      "line": 380,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/sources"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.create_company_source",
+      "line": 396,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/sources"
+    },
+    {
+      "file": "backend/app/api/events.py",
+      "handler": "app.api.events.update_company_source",
+      "line": 418,
+      "method": "PUT",
+      "path": "/api/companies/{symbol}/sources/{source}"
+    },
+    {
+      "file": "backend/app/api/financials.py",
+      "handler": "app.api.financials.company_financials",
+      "line": 122,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/financials"
+    },
+    {
+      "file": "backend/app/api/financials.py",
+      "handler": "app.api.financials.latest_financials",
+      "line": 141,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/financials/latest"
+    },
+    {
+      "file": "backend/app/api/financials.py",
+      "handler": "app.api.financials.financial_period",
+      "line": 166,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/financials/{period_id}"
+    },
+    {
+      "file": "backend/app/api/financials.py",
+      "handler": "app.api.financials.process_financials",
+      "line": 183,
+      "method": "POST",
+      "path": "/api/financials/process/{event_id}"
+    },
+    {
+      "file": "backend/app/api/financials.py",
+      "handler": "app.api.financials.financial_processing_status",
+      "line": 198,
+      "method": "GET",
+      "path": "/api/financials/process/{event_id}"
+    },
+    {
+      "file": "backend/app/api/market.py",
+      "handler": "app.api.market.import_reference",
+      "line": 36,
+      "method": "POST",
+      "path": "/api/market-lens/import"
+    },
+    {
+      "file": "backend/app/api/market.py",
+      "handler": "app.api.market.market_snapshot",
+      "line": 63,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/market-snapshot"
+    },
+    {
+      "file": "backend/app/api/market.py",
+      "handler": "app.api.market.save_market_snapshot",
+      "line": 79,
+      "method": "PUT",
+      "path": "/api/companies/{symbol}/market-snapshot"
+    },
+    {
+      "file": "backend/app/api/market.py",
+      "handler": "app.api.market.market_status",
+      "line": 89,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/market"
+    },
+    {
+      "file": "backend/app/api/market.py",
+      "handler": "app.api.market.price_history",
+      "line": 110,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/market/history"
+    },
+    {
+      "file": "backend/app/api/market.py",
+      "handler": "app.api.market.refresh_price",
+      "line": 122,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/market/refresh"
+    },
+    {
+      "file": "backend/app/api/memory.py",
+      "handler": "app.api.memory.status",
+      "line": 12,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/memory"
+    },
+    {
+      "file": "backend/app/api/memory.py",
+      "handler": "app.api.memory.index",
+      "line": 17,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/memory/index"
+    },
+    {
+      "file": "backend/app/api/memory.py",
+      "handler": "app.api.memory.query",
+      "line": 22,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/memory/query"
+    },
+    {
+      "file": "backend/app/api/portfolio.py",
+      "handler": "app.api.portfolio.portfolio",
+      "line": 35,
+      "method": "GET",
+      "path": "/api/portfolio"
+    },
+    {
+      "file": "backend/app/api/portfolio.py",
+      "handler": "app.api.portfolio.portfolio_for_symbol",
+      "line": 40,
+      "method": "GET",
+      "path": "/api/portfolio/{symbol}"
+    },
+    {
+      "file": "backend/app/api/thesis.py",
+      "handler": "app.api.thesis.current",
+      "line": 33,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/thesis"
+    },
+    {
+      "file": "backend/app/api/thesis.py",
+      "handler": "app.api.thesis.propose",
+      "line": 79,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/thesis/bootstrap"
+    },
+    {
+      "file": "backend/app/api/thesis.py",
+      "handler": "app.api.thesis.create",
+      "line": 88,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/thesis/pillars"
+    },
+    {
+      "file": "backend/app/api/thesis.py",
+      "handler": "app.api.thesis.edit",
+      "line": 94,
+      "method": "PUT",
+      "path": "/api/companies/{symbol}/thesis/pillars/{pillar_id}"
+    },
+    {
+      "file": "backend/app/api/thesis.py",
+      "handler": "app.api.thesis.add_test",
+      "line": 100,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/thesis/pillars/{pillar_id}/expectations"
+    },
+    {
+      "file": "backend/app/api/thesis.py",
+      "handler": "app.api.thesis.edit_test",
+      "line": 106,
+      "method": "PUT",
+      "path": "/api/companies/{symbol}/thesis/pillars/{pillar_id}/expectations/{expectation_key}"
+    },
+    {
+      "file": "backend/app/api/thesis.py",
+      "handler": "app.api.thesis.evaluate",
+      "line": 112,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/thesis/evaluate"
+    },
+    {
+      "file": "backend/app/api/thesis.py",
+      "handler": "app.api.thesis.impact",
+      "line": 118,
+      "method": "GET",
+      "path": "/api/analysis/{analysis_id}/thesis-impact"
+    },
+    {
+      "file": "backend/app/api/transactions.py",
+      "handler": "app.api.transactions.create_transaction",
+      "line": 31,
+      "method": "POST",
+      "path": "/api/transactions"
+    },
+    {
+      "file": "backend/app/api/transactions.py",
+      "handler": "app.api.transactions.list_transactions",
+      "line": 44,
+      "method": "GET",
+      "path": "/api/transactions"
+    },
+    {
+      "file": "backend/app/api/transactions.py",
+      "handler": "app.api.transactions.transactions_for_symbol",
+      "line": 49,
+      "method": "GET",
+      "path": "/api/transactions/{symbol}"
+    },
+    {
+      "file": "backend/app/api/valuation.py",
+      "handler": "app.api.valuation.tested_pe",
+      "line": 89,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/valuation/tested-pe"
+    },
+    {
+      "file": "backend/app/api/valuation.py",
+      "handler": "app.api.valuation.automatic_pe_assessment",
+      "line": 201,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/valuation/tested-pe"
+    },
+    {
+      "file": "backend/app/api/valuation.py",
+      "handler": "app.api.valuation.latest_valuation",
+      "line": 231,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/valuation"
+    },
+    {
+      "file": "backend/app/api/valuation.py",
+      "handler": "app.api.valuation.latest_valuation",
+      "line": 231,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/valuation/latest"
+    },
+    {
+      "file": "backend/app/api/valuation.py",
+      "handler": "app.api.valuation.valuation_history",
+      "line": 244,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/valuation/history"
+    },
+    {
+      "file": "backend/app/api/valuation.py",
+      "handler": "app.api.valuation.recalculate_valuation",
+      "line": 260,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/valuation/recalculate"
+    },
+    {
+      "file": "backend/app/api/valuation.py",
+      "handler": "app.api.valuation.valuation_scenario",
+      "line": 280,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/valuation/scenario"
+    },
+    {
+      "file": "backend/app/api/valuation.py",
+      "handler": "app.api.valuation.valuation_reverse",
+      "line": 313,
+      "method": "POST",
+      "path": "/api/companies/{symbol}/valuation/reverse"
+    },
+    {
+      "file": "backend/app/api/valuation.py",
+      "handler": "app.api.valuation.valuation_change_api",
+      "line": 352,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/valuation/change"
+    },
+    {
+      "file": "backend/app/api/valuation.py",
+      "handler": "app.api.valuation.valuation_reference",
+      "line": 400,
+      "method": "GET",
+      "path": "/api/companies/{symbol}/valuation/reference"
+    },
+    {
+      "file": "backend/app/main.py",
+      "handler": "app.main.health",
+      "line": 118,
+      "method": "GET",
+      "path": "/health"
+    }
+  ],
+  "frontend_api_references": [
+    {
+      "file": "frontend/scripts/memory-check.mjs",
+      "paths": [
+        "/api/documents/4/file"
+      ]
+    },
+    {
+      "file": "frontend/src/EventsView.tsx",
+      "paths": [
+        "/api/documents/"
+      ]
+    },
+    {
+      "file": "frontend/src/ThesisPanel.tsx",
+      "paths": [
+        "/api/documents/${row.document_id}/file${page"
+      ]
+    },
+    {
+      "file": "frontend/src/api.ts",
+      "paths": [
+        "/api/companies",
+        "/api/companies/${encodeURIComponent",
+        "/api/events/${id}",
+        "/api/events/${id}/analyze${regenerate",
+        "/api/events/check",
+        "/api/events?limit=100",
+        "/api/financials/process/${eventId}",
+        "/api/financials/process/${eventId}${confirmResults",
+        "/api/portfolio",
+        "/api/transactions"
+      ]
+    },
+    {
+      "file": "frontend/src/thesisApi.ts",
+      "paths": [
+        "/api/analysis/${analysisId}/thesis-impact",
+        "/api/companies/${encodeURIComponent"
+      ]
+    }
+  ],
+  "revision": "a33715ef34f83bb5fe4f35e3b64e15b38ad7c699"
+}

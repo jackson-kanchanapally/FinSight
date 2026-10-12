@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/candidates/processing-pipelines.json",
+    "sha256": "db9587b60ac0bdc11d914878511d86481b7f0c596bf774e3b24d43f4b381ad39",
+    "bytes": 9408
+  },
+  "artifact": {
+    "path": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/processing-pipelines.html",
+    "sha256": "766fc2739a362ad2168952c886c7ae7ec929a5a89a3a96cfe7e5b466ede9ed50",
+    "bytes": 790800
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/pipeline-review-2/processing-pipelines.finalize.json",
+    "summaryReceipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/pipeline-review-2/processing-pipelines.finalize-summary.json",
+    "browserCheckReceipt": "/Users/olivemac9/Desktop/portfolioAI/.archify/latest/pipeline-review-2/processing-pipelines.browser-check.json"
+  },
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "disabled"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 2860,
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 1,
+      "routesOverSuggestedBends": 7,
+      "routesOverSuggestedStretch": 2
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "validate-analysis",
+            "from": "validate",
+            "to": "analysis",
+            "label": "accepted/fallback",
+            "collectionIndex": 13,
+            "artifactIndex": 14
+          },
+          "right": {
+            "id": "analysis-postgres",
+            "from": "analysis",
+            "to": "postgres",
+            "label": "structured output",
+            "collectionIndex": 18,
+            "artifactIndex": 19
+          },
+          "point": [
+            1292,
+            656
+          ],
+          "sharedNode": "analysis"
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "event-pdf",
+            "from": "event_doc",
+            "to": "pdf_extract",
+            "label": "eligible result PDF",
+            "collectionIndex": 3,
+            "artifactIndex": 4
+          },
+          "bends": 3,
+          "stretch": 1
+        },
+        {
+          "relationship": {
+            "id": "pdf-facts",
+            "from": "pdf_extract",
+            "to": "facts",
+            "label": "period rows",
+            "collectionIndex": 4,
+            "artifactIndex": 5
+          },
+          "bends": 4,
+          "stretch": 1.344
+        },
+        {
+          "relationship": {
+            "id": "event-commentary",
+            "from": "event_doc",
+            "to": "commentary",
+            "label": "transcript/presentation",
+            "collectionIndex": 7,
+            "artifactIndex": 8
+          },
+          "bends": 3,
+          "stretch": 1
+        },
+        {
+          "relationship": {
+            "id": "checkpoints-report",
+            "from": "checkpoints",
+            "to": "report",
+            "label": "execution evidence",
+            "collectionIndex": 9,
+            "artifactIndex": 10
+          },
+          "bends": 4,
+          "stretch": 1
+        },
+        {
+          "relationship": {
+            "id": "report-prompt",
+            "from": "report",
+            "to": "prompt",
+            "label": "bounded packet",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "bends": 3,
+          "stretch": 1
+        },
+        {
+          "relationship": {
+            "id": "model-validate",
+            "from": "ollama",
+            "to": "validate",
+            "label": "model JSON",
+            "collectionIndex": 12,
+            "artifactIndex": 13
+          },
+          "bends": 4,
+          "stretch": 1.395
+        },
+        {
+          "relationship": {
+            "id": "analysis-postgres",
+            "from": "analysis",
+            "to": "postgres",
+            "label": "structured output",
+            "collectionIndex": 18,
+            "artifactIndex": 19
+          },
+          "bends": 4,
+          "stretch": 1.478
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "validate → analysis and analysis → postgres cross next to analysis: move node validate or postgres so the two reach analysis from different sides (for example one level with it, one directly above or below it).",
+      "event_doc → pdf_extract needs 3 bends: move node event_doc or pdf_extract so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "pdf_extract → facts needs 4 bends: move node pdf_extract or facts so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "event_doc → commentary needs 3 bends: move node event_doc or commentary so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "checkpoints → report needs 4 bends: move node checkpoints or report so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "report → prompt needs 3 bends: move node report or prompt so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "ollama → validate needs 4 bends: move node ollama or validate so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "analysis → postgres needs 4 bends: move node analysis or postgres so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}
