@@ -6,6 +6,8 @@ import {
   type Impact,
   type Pillar,
   type Thesis,
+  type Monitoring,
+  type AssessmentComparison,
 } from "./thesisApi";
 import "./thesis.css";
 const label = (v?: string) => (v || "").replaceAll("_", " ");
@@ -62,6 +64,8 @@ export function ThesisEvidence({
               {label(row?.kind)} {label(row?.metric_code)} {row?.value}
             </p>
             {row?.source_quote && <blockquote>{row.source_quote}</blockquote>}
+            {row?.revision && <small>Evidence revision {row.revision.slice(0, 12)}</small>}
+            {!!row?.input_evidence_ids?.length && <ThesisEvidence ids={row.input_evidence_ids.filter(key => key !== id)} registry={registry} />}
             {url && (
               <a href={url} target="_blank" rel="noreferrer">
                 Open source{page ? ` · page ${page}` : ""}
@@ -72,6 +76,68 @@ export function ThesisEvidence({
       })}
     </div>
   );
+}
+function ThesisMonitoring({ symbol, scope, data }: { symbol: string; scope: string; data: Monitoring }) {
+  const [from, setFrom] = useState(0), [to, setTo] = useState(data.latest?.run_id || 0);
+  const [selected, setSelected] = useState<Impact | null>(data.latest);
+  const [comparison, setComparison] = useState<AssessmentComparison | null>(null);
+  const [error, setError] = useState(""), [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!to) return;
+    let active = true;
+    setLoading(true); setError(""); setComparison(null); setSelected(null);
+    const load = from ? thesisApi.compare(symbol, scope, from, to).then(value => {
+      if (active) { setComparison(value); setSelected(value.to); }
+    }) : thesisApi.assessment(symbol, scope, to).then(value => { if (active) setSelected(value); });
+    void load.catch(e => { if (active) setError(String(e)); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [symbol, scope, from, to]);
+  const assessment = selected?.assessment;
+  const changes = comparison?.changes || assessment?.changes || [];
+  const evidence = comparison?.evidence || selected?.evidence || {};
+  const names: Record<string, string> = { IMPROVING: "Improving factors", DETERIORATING: "Deteriorating factors", UNCHANGED: "Unchanged", INSUFFICIENT_EVIDENCE: "Insufficient evidence" };
+  return <section className="thesis-monitoring" aria-label="Thesis monitoring">
+    <div className="thesis-section-heading"><span aria-hidden="true">↻</span><h4>Thesis Monitoring</h4></div>
+    <p className="muted">Last evaluated {data.latest?.recorded_at ? new Date(data.latest.recorded_at).toLocaleString() : "—"}</p>
+    <details className="thesis-monitor-history"><summary>Assessment timeline · {data.history.length} assessments</summary>
+      <div className="thesis-monitor-selects">
+        <label>Assessment<select aria-label="Assessment" value={to} onChange={e => setTo(Number(e.target.value))}>
+          {data.history.map(row => <option key={row.run_id} value={row.run_id}>#{row.run_id} · {new Date(row.recorded_at).toLocaleString()}</option>)}
+        </select></label>
+        <label>Compare with<select aria-label="Compare with" value={from} onChange={e => setFrom(Number(e.target.value))}>
+          <option value={0}>Previous assessment at the time</option>
+          {data.history.map(row => <option key={row.run_id} value={row.run_id}>#{row.run_id} · {new Date(row.recorded_at).toLocaleString()}</option>)}
+        </select></label>
+      </div>
+      <ol>{data.history.map(row => <li key={row.run_id}><button className="button button-outline button-small" onClick={() => { setFrom(0); setTo(row.run_id); }}>View #{row.run_id}</button> <time>{new Date(row.recorded_at).toLocaleString()}</time><p>{row.summary}</p></li>)}</ol>
+    </details>
+    {error && <p role="alert">{error}</p>}
+    {loading ? <p role="status">Loading assessment…</p> : <>
+      {assessment && <><p><strong>{assessment.first_assessment ? "Initial baseline" : `Assessment #${selected?.run_id}`}</strong> · Evidence confidence: {assessment.confidence.toLowerCase()}</p>
+        <p>{comparison ? `Comparing assessment #${comparison.from.run_id} with #${comparison.to.run_id}.` : assessment.summary}</p>
+        {assessment.conflicting_evidence && <p className="muted">Supporting and contradicting evidence are both present.</p>}
+        <details><summary>Thesis state and comparison policy</summary>
+          {assessment.current_state.map(row => {
+            const prior = comparison?.from.assessment?.current_state || assessment.previous_state;
+            return <p key={row.pillar_id}>{row.name}: {label(prior.find(p => p.pillar_id === row.pillar_id)?.status || "UNPROVEN")} → {label(row.status)}</p>;
+          })}
+          <p>Monitoring thresholds: revenue {assessment.policy.revenue_change_pct}%, profit {assessment.policy.profit_change_pct}%, margins {assessment.policy.margin_change_pp} percentage point. Comparisons use the same period last year or a correction to the same period.</p>
+          <p>{assessment.policy.note} {assessment.confidence_reason}</p>
+        </details></>}
+      {!assessment && selected && <p>This earlier evaluation records pillar states and evidence below.</p>}
+      {Object.entries(names).map(([status, title]) => {
+        const rows = changes.filter(row => row.classification === status);
+        if (!rows.length) return null;
+        return <details className={`thesis-monitor-group thesis-monitor-${status.toLowerCase()}`} key={status} open={status === "IMPROVING" || status === "DETERIORATING"}>
+          <summary>{title} · {rows.length}</summary>
+          {rows.map(row => <article key={row.key}><small>{row.basis === "CONFIRMED" ? "Confirmed comparison" : row.basis === "MANAGEMENT_CLAIM" ? "Management statement · outcome unverified" : "Insufficient evidence"}</small><p>{row.reason}</p><ThesisEvidence ids={row.evidence_ids} registry={evidence} /></article>)}
+        </details>;
+      })}
+      {!!selected?.impacts.length && <details><summary>Pillar explanations</summary>{selected.impacts.map(row => <article key={row.pillar_id}><strong>{row.name} · {label(row.new_status)}</strong><p>{row.reason}</p><small>{row.method === "QWEN_VALIDATED" ? "AI interpretation · evidence checked" : "Verified requirement check"}</small><ThesisEvidence ids={row.evidence_ids} registry={selected.evidence || {}} /></article>)}</details>}
+      {!!assessment?.next_catalysts.length && <details><summary>Next catalysts to monitor</summary><ul>{assessment.next_catalysts.map((row, index) => <li key={index}>{row.description} · {row.target_date || "No verified date"}<ThesisEvidence ids={row.evidence_ids} registry={selected?.evidence || {}} /></li>)}</ul></details>}
+      {!!assessment?.unresolved_questions.length && <details><summary>Unresolved questions</summary><ul>{assessment.unresolved_questions.map(question => <li key={question}>{question}</li>)}</ul></details>}
+    </>}
+  </section>;
 }
 export function ThesisImpact({ analysisId }: { analysisId: number }) {
   const [data, setData] = useState<Impact | null>(null);
@@ -248,6 +314,7 @@ export function ThesisPanel({
             {data.overview.summary ? <p>{data.overview.summary}</p> : <p className="muted">A thesis appears when verified quarterly research has enough evidence.</p>}
             {data.overview.generated_from_research && <small className="thesis-verified"><i aria-hidden="true">✓</i> Generated from verified research</small>}
           </section>
+          {data.monitoring?.latest && <ThesisMonitoring key={`${symbol}:${scope}:${asOf}:${data.monitoring.latest.run_id}`} symbol={symbol} scope={scope} data={data.monitoring} />}
           {!!data.overview.changes.length && <section className="thesis-updates"><h4>Thesis Updated · {data.overview.changes[0].period}</h4>
             {data.overview.changes.map(change => <p key={change.pillar}><strong>{change.pillar}: {label(change.previous_status)} → {label(change.new_status)}</strong><br />{change.reason}</p>)}
           </section>}

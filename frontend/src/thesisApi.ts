@@ -10,6 +10,8 @@ export type Evidence = Record<
     source_quote?: string;
     value?: string;
     metric_code?: string;
+    revision?: string;
+    input_evidence_ids?: string[];
   }
 >;
 export type Expectation = {
@@ -69,7 +71,10 @@ export type Gap = {
 };
 export type Impact = {
   run_id: number | null;
-  analysis_id: number;
+  analysis_id: number | null;
+  recorded_at?: string;
+  previous_run_id?: number | null;
+  assessment?: Assessment | null;
   evidence_as_of?: string;
   evidence?: Evidence;
   impacts: {
@@ -82,7 +87,35 @@ export type Impact = {
     method: string;
   }[];
 };
+export type ThesisChange = {
+  key: string;
+  category: string;
+  classification: string;
+  reason: string;
+  evidence_ids: string[];
+  material: boolean;
+  basis: string;
+};
+export type Assessment = {
+  first_assessment: boolean;
+  summary: string;
+  confidence: string;
+  confidence_reason: string;
+  conflicting_evidence: boolean;
+  previous_state: { pillar_id: number; name: string; status: string }[];
+  current_state: { pillar_id: number; name: string; status: string }[];
+  changes: ThesisChange[];
+  unresolved_questions: string[];
+  next_catalysts: { description: string; target_date: string | null; evidence_ids: string[]; basis: string }[];
+  policy: { revenue_change_pct: string; profit_change_pct: string; margin_change_pp: string; note: string };
+};
+export type AssessmentComparison = { from: Impact; to: Impact; changes: ThesisChange[]; evidence: Evidence };
+export type Monitoring = {
+  latest: Impact | null;
+  history: { run_id: number; recorded_at: string; previous_run_id: number | null; summary: string; confidence: string | null }[];
+};
 export type Thesis = {
+  monitoring?: Monitoring;
   pillars: Pillar[];
   as_of_date: string;
   overview: {
@@ -131,6 +164,10 @@ export type ThesisTest = { pillar_id: number; pillar: string; question: string; 
 const path = (symbol: string) =>
   `/api/companies/${encodeURIComponent(symbol)}/thesis`;
 export const thesisApi = {
+  assessment: (symbol: string, scope: string, id: number) =>
+    request<Impact>(`${path(symbol)}/assessments/${id}?scope=${scope}`),
+  compare: (symbol: string, scope: string, from: number, to: number) =>
+    request<AssessmentComparison>(`${path(symbol)}/assessments/compare?scope=${scope}&from_id=${from}&to_id=${to}`),
   get: (symbol: string, scope: string, asOf: string) =>
     request<Thesis>(
       `${path(symbol)}?scope=${scope}${asOf ? `&as_of_date=${asOf}` : ""}`,

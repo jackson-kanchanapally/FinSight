@@ -549,6 +549,8 @@ def ingest_commentary(
     from app.services.checkpoints import sync_checkpoints
     sync_checkpoints(db, period)
     db.commit()
+    from app.services.thesis_monitoring import refresh_monitoring
+    refresh_monitoring(db, period.company_id)
     return list(
         db.scalars(
             select(ManagementStatement)

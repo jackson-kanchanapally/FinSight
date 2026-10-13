@@ -57,9 +57,11 @@ def test_outcomes(tests, registry, period, cutoff):
             target_end = date.fromisoformat(definition["target_period_end"])
             if target_end > cutoff:
                 outcome["status"] = "NOT_YET_TESTABLE"
-            elif period.period_end == target_end and period.period_type.value == definition["period_type"]:
+            else:
                 found = [(key, row) for key, row in registry.items()
-                         if row.get("kind") in {"FACT", "METRIC"} and row.get("period_id") == period.id
+                         if row.get("kind") in {"FACT", "METRIC"}
+                         and row.get("period_end", period.period_end.isoformat()) == target_end.isoformat()
+                         and row.get("period_type", period.period_type.value) == definition["period_type"]
                          and row.get("metric_code") == definition["metric_code"] and row.get("unit") == definition["unit"]]
                 if len(found) == 1:
                     key, row = found[0]
@@ -95,21 +97,21 @@ def prior_outcomes(db, pillar_id, revision_id, current_period_id, outcomes, as_o
     bases = [o["comparison_basis"] for o in current_tests]
     for evaluation, run, analysis in db.execute(select(ThesisPillarEvaluation, ThesisEvaluationRun, AIAnalysis)
             .join(ThesisEvaluationRun, ThesisPillarEvaluation.run_id == ThesisEvaluationRun.id)
-            .join(AIAnalysis, ThesisEvaluationRun.analysis_id == AIAnalysis.id).where(
+            .outerjoin(AIAnalysis, ThesisEvaluationRun.analysis_id == AIAnalysis.id).where(
                 ThesisPillarEvaluation.pillar_id == pillar_id, ThesisPillarEvaluation.revision_id == revision_id,
                 ThesisEvaluationRun.as_of_date <= as_of)):
-        prior_period = db.get(FinancialPeriod, analysis.financial_period_id)
+        prior_period = db.get(FinancialPeriod, run.financial_period_id or analysis.financial_period_id)
         if prior_period.period_end >= current.period_end or prior_period.period_type != current.period_type:
             continue
         tests = [t for t in evaluation.expectations if t.get("comparison_basis") in bases
                  and any(o["comparison_basis"] == t.get("comparison_basis")
                          and set(o["evidence_ids"]) != set(t["evidence_ids"]) for o in current_tests)]
         if any(t["status"] in {"MISSED", "DELAYED"} for t in tests):
-            failed.add(analysis.financial_period_id)
+            failed.add(prior_period.id)
         if any(t["status"] == "DELIVERED" for t in tests):
-            delivered.add(analysis.financial_period_id)
+            delivered.add(prior_period.id)
         if tests:
-            history.append({"run_id": run.id, "analysis_id": analysis.id,
+            history.append({"run_id": run.id, "analysis_id": run.analysis_id,
                 "period_end": prior_period.period_end.isoformat(), "tests": tests,
                 "evidence": {k: run.evidence_registry[k] for t in tests for k in t["evidence_ids"] if k in run.evidence_registry}})
     return len(failed), len(delivered), history
@@ -188,10 +190,13 @@ def validate_assessment(item, definition, previous, outcomes, relevant, registry
             raise ValueError("PENDING_TEST_REQUIRED")
 
 
-def evaluate_thesis(db, company_id, analysis_id, *, provider=None, use_ai=True, today=None):
+def evaluate_thesis(db, company_id, analysis_id, *, provider=None, use_ai=True, today=None, monitoring_context=None):
     today = today or date.today()
     lock_company(db, company_id)
-    analysis, period, cutoff, registry, report, review = analysis_evidence(db, company_id, analysis_id, today)
+    analysis, period, cutoff, registry, report, review = monitoring_context or analysis_evidence(db, company_id, analysis_id, today)
+    previous_run = db.scalar(select(ThesisEvaluationRun).where(
+        ThesisEvaluationRun.company_id == company_id, ThesisEvaluationRun.scope == period.scope.value
+    ).order_by(ThesisEvaluationRun.id.desc()))
     inputs = []
     for pillar in db.scalars(select(ThesisPillar).where(
             ThesisPillar.company_id == company_id, ThesisPillar.scope == period.scope.value)):
@@ -201,30 +206,34 @@ def evaluate_thesis(db, company_id, analysis_id, *, provider=None, use_ai=True, 
         previous, _, prior = state_at(db, revision, today)
         if prior:
             prior_run = db.get(ThesisEvaluationRun, prior.run_id)
-            prior_analysis = db.get(AIAnalysis, prior_run.analysis_id)
-            prior_period = db.get(FinancialPeriod, prior_analysis.financial_period_id)
+            prior_analysis = db.get(AIAnalysis, prior_run.analysis_id) if prior_run.analysis_id else None
+            prior_period = db.get(FinancialPeriod, prior_run.financial_period_id or prior_analysis.financial_period_id)
             if prior_period.period_end > period.period_end:
                 raise ValueError("OLDER_REVIEW_CANNOT_OVERWRITE_CURRENT_THESIS")
         tests = [t for t in expectation_revisions(db, pillar.id, today) if t.definition["is_active"]]
         ids = relevant_evidence(revision.definition, tests, registry, period)
-        if not ids:
+        if not ids and monitoring_context is None:
             continue
         outcomes = test_outcomes(tests, registry, period, cutoff)
         failures, deliveries, history = prior_outcomes(db, pillar.id, revision.id, period.id, outcomes, today)
         inputs.append({"pillar": pillar, "revision": revision, "previous": previous,
+                       "prior_evaluation": prior,
                        "tests": tests, "outcomes": outcomes, "ids": ids, "failures": failures,
                        "deliveries": deliveries, "history": history})
     if not inputs:
         return {"run_id": None, "analysis_id": analysis_id, "impacts": [],
                 "diagnostics": [{"reason": "NO_RELEVANT_ACTIVE_PILLARS"}]}
-    fingerprint = hashlib.sha256(json.dumps({"analysis": analysis_id,
+    gap = expectation_gap(report, registry, cutoff)
+    fingerprint = hashlib.sha256(json.dumps({"analysis": analysis_id if monitoring_context is None else None,
+        "version": "THESIS_MONITOR_V1" if monitoring_context else "THESIS_V1",
+        "period": period.id,
+        "expectation_gap": gap,
         "inputs": [(v["revision"].id, [t.id for t in v["tests"]]) for v in inputs],
         "evidence": registry}, sort_keys=True).encode()).hexdigest()
     existing = db.scalar(select(ThesisEvaluationRun).where(
         ThesisEvaluationRun.company_id == company_id, ThesisEvaluationRun.fingerprint == fingerprint))
     if existing:
         return run_view(db, existing)
-    gap = expectation_gap(report, registry, cutoff)
     diagnostics, proposed, provider_name = [], {}, "deterministic"
     if use_ai:
         if provider is None:
@@ -284,11 +293,6 @@ def evaluate_thesis(db, company_id, analysis_id, *, provider=None, use_ai=True, 
             provider_name = f"{provider.name}/{provider.model}"
         except Exception as exc:
             diagnostics.append({"reason": getattr(exc, "reason", "THESIS_MODEL_UNAVAILABLE")})
-    run = ThesisEvaluationRun(company_id=company_id, analysis_id=analysis.id, scope=period.scope.value,
-        as_of_date=today, evidence_as_of=cutoff, fingerprint=fingerprint, provider=provider_name,
-        evidence_registry=registry, expectation_gap=gap, diagnostics=diagnostics)
-    db.add(run)
-    db.flush()
     for entry in inputs:
         definition = entry["revision"].definition
         assessment = deterministic_assessment(entry["previous"], entry["outcomes"], entry["ids"],
@@ -306,9 +310,22 @@ def evaluate_thesis(db, company_id, analysis_id, *, provider=None, use_ai=True, 
                         if any(word in gap_text.lower() for word in ("cash", "debt", "capital")))
         if definition["category"] == "VALUATION" and gap["classification"] == "INSUFFICIENT_EVIDENCE":
             gaps.append(gap["reason"])
+        entry["assessment"], entry["gaps"] = assessment, list(dict.fromkeys(gaps))
+    summary = None
+    if monitoring_context:
+        from app.services.thesis_changes import assessment as monitoring_assessment
+        summary = monitoring_assessment(previous_run, registry, inputs)
+    run = ThesisEvaluationRun(company_id=company_id, analysis_id=analysis.id if analysis else None,
+        financial_period_id=period.id, previous_run_id=previous_run.id if previous_run else None,
+        assessment=summary, scope=period.scope.value,
+        as_of_date=today, evidence_as_of=cutoff, fingerprint=fingerprint, provider=provider_name,
+        evidence_registry=registry, expectation_gap=gap, diagnostics=diagnostics)
+    db.add(run)
+    db.flush()
+    for entry in inputs:
         db.add(ThesisPillarEvaluation(run_id=run.id, pillar_id=entry["pillar"].id,
-            revision_id=entry["revision"].id, previous_status=entry["previous"], **assessment,
-            expectations=entry["outcomes"], research_gaps=list(dict.fromkeys(gaps))))
+            revision_id=entry["revision"].id, previous_status=entry["previous"], **entry["assessment"],
+            expectations=entry["outcomes"], research_gaps=entry["gaps"]))
     db.flush()
     return run_view(db, run)
 
@@ -323,9 +340,11 @@ def run_view(db, run):
             "reason": item.reason, "evidence_ids": item.evidence_ids, "contradiction": item.contradiction,
             "method": item.method, "research_gaps": item.research_gaps, "expectations": item.expectations})
     return {"run_id": run.id, "analysis_id": run.analysis_id, "as_of_date": run.as_of_date.isoformat(),
+            "company_id": run.company_id, "scope": run.scope, "recorded_at": run.created_at.isoformat(),
+            "previous_run_id": run.previous_run_id, "assessment": run.assessment,
             "evidence_as_of": run.evidence_as_of.isoformat(), "impacts": impacts,
             "expectation_gap": run.expectation_gap, "diagnostics": run.diagnostics,
-            "evidence": run.evidence_registry}
+            "evidence": {**(run.assessment or {}).get("previous_evidence", {}), **run.evidence_registry}}
 
 
 def refresh_after_review(db, analysis, provider=None):
@@ -340,7 +359,8 @@ def refresh_after_review(db, analysis, provider=None):
                     return
             # The saved Phase 7.4 review and verified test outcomes are enough
             # for automatic updates. A user may still request a model review.
-            evaluate_thesis(db, analysis.company_id, analysis.id, use_ai=False)
+            from app.services.thesis_monitoring import monitor_company
+            monitor_company(db, analysis.company_id, scope=period.scope.value)
         db.commit()
     except Exception:
         logging.getLogger(__name__).exception("thesis.evaluation_failed analysis_id=%s", analysis.id)

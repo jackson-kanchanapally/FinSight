@@ -379,3 +379,9 @@ The quarterly review now prioritizes dated milestones, capex, funding, demand, a
 Financial performance includes **Investment Thesis** for the selected company and scope. When sufficient verified quarterly research exists, Almonds creates a grouped thesis and evaluates it from the saved review automatically. The main view shows the investment case, pillar cards, what is working, what needs proof, risks, and the next big test. **Edit thesis** retains the optional Phase 8 controls for corrections and investor-defined requirements. Revisions and evidence-backed state changes are append-only; historical views read stored records without backdating beliefs. Quarterly reviews include **Thesis Impact**.
 
 Apply `alembic upgrade head` in `backend` for migration `0018_living_thesis`. Companies with retained thesis history must keep that audit trail; deactivate their pillars instead of deleting the company. Run the isolated UI regression with `cd frontend && node scripts/thesis-check.mjs`. See the [Phase 8 implementation report](docs/phase8-report.md) and [Phase 8.1 zero-touch validation](docs/phase81-report.md).
+
+## Phase 8.2 thesis monitoring
+
+Verified results, metric corrections, attributed commentary, guidance and material official disclosures now refresh existing theses automatically. **Thesis Monitoring** shows material developments, evidence confidence, unresolved questions, catalysts, source pages and an immutable assessment timeline. Choose any two assessments to compare their stored evidence. Numerical comparisons use deterministic Python; automatic monitoring makes no AI calls.
+
+Apply migration `0019_thesis_monitoring` with `alembic upgrade head`. Run `node scripts/monitoring-check.mjs` in `frontend` for the isolated browser regression. See [Phase 8.2 validation and limits](docs/phase82-report.md).

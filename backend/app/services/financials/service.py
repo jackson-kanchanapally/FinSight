@@ -411,6 +411,8 @@ def calculate_company_metrics(db: Session, company_id: int) -> None:
             if metric.metric_code not in produced:
                 db.delete(metric)
     db.commit()
+    from app.services.thesis_monitoring import refresh_monitoring
+    refresh_monitoring(db, company_id)
 
 
 def process_financial_event(

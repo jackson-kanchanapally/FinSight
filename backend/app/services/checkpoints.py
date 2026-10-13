@@ -161,8 +161,8 @@ def evaluate_checkpoint(db, checkpoint, period, as_of):
     return ("PENDING" if as_of < checkpoint.target_date else "NOT_DISCLOSED"), outcome
 
 
-def checkpoint_review(db, period):
-    as_of = review_as_of(db, period)
+def checkpoint_review(db, period, *, as_of=None):
+    as_of = as_of or review_as_of(db, period)
     owners = list(db.scalars(select(FinancialPeriod).where(
         FinancialPeriod.company_id == period.company_id, FinancialPeriod.scope == period.scope,
         FinancialPeriod.period_end <= period.period_end, FinancialPeriod.status == FinancialStatus.VALIDATED)))

@@ -45,6 +45,8 @@ def current(symbol: str, scope: Literal["CONSOLIDATED", "STANDALONE"] = "CONSOLI
             # Existing research predates the automatic workflow. One idempotent
             # refresh builds its first thesis and evaluation on current reads.
             refresh_after_review(db, latest[0])
+        from app.services.thesis_monitoring import refresh_monitoring
+        refresh_monitoring(db, company.id)
     result = thesis_view(db, company.id, scope, as_of)
     analyses, checkpoints = [], {}
     for analysis, period in db.execute(select(AIAnalysis, FinancialPeriod).join(
@@ -67,12 +69,36 @@ def current(symbol: str, scope: Literal["CONSOLIDATED", "STANDALONE"] = "CONSOLI
     latest_run = db.scalar(select(ThesisEvaluationRun).where(
         ThesisEvaluationRun.company_id == company.id, ThesisEvaluationRun.scope == scope,
         ThesisEvaluationRun.as_of_date <= as_of).order_by(ThesisEvaluationRun.id.desc()))
-    source_analysis = db.get(AIAnalysis, latest_run.analysis_id) if latest_run else None
-    source_period = db.get(FinancialPeriod, source_analysis.financial_period_id) if source_analysis else None
+    source_analysis = db.get(AIAnalysis, latest_run.analysis_id) if latest_run and latest_run.analysis_id else None
+    source_period_id = latest_run.financial_period_id if latest_run else None
+    source_period = db.get(FinancialPeriod, source_period_id or source_analysis.financial_period_id) if source_period_id or source_analysis else None
     overview = present_thesis(result, analysis=source_analysis, period=source_period,
                               registry=latest_run.evidence_registry if latest_run else {})
-    return {**result, "overview": overview, "available_analyses": analyses, "checkpoint_options": list(checkpoints.values()),
+    from app.services.thesis_monitoring import monitoring_view
+    return {**result, "overview": overview, "monitoring": monitoring_view(db, company.id, scope, as_of),
+            "available_analyses": analyses, "checkpoint_options": list(checkpoints.values()),
             "metric_options": [v.value for v in MetricCode], "unit_options": [v.value for v in FinancialUnit]}
+
+
+@router.get(PREFIX + "/assessments/compare")
+def compare(symbol: str, from_id: int, to_id: int,
+            scope: Literal["CONSOLIDATED", "STANDALONE"] = "CONSOLIDATED", db: Session = Depends(get_db)):
+    from app.services.thesis_monitoring import compare_assessments
+    company = _company(db, symbol)
+    try:
+        return compare_assessments(db, company.id, scope, from_id, to_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.get(PREFIX + "/assessments/{run_id}")
+def assessment_detail(symbol: str, run_id: int,
+                      scope: Literal["CONSOLIDATED", "STANDALONE"] = "CONSOLIDATED", db: Session = Depends(get_db)):
+    company = _company(db, symbol)
+    run = db.get(ThesisEvaluationRun, run_id)
+    if not run or run.company_id != company.id or run.scope != scope:
+        raise HTTPException(404, "Assessment not found")
+    return run_view(db, run)
 
 
 @router.post(PREFIX + "/bootstrap")
@@ -116,8 +142,19 @@ def evaluate(symbol: str, body: EvaluateRequest, db: Session = Depends(get_db)):
 
 @router.get("/api/analysis/{analysis_id}/thesis-impact")
 def impact(analysis_id: int, db: Session = Depends(get_db)):
-    if not db.get(AIAnalysis, analysis_id):
+    analysis = db.get(AIAnalysis, analysis_id)
+    if not analysis:
         raise HTTPException(404, "Analysis not found")
     run = db.scalar(select(ThesisEvaluationRun).where(ThesisEvaluationRun.analysis_id == analysis_id)
                     .order_by(ThesisEvaluationRun.id.desc()))
+    if run is None:
+        # Ingestion may have assessed these exact facts before an AI review was
+        # requested. Preserve that immutable run instead of inserting a duplicate.
+        candidates = db.scalars(select(ThesisEvaluationRun).where(
+            ThesisEvaluationRun.company_id == analysis.company_id,
+            ThesisEvaluationRun.financial_period_id == analysis.financial_period_id
+        ).order_by(ThesisEvaluationRun.id.desc()))
+        facts = {k: v for k, v in (analysis.evidence_registry or {}).items() if v.get("kind") == "FACT"}
+        run = next((r for r in candidates if facts and all(k in r.evidence_registry and
+            r.evidence_registry[k].get("value") == v.get("value") for k, v in facts.items())), None)
     return run_view(db, run) if run else {"run_id": None, "analysis_id": analysis_id, "impacts": []}

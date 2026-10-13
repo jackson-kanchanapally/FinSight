@@ -132,6 +132,8 @@ def save_event(
                     db, event, normalized, downloaded, document_error, storage
                 )
                 db.commit()
+                from app.services.thesis_monitoring import refresh_monitoring
+                refresh_monitoring(db, event.company_id)
                 return False, stored
         return False, False
 
@@ -204,4 +206,6 @@ def save_event(
     elif is_new:
         event.processing_status = ProcessingStatus.PROCESSED
     db.commit()
+    from app.services.thesis_monitoring import refresh_monitoring
+    refresh_monitoring(db, event.company_id)
     return is_new, stored

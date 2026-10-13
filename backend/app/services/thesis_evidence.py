@@ -67,6 +67,7 @@ def analysis_evidence(db, company_id, analysis_id, as_of):
                          row.get("period_id") == fact.financial_period_id and
                          row.get("metric_code") == fact.metric_code.value and
                          row.get("unit") == fact.unit.value and
+                         Decimal(str(row.get("value"))) == fact.value and
                          owner_ok(db.get(FinancialPeriod, fact.financial_period_id)))
         elif kind == "METRIC":
             owner = db.get(FinancialPeriod, row.get("period_id")) if row.get("period_id") else None

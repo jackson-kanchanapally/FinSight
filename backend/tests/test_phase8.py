@@ -356,11 +356,15 @@ def test_migration_schema_and_sql_immutability(tmp_path):
     with engine.begin() as connection:
         with Operations.context(MigrationContext.configure(connection)):
             module.upgrade()
+            spec82=importlib.util.spec_from_file_location('phase82_migration',Path(__file__).parents[1]/'alembic/versions/0019_thesis_monitoring.py')
+            phase82=importlib.util.module_from_spec(spec82);spec82.loader.exec_module(phase82)
+            phase82.upgrade()
             for name in module.TABLES:
                 assert {c['name'] for c in inspect(connection).get_columns(name)}==set(Base.metadata.tables[name].c.keys())
             connection.execute(text("INSERT INTO thesis_pillars (company_id,scope) VALUES (1,'CONSOLIDATED')"))
             with pytest.raises(DBAPIError,match='THESIS_HISTORY_IS_IMMUTABLE'):
                 connection.execute(text('DELETE FROM thesis_pillars'))
+            phase82.downgrade()
             module.downgrade()
             assert not any(name.startswith('thesis_') for name in inspect(connection).get_table_names())
 

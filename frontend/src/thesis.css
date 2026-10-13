@@ -143,3 +143,14 @@
   .thesis-card-top { flex-direction: column; }
   .thesis-big-test { padding: .9rem; }
 }
+.thesis-monitoring { margin: 1.5rem 0; padding: 1.25rem; border: 1px solid var(--border, #333); border-radius: 14px; }
+.thesis-monitoring details { margin-top: .9rem; }
+.thesis-monitoring summary { cursor: pointer; font-weight: 600; }
+.thesis-monitoring article { padding: .85rem 0; border-bottom: 1px solid var(--border, #333); overflow-wrap: anywhere; }
+.thesis-monitoring article small { color: var(--muted, #999); }
+.thesis-monitor-selects { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; }
+.thesis-monitor-selects label { display: flex; flex: 1 1 220px; flex-direction: column; gap: .5rem; min-width: 0; }
+.thesis-monitor-selects select { width: 100%; min-width: 0; }
+.thesis-monitor-history ol { padding-left: 1.25rem; }
+.thesis-monitor-improving > summary { color: #82bd9a; }
+.thesis-monitor-deteriorating > summary { color: #e09a91; }
