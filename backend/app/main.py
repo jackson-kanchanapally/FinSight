@@ -9,6 +9,7 @@ from app.api import (
     analysis,
     companies,
     events,
+    expectations,
     financials,
     market,
     memory,
@@ -112,6 +113,7 @@ app.include_router(market.router)
 app.include_router(valuation.router)
 app.include_router(memory.router)
 app.include_router(thesis.router)
+app.include_router(expectations.router)
 
 
 @app.get("/health", tags=["health"])

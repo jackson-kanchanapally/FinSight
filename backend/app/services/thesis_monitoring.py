@@ -59,6 +59,8 @@ def monitor_company(db, company_id, *, scope=None, today=None):
 
 def refresh_monitoring(db, company_id):
     """Called after evidence commits; failures never roll back successful ingestion."""
+    from app.services.expectations import refresh_expectations
+    refresh_expectations(db, company_id)
     try:
         # Start the SQLite writer transaction before the SAVEPOINT as well.
         if db.get_bind().dialect.name == "sqlite":

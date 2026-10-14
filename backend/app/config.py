@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     market_data_refresh_hour: int = Field(default=18, ge=0, le=23)
     market_data_refresh_minute: int = Field(default=30, ge=0, le=59)
     market_lens_tolerance_pct: float = Field(default=5, ge=0, le=100)
+    expectation_met_tolerance_pct: float = Field(default=5, ge=0, le=10)
+    expectation_partial_tolerance_pct: float = Field(default=10, ge=10, le=100)
+    expectation_percentage_tolerance_pp: float = Field(default=0.5, ge=0, le=5)
+    expectation_min_sample: int = Field(default=20, ge=10)
     alpha_vantage_api_key: str = ""
     document_storage_path: Path = (
         Path(__file__).resolve().parents[1] / "data" / "documents"

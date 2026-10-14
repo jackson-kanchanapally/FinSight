@@ -368,10 +368,10 @@ def test_postgres_migration_concurrency_and_immutable_history():
                 for column in table.columns:
                     if getattr(column.type, "enums", None):
                         ENUM(*column.type.enums, name=column.type.name).create(connection, checkfirst=True)
-        Base.metadata.create_all(engine, tables=[t for t in Base.metadata.sorted_tables if not t.name.startswith("thesis_")])
+        Base.metadata.create_all(engine, tables=[t for t in Base.metadata.sorted_tables if not t.name.startswith(("thesis_", "historical_expectation", "expectation_evaluation"))])
         with engine.begin() as connection:
             with Operations.context(MigrationContext.configure(connection)):
-                for filename in ("0018_living_thesis.py", "0019_thesis_monitoring.py"):
+                for filename in ("0018_living_thesis.py", "0019_thesis_monitoring.py", "0020_historical_expectations.py"):
                     spec = importlib.util.spec_from_file_location(filename[:-3], Path(__file__).parents[1] / "alembic/versions" / filename)
                     migration = importlib.util.module_from_spec(spec); spec.loader.exec_module(migration)
                     migration.upgrade()

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { HistoricalAccuracy } from "./HistoricalAccuracy";
 import { ThesisPanel } from "./ThesisPanel";
 import {
   api,
@@ -1645,6 +1646,7 @@ export function FinancialsSection({
           onSaved={setSnapshot}
         />
       )}
+      {selectedSymbol && <HistoricalAccuracy key={`accuracy:${selectedSymbol}:${effectiveScope}`} symbol={selectedSymbol} scope={effectiveScope} />}
       {selectedSymbol && <ThesisPanel key={`${selectedSymbol}:${effectiveScope}`} symbol={selectedSymbol} scope={effectiveScope} />}
       {selectedSymbol && (
         <ValuationPanel

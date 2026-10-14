@@ -57,3 +57,4 @@ __all__ = [
     "ManagementStatement",
     "ManagementGuidance",
 ]
+from app.models.expectations import HistoricalExpectation, HistoricalExpectationRevision, ExpectationEvaluation

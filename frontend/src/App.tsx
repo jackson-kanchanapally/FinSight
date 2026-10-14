@@ -875,7 +875,7 @@ function App() {
           <p>Every position starts with a well-recorded transaction.</p>
         </div>
         <div className="sidebar-footer">
-          <span className="status-dot" /> LOCAL WORKSPACE <span>PHASE 07</span>
+          <span className="status-dot" /> LOCAL WORKSPACE <span>PHASE 8.3</span>
         </div>
       </aside>
 
