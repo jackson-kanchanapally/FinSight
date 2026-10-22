@@ -59,3 +59,5 @@ __all__ = [
 ]
 from app.models.expectations import HistoricalExpectation, HistoricalExpectationRevision, ExpectationEvaluation
 from app.models.research import ResearchJob
+from app.models.telegram import TelegramDelivery
+from app.models.result_evidence import ResultDiscovery, ResultSourceCheck, ResultVerification

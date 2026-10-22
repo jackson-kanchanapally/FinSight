@@ -206,6 +206,8 @@ async def check_for_events(
                 db.add(state)
             state.last_attempted_check = datetime.now(timezone.utc)
             db.commit()
+            from app.services.result_sources import source_check, record_discovery, link_discovery
+            source_check(db, companies, source.name, "CHECKING")
             try:
                 items = await source.fetch_events(
                     companies, since_override or state.last_successful_check
@@ -225,6 +227,7 @@ async def check_for_events(
                     )
                     if normalized is None:
                         continue
+                    discovery = record_discovery(db, normalized)
                     was_known = existing_reference(
                         db, normalized.source, normalized.external_id
                     ) is not None
@@ -281,6 +284,10 @@ async def check_for_events(
                                         "source": source.name,
                                     },
                                 )
+                    if discovery is not None:
+                        reference = existing_reference(db, normalized.source, normalized.external_id)
+                        if reference:
+                            link_discovery(db, discovery, reference.event_id, failed=document_error is not None)
                     if (stored or not was_known) and is_commentary_candidate(
                         normalized.event_type, normalized.title
                     ) and not defer_commentary:
@@ -310,6 +317,7 @@ async def check_for_events(
                         newest
                     ).external_id
                 db.commit()
+                source_check(db, companies, source.name, "SUCCESS", unresolved=getattr(source, "unresolved_symbols", []))
                 duplicates = source_matches - source_new
                 summary.duplicates += duplicates
                 summary.sources[source.name] = SourceRunSummary(
@@ -346,6 +354,7 @@ async def check_for_events(
                 state.consecutive_failures += 1
                 state.last_error = f'{type(exc).__name__}: {exc}'[:1000]
                 db.commit()
+                source_check(db, companies, source.name, "FAILED", error=type(exc).__name__)
                 summary.errors.append(f"{source.name}: {type(exc).__name__}")
                 summary.sources[source.name] = SourceRunSummary(
                     status="error", error=state.last_error,

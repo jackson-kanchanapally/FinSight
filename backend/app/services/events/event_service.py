@@ -205,6 +205,9 @@ def save_event(
         )
     elif is_new:
         event.processing_status = ProcessingStatus.PROCESSED
+    if is_new:
+        from app.services.telegram_alerts import enqueue_event
+        enqueue_event(db, event)
     db.commit()
     from app.services.thesis_monitoring import refresh_monitoring
     refresh_monitoring(db, event.company_id)

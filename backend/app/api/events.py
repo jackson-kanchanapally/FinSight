@@ -51,7 +51,8 @@ BOOTSTRAP_COOLDOWN_SECONDS = 300
 MAX_MANUAL_PDF_BYTES = 10_000_000
 
 
-def _event_read(event: CompanyEvent) -> EventRead:
+def _event_read(event: CompanyEvent, db: Session) -> EventRead:
+    from app.services.result_sources import event_source_verified
     documents = [
         DocumentRead(
             id=doc.id,
@@ -87,9 +88,7 @@ def _event_read(event: CompanyEvent) -> EventRead:
         processing_status=event.processing_status,
         created_at=event.created_at,
         data_origin=event.data_origin,
-        source_verified=any(
-            ref.data_origin == DataOrigin.LIVE for ref in event.references
-        ),
+        source_verified=event_source_verified(db, event),
         publication_precision=event.publication_precision,
         period_end_date=event.period_end_date,
         fiscal_year=event.fiscal_year,
@@ -144,7 +143,7 @@ def list_events(
     stmt = stmt.order_by(
         CompanyEvent.published_at.desc(), CompanyEvent.id.desc()
     ).limit(limit)
-    return [_event_read(event) for event in db.scalars(stmt).all()]
+    return [_event_read(event, db) for event in db.scalars(stmt).all()]
 
 
 @router.get("/api/events/sources/status", response_model=list[SourceStatusRead])
@@ -195,7 +194,7 @@ def event_detail(event_id: int, db: Session = Depends(get_db)) -> EventRead:
     event = db.scalar(_event_query().where(CompanyEvent.id == event_id))
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
-    return _event_read(event)
+    return _event_read(event, db)
 
 
 @router.get("/api/companies/{symbol}/events", response_model=list[EventRead])
@@ -213,7 +212,7 @@ def company_events(
         .order_by(CompanyEvent.published_at.desc(), CompanyEvent.id.desc())
         .limit(limit)
     )
-    return [_event_read(event) for event in db.scalars(stmt).all()]
+    return [_event_read(event, db) for event in db.scalars(stmt).all()]
 
 
 @router.post("/api/companies/{symbol}/events/upload-pdf", response_model=EventRead)
@@ -300,7 +299,7 @@ async def upload_company_pdf(
         )
     )
     event = db.scalar(_event_query().where(CompanyEvent.id == reference.event_id))
-    return _event_read(event)
+    return _event_read(event, db)
 
 
 @router.post("/api/events/check", response_model=CheckSummary)

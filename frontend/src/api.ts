@@ -176,6 +176,14 @@ export type FinancialPeriod = {
   published_at: string;
   facts: FinancialFact[];
   metrics: FinancialMetric[];
+  source_verification?: { status: string; details: { reason?: string } };
+  result_freshness?: {
+    status: string;
+    latest_stored_period_end: string | null;
+    latest_detected: { period_end: string | null; source: string; ingestion_status: string } | null;
+    newer_awaiting_ingestion: boolean;
+    source_checks: { source: string; status: string; last_success_at: string | null }[];
+  };
 };
 
 export type CompanyFinancials = {

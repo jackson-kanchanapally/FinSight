@@ -374,6 +374,8 @@ class ESDSIRSource(EventSource):
                     source_url=IR_URL,
                     document_url=url,
                     raw_payload={
+                        "issuer_symbol": company.symbol,
+                        "issuer_identifier": company.source_company_id,
                         "ir_url": IR_URL,
                         "document_title": title,
                         "document_url": url,

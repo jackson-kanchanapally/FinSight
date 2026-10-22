@@ -19,7 +19,7 @@ from app.models.financial import (
     FinancialPeriod,
     FinancialStatus,
 )
-from app.models.financial import MetricCode, PeriodType
+from app.models.financial import MetricCode, PeriodType, FinancialUnit
 from app.models.commentary import ManagementStatement
 from app.ai.analyst.reasoning import (
     compare_values,
@@ -139,10 +139,13 @@ def build_context(
             .where(
                 FinancialFact.financial_period_id == period.id,
                 FinancialFact.status.in_(VERIFIED),
+                FinancialFact.source_column_date == period.period_end,
             )
             .order_by(FinancialFact.id)
         )
     )
+    current_facts = [fact for fact in current_facts if fact.unit == (FinancialUnit.INR_PER_SHARE
+        if fact.metric_code in {MetricCode.BASIC_EPS, MetricCode.DILUTED_EPS} else FinancialUnit.INR_CRORE)]
     for fact in current_facts:
         registry[f"F{fact.id}"] = _fact_item(fact, period)
 
@@ -208,6 +211,12 @@ def build_context(
             and owner.period_type == period.period_type
             for owner in owners.values()
         )
+        if metric.comparison_period_id:
+            from app.services.financials.period import comparable_period
+            prior = owners.get(metric.comparison_period_id)
+            basis = "YOY" if metric.metric_code.value.endswith("YOY") or metric.metric_code == MetricCode.EBITDA_MARGIN_CHANGE_BPS else "QOQ"
+            valid_sources = valid_sources and prior is not None and comparable_period(period, prior, basis)
+        valid_sources = valid_sources and all(f.source_column_date == owners[f.financial_period_id].period_end for f in inputs if owners.get(f.financial_period_id))
         if not valid_sources or any(fact.status not in VERIFIED for fact in inputs):
             continue
         for fact in inputs:
@@ -224,6 +233,10 @@ def build_context(
             "comparison_period_id": metric.comparison_period_id,
             "input_evidence_ids": [f"F{fact_id}" for fact_id in metric.input_fact_ids],
         }
+        from app.schemas.financial import metric_formula
+        entry["formula"] = metric_formula(metric.metric_code, inputs)
+        if metric.metric_code in {MetricCode.EBITDA, MetricCode.EBITDA_MARGIN}:
+            entry["definition"] = "Reported EBITDA basis" if any(f.metric_code == MetricCode.EBITDA for f in inputs) else "Calculated PBT-based proxy; includes other income and exceptional items"
         registry[f"M{metric.id}"] = entry
         metric_items.append(entry)
 
@@ -375,6 +388,10 @@ def build_context(
         "investor_reasoning": reasoning,
         "results_signals": report["results"],
         "earnings_quality": earnings_quality,
+        "source_verification": report["source_verification"],
+        "result_freshness": report["result_freshness"],
+        "evidence_confidence": report["evidence_confidence"],
+        "previous_thesis": report["previous_thesis"],
         "growth_comparisons": assessment["growth_comparisons"],
         "historical_valuation": assessment["historical_pe"],
         "reverse_expectations": assessment["reverse_expectations"],
@@ -511,7 +528,7 @@ def build_context(
         for section in ("verified_facts", "deterministic_metrics", "calculated_valuation"):
             for item in payload[section]:
                 item.pop("input_evidence_ids", None)
-        payload["source"] = {k: v for k, v in payload["source"].items() if k in {"published_at", "document_id"}}
+        payload["source"] = {k: v for k, v in payload["source"].items() if k in {"published_at", "document_id", "origin"}}
         packet["checkpoints"] = [{k: c[k] for k in ("evidence_id", "source_statement_id", "metric", "target_period", "target_date", "target", "unit", "status", "is_previous", "measurement_note", "actual_outcome")} for c in packet["checkpoints"]]
         for checkpoint in packet["checkpoints"]:
             checkpoint["actual_outcome"] = {k: v for k, v in checkpoint["actual_outcome"].items()
@@ -523,6 +540,17 @@ def build_context(
                 statement["source_quote"] = statement["source_quote"][:260].rsplit(" ", 1)[0]
         payload["deterministic_metrics"] = [m for m in payload["deterministic_metrics"] if m["metric_code"] in {
             "REVENUE_YOY", "REVENUE_QOQ", "PAT_YOY", "PAT_QOQ", "EBITDA_MARGIN", "PAT_MARGIN", "EBITDA_MARGIN_CHANGE_BPS"}]
+        text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    if len(text) > max_chars:
+        # Scenario assumptions are supplementary to an earnings review. Keep
+        # their qualified conclusion while retaining every scenario and its
+        # lineage in the full report/registry, rather than displacing current
+        # financial evidence, confidence or material management checkpoints.
+        payload["tested_pe_range"] = {
+            "range": assessment["supported_pe_range"],
+            "label": assessment["label"],
+            "detail_note": "Scenario assumptions omitted from this bounded prompt; see the full report. Do not reconstruct them or treat them as verified forecasts.",
+        }
         text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     while len(text) > max_chars and memory["passages"]:
         removed = memory["passages"].pop()
@@ -571,6 +599,8 @@ def _fact_item(fact: FinancialFact, period: FinancialPeriod) -> dict:
         "document_id": fact.source_document_id,
         "page": fact.source_page,
         "source_label": fact.source_label,
+        "extraction_method": fact.extraction_method.value,
+        "rounding_tolerance": str(fact.rounding_tolerance) if fact.rounding_tolerance is not None else None,
         "document_url": f"/api/documents/{fact.source_document_id}/file"
         + (f"#page={fact.source_page}" if fact.source_page else ""),
     }

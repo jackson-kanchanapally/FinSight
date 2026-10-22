@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.financial import (
     FactMethod,
@@ -22,6 +22,7 @@ class FinancialFactRead(BaseModel):
     unit: FinancialUnit
     original_value: Decimal | None
     original_unit: OriginalUnit | None
+    rounding_tolerance: Decimal | None = None
     source_document_id: int
     source_page: int | None
     source_label: str
@@ -61,6 +62,8 @@ class FinancialPeriodRead(BaseModel):
     published_at: datetime
     facts: list[FinancialFactRead]
     metrics: list[FinancialMetricRead]
+    source_verification: dict = Field(default_factory=dict)
+    result_freshness: dict = Field(default_factory=dict)
 
 
 class CompanyFinancialsRead(BaseModel):
@@ -88,3 +91,14 @@ FORMULAS: dict[MetricCode, str] = {
     MetricCode.PAT_QOQ: "(PAT − previous quarter PAT) / abs(previous quarter PAT) × 100",
     MetricCode.EBITDA_MARGIN_CHANGE_BPS: "(current EBITDA margin − last year EBITDA margin) × 100",
 }
+
+
+def metric_formula(code, inputs):
+    reported = any(f.metric_code == MetricCode.EBITDA for f in inputs)
+    if reported and code == MetricCode.EBITDA:
+        return "Reported EBITDA source fact"
+    if reported and code == MetricCode.EBITDA_MARGIN:
+        return "Reported EBITDA / revenue from operations × 100"
+    if reported and code == MetricCode.EBITDA_MARGIN_CHANGE_BPS:
+        return "(current reported EBITDA margin - comparable reported EBITDA margin) × 100"
+    return FORMULAS.get(code, "Calculated from listed source facts")

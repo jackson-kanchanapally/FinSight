@@ -112,6 +112,8 @@ def parse_nse_announcements(
                         link if urlsplit(link).path.lower().endswith(".pdf") else None
                     ),
                     raw_payload={
+                        "issuer_symbol": company.symbol,
+                        "issuer_isin": company.isin,
                         "feed_url": FEED_URL,
                         "issuer_title": issuer,
                         "description": description,

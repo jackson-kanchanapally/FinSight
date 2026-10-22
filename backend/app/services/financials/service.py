@@ -37,12 +37,14 @@ from app.services.financials.calculator import (
     margin,
     margin_change_bps,
     normalize_currency,
+    printed_rounding,
 )
 from app.services.financials.extractor import RawPeriod, extract_pdf_tables
 from app.services.financials.period import (
     PeriodIdentity,
     previous_quarter_end,
     previous_year_end,
+    comparable_period,
 )
 
 logger = logging.getLogger(__name__)
@@ -120,6 +122,12 @@ def _store_period(
     )
     if existing:
         if existing.source_document_id != document.id:
+            from app.services.result_sources import compare_authoritative_candidate
+            verification = compare_authoritative_candidate(db, existing, event, document, raw)
+            if verification is not None:
+                db.commit()
+                if verification.status == "VERIFIED":
+                    return existing, False
             raise FinancialProcessingError(
                 f"{identity.end} {identity.period_type.value} {raw.scope.value} already has another source PDF; review revision"
             )
@@ -162,6 +170,7 @@ def _store_period(
                 None if raw_fact.calculated else raw_fact.original_value
             )
             fact.original_unit = None if raw_fact.calculated else raw_fact.original_unit
+            fact.rounding_tolerance = printed_rounding(raw_fact.original_value, raw_fact.original_unit)
             fact.source_page = raw_fact.page
             fact.source_label = raw_fact.label
             fact.source_column_date = raw_fact.column_date
@@ -213,6 +222,7 @@ def _store_period(
                 unit=unit,
                 original_value=None if raw_fact.calculated else raw_fact.original_value,
                 original_unit=None if raw_fact.calculated else raw_fact.original_unit,
+                rounding_tolerance=printed_rounding(raw_fact.original_value, raw_fact.original_unit),
                 source_document_id=document.id,
                 source_page=raw_fact.page,
                 source_label=raw_fact.label,
@@ -238,6 +248,7 @@ def _fact(period: FinancialPeriod, code: MetricCode) -> FinancialFact | None:
             for fact in period.facts
             if fact.metric_code == code
             and fact.unit == FinancialUnit.INR_CRORE
+            and fact.source_column_date == period.period_end
             and fact.status
             in {
                 FactStatus.VERIFIED_PDF,
@@ -305,11 +316,11 @@ def calculate_company_metrics(db: Session, company_id: int) -> None:
             if other.scope == period.scope and other.period_type == period.period_type
         ]
         yoy = next(
-            (p for p in same_scope if p.period_end == previous_year_end(identity)), None
+            (p for p in same_scope if comparable_period(period, p, "YOY")), None
         )
         previous_end = previous_quarter_end(identity)
         qoq = next(
-            (p for p in same_scope if previous_end and p.period_end == previous_end),
+            (p for p in same_scope if previous_end and comparable_period(period, p, "QOQ")),
             None,
         )
         revenue = _fact(period, MetricCode.REVENUE_FROM_OPERATIONS)
@@ -317,11 +328,13 @@ def calculate_company_metrics(db: Session, company_id: int) -> None:
         pbt = _fact(period, MetricCode.PBT)
         finance = _fact(period, MetricCode.FINANCE_COST)
         depreciation = _fact(period, MetricCode.DEPRECIATION)
+        reported_ebitda = _fact(period, MetricCode.EBITDA)
         ebitda = (
-            pbt.value + finance.value + depreciation.value
+            reported_ebitda.value if reported_ebitda else pbt.value + finance.value + depreciation.value
             if pbt and finance and depreciation
             else None
         )
+        ebitda_inputs = [reported_ebitda] if reported_ebitda else [fact for fact in (pbt, finance, depreciation) if fact]
         if ebitda is not None:
             _put_metric(
                 db,
@@ -329,7 +342,7 @@ def calculate_company_metrics(db: Session, company_id: int) -> None:
                 MetricCode.EBITDA,
                 ebitda,
                 FinancialUnit.INR_CRORE,
-                [pbt, finance, depreciation],
+                ebitda_inputs,
                 produced,
             )
         pat_margin = margin(
@@ -351,7 +364,7 @@ def calculate_company_metrics(db: Session, company_id: int) -> None:
             MetricCode.EBITDA_MARGIN,
             ebitda_margin,
             FinancialUnit.PERCENT,
-            [fact for fact in (pbt, finance, depreciation, revenue) if fact],
+            ebitda_inputs + ([revenue] if revenue else []),
             produced,
         )
         for prior, suffix in ((yoy, "YOY"), (qoq, "QOQ")):
@@ -379,9 +392,11 @@ def calculate_company_metrics(db: Session, company_id: int) -> None:
                 prior_pbt = _fact(prior, MetricCode.PBT)
                 prior_finance = _fact(prior, MetricCode.FINANCE_COST)
                 prior_depreciation = _fact(prior, MetricCode.DEPRECIATION)
-                if all((prior_revenue, prior_pbt, prior_finance, prior_depreciation)):
+                prior_reported = _fact(prior, MetricCode.EBITDA)
+                same_definition = bool(reported_ebitda) == bool(prior_reported)
+                if prior_revenue and same_definition and (prior_reported or all((prior_pbt, prior_finance, prior_depreciation))):
                     prior_ebitda = (
-                        prior_pbt.value + prior_finance.value + prior_depreciation.value
+                        prior_reported.value if prior_reported else prior_pbt.value + prior_finance.value + prior_depreciation.value
                     )
                     prior_margin = margin(prior_ebitda, prior_revenue.value)
                     _put_metric(
@@ -390,20 +405,8 @@ def calculate_company_metrics(db: Session, company_id: int) -> None:
                         MetricCode.EBITDA_MARGIN_CHANGE_BPS,
                         margin_change_bps(ebitda_margin, prior_margin),
                         FinancialUnit.BASIS_POINTS,
-                        [
-                            fact
-                            for fact in (
-                                pbt,
-                                finance,
-                                depreciation,
-                                revenue,
-                                prior_pbt,
-                                prior_finance,
-                                prior_depreciation,
-                                prior_revenue,
-                            )
-                            if fact
-                        ],
+                        ebitda_inputs + ([revenue] if revenue else []) +
+                        ([prior_reported] if prior_reported else [prior_pbt, prior_finance, prior_depreciation]) + [prior_revenue],
                         produced,
                         prior,
                     )
@@ -517,7 +520,7 @@ def process_financial_event(
             "periods": [],
             "note": "No reliable financial table found",
         }
-    if event.data_origin == DataOrigin.MANUAL:
+    if event.data_origin in {DataOrigin.MANUAL, DataOrigin.LIVE}:
         declared = re.search(
             r"\bQ([1-4])\s*FY\s*(20\d{2}|\d{2})\b", event.title, re.IGNORECASE
         )
@@ -547,6 +550,16 @@ def process_financial_event(
                 "periods": [],
                 "note": "Reporting period requires review",
             }
+        if event.period_end_date and quarterly and max(quarterly, key=lambda item: item.end).end != event.period_end_date:
+            _record_run(db, event.id, document.id, FinancialStatus.NEEDS_REVIEW,
+                        "Authoritative filing metadata and PDF reporting period disagree")
+            return {"event_id": event.id, "document_id": document.id, "status": "NEEDS_REVIEW",
+                    "periods_created": 0, "periods": [], "note": "Reporting period conflicts with source metadata"}
+        if event.reporting_basis and event.reporting_basis.value != "BOTH" and not any(raw.scope.value == event.reporting_basis.value for raw in extracted):
+            _record_run(db, event.id, document.id, FinancialStatus.NEEDS_REVIEW,
+                        "Filing metadata and PDF reporting basis disagree")
+            return {"event_id": event.id, "document_id": document.id, "status": "NEEDS_REVIEW",
+                    "periods_created": 0, "periods": [], "note": "Reporting basis conflicts with source metadata"}
     if classify_manual:
         event.event_type = EventType.FINANCIAL_RESULTS
         db.commit()
@@ -556,6 +569,10 @@ def process_financial_event(
     for raw in extracted:
         try:
             period, is_new = _store_period(db, event, document, raw)
+            from app.services.result_sources import assess_stored_period
+            db.flush()
+            assess_stored_period(db, period)
+            db.commit()
             created += int(is_new)
             results.append(
                 {

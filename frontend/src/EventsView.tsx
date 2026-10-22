@@ -8,6 +8,7 @@ import {
 } from "./api";
 import { todayLocal } from "./format";
 import "./events.css";
+import { TelegramAlerts } from "./TelegramAlerts";
 
 const analysisRequests = new Map<number, Promise<EventAnalysis>>();
 
@@ -142,6 +143,7 @@ export function EventsSection({
         event. Each event keeps its source and document trail. Open one for a
         short AI brief.
       </p>
+      <TelegramAlerts />
       <details className="event-upload">
         <summary>Upload a company PDF</summary>
         <form className="event-upload-form" onSubmit={upload}>

@@ -18,6 +18,8 @@ from app.api import (
     transactions,
     valuation,
     thesis,
+    telegram,
+    reports,
 )
 from app.config import settings
 from app.database import SessionLocal
@@ -72,11 +74,22 @@ async def scheduled_research():
         logger.exception("research.scheduler_failed")
 
 
+async def scheduled_telegram():
+    from app.services.telegram_alerts import deliver_one
+    try:
+        await deliver_one(SessionLocal)
+    except Exception as exc:
+        logger.warning("telegram.worker_failed error=%s", type(exc).__name__)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     scheduler = None
-    if settings.research_automation_enabled or settings.event_monitor_enabled or settings.market_data_enabled:
+    if settings.research_automation_enabled or settings.event_monitor_enabled or settings.market_data_enabled or settings.telegram_enabled:
         scheduler = AsyncIOScheduler(timezone="UTC")
+        if settings.telegram_enabled:
+            scheduler.add_job(scheduled_telegram, "interval", seconds=settings.telegram_poll_seconds,
+                              id="telegram_alerts", max_instances=1, coalesce=True)
         if settings.research_automation_enabled:
             from datetime import datetime, timezone
             scheduler.add_job(scheduled_research, "interval", seconds=settings.research_poll_seconds,
@@ -128,6 +141,8 @@ app.include_router(memory.router)
 app.include_router(thesis.router)
 app.include_router(expectations.router)
 app.include_router(research.router)
+app.include_router(telegram.router)
+app.include_router(reports.router)
 
 
 @app.get("/health", tags=["health"])

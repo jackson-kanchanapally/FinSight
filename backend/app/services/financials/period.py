@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import date, timedelta
+from calendar import monthrange
 
 from app.models.financial import PeriodType
 
@@ -50,4 +51,18 @@ def previous_quarter_end(identity: PeriodIdentity) -> date | None:
 
 
 def previous_year_end(identity: PeriodIdentity) -> date:
-    return identity.end.replace(year=identity.end.year - 1)
+    end = identity.end
+    return date(end.year - 1, end.month, min(end.day, monthrange(end.year - 1, end.month)[1]))
+
+
+def comparable_period(current, prior, basis):
+    """Require matching issuer, duration, scope and the exact comparison window."""
+    if (current.company_id, current.scope, current.period_type) != (prior.company_id, prior.scope, prior.period_type):
+        return False
+    try:
+        a = identify_period(current.period_end, current.period_type)
+        b = identify_period(prior.period_end, prior.period_type)
+    except ValueError:
+        return False
+    expected = previous_year_end(a) if basis == "YOY" else previous_quarter_end(a)
+    return current.period_start == a.start and prior.period_start == b.start and prior.period_end == expected

@@ -2,6 +2,10 @@
 
 Local production tracking is available at **http://127.0.0.1:8000**, managed by the `com.almonds.portfolio` macOS login service. It tracks every registered portfolio entry. See [production tracking and service controls](docs/production-tracking.md) for runtime paths, source gaps, updates and verification.
 
+Optional [Telegram alerts](docs/telegram.md) send new live portfolio disclosures with a short, source-linked local AI thesis. Connect a private bot with `backend/.venv/bin/python backend/scripts/setup_telegram.py --test`, then update/restart the runtime.
+
+[Intelligent earnings alerts](docs/intelligent-earnings-alerts.md) add financial snapshots, quantified earnings drivers, independent source verification, stored/detected freshness, evidence-quality confidence and authenticated report snapshots. Missing evidence and unconfigured remote report access remain explicit.
+
 almonds is a personal investment research and portfolio monitor. Phase 1 provides transaction-based portfolio accounting, Phase 2 adds a React dashboard, Phase 3 adds company event monitoring, Phase 3.5 adds live primary-source ingestion, Phase 4 adds deterministic financial-result extraction and calculations, and Phase 5 adds an optional local AI analyst. Transactions remain the source of truth; there is no separately maintained holdings table.
 
 ## Current functionality

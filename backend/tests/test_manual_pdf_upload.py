@@ -320,7 +320,8 @@ def test_later_nse_reference_merges_with_manual_pdf_and_keeps_facts(
                 reread["source"] == "MANUAL_UPLOAD"
                 and reread["data_origin"] == "MANUAL"
             )
-            assert reread["source_verified"]
+            # A matching hash and an arbitrary LIVE URL do not establish issuer authenticity.
+            assert not reread["source_verified"]
             assert {ref["source"] for ref in reread["references"]} == {
                 "MANUAL_UPLOAD",
                 "NSE",

@@ -328,4 +328,30 @@ def build_investor_report(
     }
     from app.services.quarterly_review import build_review
     report.update(build_review(db, period, registry, report))
+    from app.services.result_sources import verification_view, freshness_view
+    from app.services.earnings_confidence import assess_confidence
+    report["source_verification"] = verification_view(db, period)
+    freshness = freshness_view(db, period)
+    # Check timestamps belong in the live API, not the AI cache identity.
+    report["result_freshness"] = {k: v for k, v in freshness.items() if k != "source_checks"}
+    comparison_ids = {row["period_id"] for row in registry.values() if row.get("kind") == "FACT"
+                      and row.get("period_id") and row["period_id"] != period.id}
+    comparisons_verified = bool(comparison_ids) and all(verification_view(db, db.get(FinancialPeriod, period_id))["status"] == "VERIFIED"
+        for period_id in comparison_ids)
+    report["evidence_confidence"] = assess_confidence(period, registry, earnings_quality or {},
+        report["source_verification"], freshness, comparisons_verified)
+    from app.models.analysis import AIAnalysis
+    previous_analysis = db.scalar(select(AIAnalysis).join(FinancialPeriod,
+        AIAnalysis.financial_period_id == FinancialPeriod.id).where(
+        FinancialPeriod.company_id == period.company_id, FinancialPeriod.scope == period.scope,
+        FinancialPeriod.period_type == period.period_type, FinancialPeriod.period_end < period.period_end,
+        AIAnalysis.status.in_(["SUCCESS", "VERIFIED_FALLBACK"])).order_by(
+            FinancialPeriod.period_end.desc(), AIAnalysis.id.desc()).limit(1))
+    old = ((previous_analysis.structured_output or {}).get("investor_report") or {}) if previous_analysis else {}
+    report["previous_thesis"] = {"analysis_id": previous_analysis.id if previous_analysis else None,
+        "previous_assessment": (old.get("results") or {}).get("verdict"),
+        "current_assessment": results["verdict"],
+        "changed": (old.get("results") or {}).get("verdict") != results["verdict"] if previous_analysis else None,
+        "reason": "Compared with the saved thesis for the previous available compatible period" if previous_analysis
+                  else "No saved thesis for an earlier compatible period is available"}
     return report

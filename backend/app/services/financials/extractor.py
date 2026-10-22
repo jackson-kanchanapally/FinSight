@@ -15,6 +15,7 @@ import pymupdf
 
 from app.models.financial import FinancialScope, MetricCode, OriginalUnit, PeriodType
 from app.services.financials.period import PeriodIdentity, identify_period
+from app.services.financials.calculator import exceptional_effect
 
 MONTHS = {
     name.lower()
@@ -34,6 +35,8 @@ MONTHS = {
     )
 }
 ROW_PATTERNS = {
+    MetricCode.EBITDA: r"^(?:reported\s+)?ebitda$",
+    MetricCode.EBIT: r"^(?:ebit|operating profit)$",
     MetricCode.REVENUE_FROM_OPERATIONS: r"revenue from operations",
     MetricCode.OTHER_INCOME: r"other income",
     MetricCode.TOTAL_INCOME: r"total income",
@@ -46,6 +49,14 @@ ROW_PATTERNS = {
     MetricCode.PAT: r"profit\s+for\s+the\s+period\s*/\s*year",
     MetricCode.BASIC_EPS: r"^basic",
     MetricCode.DILUTED_EPS: r"^diluted",
+    MetricCode.EXCEPTIONAL_ITEMS: r"^exceptional items?\b",
+    MetricCode.PAT_ATTRIBUTABLE: r"^(?:profit.*attributable to (?:owners|equity holders)|owners of the (?:company|parent))\b",
+    MetricCode.NON_CONTROLLING_INTEREST: r"^(?:non[- ]controlling interests?)\b",
+    MetricCode.OPERATING_CASH_FLOW: r"^net cash (?:generated from|from|provided by|used in) operating activities\b",
+    MetricCode.CAPITAL_EXPENDITURE: r"^(?:capital expenditure|purchase of property,? plant and equipment)\b",
+    MetricCode.TOTAL_DEBT: r"^total (?:debt|borrowings)\b",
+    MetricCode.CASH_AND_CASH_EQUIVALENTS: r"^cash and cash equivalents\b",
+    MetricCode.TOTAL_EQUITY: r"^total equity\b",
 }
 CORE = {
     MetricCode.REVENUE_FROM_OPERATIONS,
@@ -444,12 +455,20 @@ def _validate(period: RawPeriod) -> None:
         ),
         (MetricCode.PBT, (MetricCode.TOTAL_INCOME, MetricCode.TOTAL_EXPENSES), "-"),
         (MetricCode.PAT, (MetricCode.PBT, MetricCode.TOTAL_TAX_EXPENSE), "-"),
+        (MetricCode.PAT, (MetricCode.PAT_ATTRIBUTABLE, MetricCode.NON_CONTROLLING_INTEREST), "+"),
     )
     for target, (first, second), operation in checks:
         if {target, first, second} <= facts.keys():
             a, b = facts[first].original_value, facts[second].original_value
             expected = a + b if operation == "+" else a - b
-            if abs(facts[target].original_value - expected) > Decimal(".03"):
+            rounding = max(Decimal(".03"), sum((Decimal(1).scaleb(facts[code].original_value.as_tuple().exponent)/2
+                for code in (target, first, second)), Decimal(0)))
+            exception = facts.get(MetricCode.EXCEPTIONAL_ITEMS)
+            if target == MetricCode.PBT and exception and abs(facts[target].original_value-expected) > rounding:
+                effect = exceptional_effect(exception.original_value, exception.label)
+                if effect is not None:
+                    expected += effect
+            if abs(facts[target].original_value - expected) > rounding:
                 period.issues.append(
                     f"{target.value} does not reconcile with the table"
                 )

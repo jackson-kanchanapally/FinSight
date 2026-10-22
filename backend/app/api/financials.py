@@ -18,7 +18,7 @@ from app.schemas.financial import (
     FinancialMetricRead,
     FinancialPeriodRead,
     FinancialProcessingRead,
-    FORMULAS,
+    metric_formula,
 )
 from app.services.financials.service import (
     FinancialProcessingError,
@@ -35,6 +35,7 @@ def _period_query():
 
 
 def _period_read(db: Session, period: FinancialPeriod) -> FinancialPeriodRead:
+    from app.services.result_sources import verification_view, freshness_view
     event = db.get(CompanyEvent, period.source_event_id)
     document = db.get(Document, period.source_document_id)
     input_ids = {
@@ -59,6 +60,7 @@ def _period_read(db: Session, period: FinancialPeriod) -> FinancialPeriodRead:
             unit=fact.unit,
             original_value=fact.original_value,
             original_unit=fact.original_unit,
+            rounding_tolerance=fact.rounding_tolerance,
             source_document_id=fact.source_document_id,
             source_page=fact.source_page,
             source_label=fact.source_label,
@@ -69,6 +71,8 @@ def _period_read(db: Session, period: FinancialPeriod) -> FinancialPeriodRead:
         )
 
     return FinancialPeriodRead(
+        source_verification=verification_view(db, period),
+        result_freshness=freshness_view(db, period),
         id=period.id,
         company_id=period.company_id,
         fiscal_year=period.fiscal_year,
@@ -97,9 +101,7 @@ def _period_read(db: Session, period: FinancialPeriod) -> FinancialPeriodRead:
                 unit=metric.unit,
                 input_fact_ids=metric.input_fact_ids,
                 comparison_period_id=metric.comparison_period_id,
-                formula=FORMULAS.get(
-                    metric.metric_code, "Calculated from listed source facts"
-                ),
+                formula=metric_formula(metric.metric_code, [input_facts[fact_id] for fact_id in metric.input_fact_ids if fact_id in input_facts]),
                 inputs=[
                     fact_read(input_facts[fact_id])
                     for fact_id in metric.input_fact_ids

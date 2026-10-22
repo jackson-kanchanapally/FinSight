@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     bse_source_enabled: bool = False
     company_ir_source_enabled: bool = True
     live_source_timeout_seconds: float = Field(default=15, ge=3, le=60)
+    telegram_enabled: bool = False
+    telegram_bot_token: SecretStr = SecretStr("")
+    telegram_chat_id: str = ""
+    telegram_timeout_seconds: float = Field(default=10, ge=1, le=30)
+    telegram_poll_seconds: int = Field(default=5, ge=3, le=300)
+    telegram_max_event_age_hours: int = Field(default=48, ge=1, le=720)
+    report_public_base_url: str = ""
+    report_access_secret: SecretStr = SecretStr("")
+    report_link_ttl_seconds: int = Field(default=86400, ge=300, le=86400)
     market_data_enabled: bool = False
     market_data_provider: Literal["nse_mcp", "alpha_vantage", "manual"] = "nse_mcp"
     market_data_timeout_seconds: float = Field(default=12, ge=3, le=60)

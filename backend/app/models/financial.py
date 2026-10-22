@@ -62,6 +62,9 @@ class MetricCode(str, enum.Enum):
     EMPLOYEE_EXPENSE = "EMPLOYEE_EXPENSE"
     OTHER_EXPENSE = "OTHER_EXPENSE"
     TOTAL_TAX_EXPENSE = "TOTAL_TAX_EXPENSE"
+    EXCEPTIONAL_ITEMS = "EXCEPTIONAL_ITEMS"
+    PAT_ATTRIBUTABLE = "PAT_ATTRIBUTABLE"
+    NON_CONTROLLING_INTEREST = "NON_CONTROLLING_INTEREST"
     REVENUE_YOY = "REVENUE_YOY"
     REVENUE_QOQ = "REVENUE_QOQ"
     PAT_YOY = "PAT_YOY"
@@ -181,6 +184,7 @@ class FinancialFact(Base):
     original_unit: Mapped[OriginalUnit | None] = mapped_column(
         Enum(OriginalUnit, name="financial_original_unit")
     )
+    rounding_tolerance: Mapped[Decimal | None] = mapped_column(Numeric(24, 9))
     source_document_id: Mapped[int] = mapped_column(
         ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
     )

@@ -265,6 +265,10 @@ class InvestorReport(StrictText):
     investor_conclusion: EvidenceNoteRead | None = None
     tested_pe: dict = Field(default_factory=dict)
     earnings_quality: dict = Field(default_factory=dict)
+    source_verification: dict = Field(default_factory=dict)
+    result_freshness: dict = Field(default_factory=dict)
+    evidence_confidence: dict = Field(default_factory=dict)
+    previous_thesis: dict = Field(default_factory=dict)
     research_gaps: list[str] = Field(default_factory=list)
     strengthen_case: list[str] = Field(default_factory=list)
     weaken_case: list[str] = Field(default_factory=list)

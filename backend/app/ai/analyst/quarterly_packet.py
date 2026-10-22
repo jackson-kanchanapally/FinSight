@@ -7,7 +7,9 @@ FACTS = {"REVENUE_FROM_OPERATIONS", "EBITDA", "PAT", "PBT", "TOTAL_TAX_EXPENSE",
          "BASIC_EPS", "DILUTED_EPS", "OPERATING_CASH_FLOW", "FREE_CASH_FLOW",
          "TOTAL_DEBT", "CASH_AND_EQUIVALENTS", "CAPITAL_EXPENDITURE"}
 METRICS = {"REVENUE_YOY", "REVENUE_QOQ", "PAT_YOY", "PAT_QOQ", "EPS_YOY",
-           "EPS_QOQ", "EBITDA_MARGIN", "EBITDA_MARGIN_CHANGE_BPS", "PAT_MARGIN"}
+           "EPS_QOQ", "EBITDA_MARGIN", "EBITDA_MARGIN_CHANGE_BPS", "PAT_MARGIN",
+           "EFFECTIVE_TAX_RATE", "PBT_QOQ", "PBT_YOY", "TAX_QOQ", "TAX_YOY",
+           "EBITDA_PROXY", "EBITDA_PROXY_MARGIN", "NET_DEBT", "DEBT_EQUITY", "OCF_PAT", "FREE_CASH_FLOW"}
 
 
 def quarterly_packet(context) -> tuple[str, list[str], int]:
@@ -27,7 +29,7 @@ def quarterly_packet(context) -> tuple[str, list[str], int]:
              page=registry[row["evidence_id"]].get("page"),
              source_document_id=registry[row["evidence_id"]].get("document_id"))
              for row in original.get("verified_facts", []) if row["metric_code"] in FACTS]
-    metrics = [{k: row[k] for k in ("evidence_id", "metric_code", "value", "unit") if k in row}
+    metrics = [{k: row[k] for k in ("evidence_id", "metric_code", "value", "unit", "formula", "definition") if k in row}
                for row in original.get("deterministic_metrics", []) if row["metric_code"] in METRICS]
     seasonality = [{"evidence_id": key, "metric_code": item.get("metric_code"),
                     "status": item.get("status"), "historical_count": item.get("historical_count")}
@@ -81,12 +83,18 @@ def quarterly_packet(context) -> tuple[str, list[str], int]:
     packet = {
         "company": original["company"], "symbol": original["symbol"], "period": original["period"],
         "source": {k: original["source"].get(k) for k in ("origin", "document_id", "published_at")},
+        "source_verification": report.get("source_verification"),
+        "result_freshness": report.get("result_freshness"),
+        "evidence_confidence": report.get("evidence_confidence"),
+        "previous_thesis": report.get("previous_thesis"),
         "verified_facts": facts, "deterministic_metrics": metrics,
         "seasonality_history": seasonality,
         "earnings_quality": {"text": report["earnings_quality"].get("text"),
             "evidence_ids": report["earnings_quality"].get("evidence_ids", []),
             "basis": report["earnings_quality"].get("basis"),
             "research_gaps": report["earnings_quality"].get("research_gaps", [])[:2]},
+        "quantified_profit_bridge": report["earnings_quality"].get("pat_bridge", []),
+        "reconciliation": report["earnings_quality"].get("reconciliation", {}),
         "results_verdict": {k: report["results"][k] for k in ("verdict", "reasons", "evidence_ids")},
         "management_statements": statements, "checkpoints": checkpoints,
         "historical_memory": {"as_of_date": memory.get("as_of_date"), "passages": passages,

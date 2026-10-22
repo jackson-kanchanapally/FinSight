@@ -8,7 +8,7 @@ Activated on 19 October 2026 using the existing PostgreSQL database and all 54 r
 - Runtime snapshot: `~/Library/Application Support/Almonds`.
 - Logs: `~/Library/Application Support/Almonds/backend/data/runtime/production.log` and `production-error.log`.
 - Documents: `~/Library/Application Support/Almonds/backend/data/documents`. Existing relative document references and hashes are preserved. Production writes new documents here; do not delete this directory when updating code.
-- Database: existing `portfolioai` Compose project and PostgreSQL volume; no second database or reset. Migration remains `0022_forecast_accuracy`.
+- Database: existing `portfolioai` Compose project and PostgreSQL volume; no second database or reset. Activation used `0022_forecast_accuracy`; Telegram adds `0023_telegram_deliveries`, and intelligent earnings alerts add `0024_intelligent_earnings_alerts`.
 
 The LaunchAgent starts at login and restarts the server after a crash. The Mac must be awake and the user logged in; Docker Desktop must run. If Docker is unavailable, launchd retries startup every 30 seconds. Laptop sleep and logout interrupt monitoring; due jobs resume on the next start. Source backoff and leases remain persisted in PostgreSQL.
 
@@ -62,3 +62,15 @@ Production downloads update the runtime document store, while the workspace's ol
 - Production browser smoke passed: 54 selectable entries; ANANTRAJ, ESDS, ETERNAL, GOLDBEES and WABAG pages; desktop/mobile rendering; no browser errors. Reproduce with `cd frontend && node scripts/production-check.mjs` (read-only).
 
 Current source failures and forecast availability must be checked in the live UI or a new audit; this document records activation evidence rather than a permanent provider-availability guarantee.
+
+## Telegram integration
+
+Telegram event alerts are installed with a durable delivery queue and a Company events status panel. The bot and private destination are configured locally. Follow [Telegram setup](telegram.md) to change them; after changing the project `.env`, reinstall the runtime to load those settings.
+
+The intelligent earnings update passed **501 backend tests, with 16 optional checks skipped**, the frontend production build, and the general, monitoring and forecast-accuracy browser regressions. Existing local ESDS and ETERNAL PDFs were also checked without external data calls. Telegram and external source calls are mocked in automated tests. See [implementation and limitations](intelligent-earnings-alerts.md).
+
+The user chose to keep Almonds on this Mac. No remote HTTPS endpoint is configured; the persisted notification records remote report access as unavailable, and the short Telegram brief omits the link. The dashboard and stored source PDFs remain accessible locally. The Mac must remain awake for alerts to run.
+
+After installing the earnings update, live read-only checks confirmed healthy HTTP service, migration `0024_intelligent_earnings_alerts`, enabled/configured Telegram, and valid single-part ETERNAL and ESDS Q1 FY2027 previews. Both existing stored documents remain independently `UNVERIFIED`, with limited source coverage and `LOW` evidence confidence; migration does not retroactively authenticate them. ESDS uses the verified deterministic fallback when validated AI prose is unavailable. These checks did not enqueue or send alerts.
+
+The later Telegram presentation update passed **507 backend tests, 16 skipped** and reduced ETERNAL's preview from roughly 3,000 to 550 UTF-16 units. It adds short result highlights, direction, thesis and attributed management highlights without changing frontend files, financial calculations or existing saved report history. No new migration is required.

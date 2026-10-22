@@ -1509,7 +1509,7 @@ export function FinancialsSection({
         )}
       </div>
       <p className="financial-intro">
-        Figures come from verified result tables. Open any number to see its
+        Figures come from validated result-table extraction. Open any number to see its
         source, page, original unit, or calculation.
       </p>
       {error && (
@@ -1537,6 +1537,12 @@ export function FinancialsSection({
                 </button>
               ))}
           </div>
+          {latest?.result_freshness && <div className="event-summary" role="status">
+            <strong>{latest.result_freshness.status === "POTENTIALLY_STALE" ? "Potentially stale result" : "Latest stored result · coverage limited"}</strong>
+            <p>Stored: {latest.result_freshness.latest_stored_period_end || "Unavailable"} · Detected: {latest.result_freshness.latest_detected?.period_end || "Not established"} · Authenticity: {(latest.source_verification?.status || "UNVERIFIED").replaceAll("_", " ")}</p>
+            {latest.result_freshness.newer_awaiting_ingestion && <p>A newer authoritative disclosure is awaiting ingestion.</p>}
+            <p>{latest.result_freshness.source_checks.map(check => `${check.source}: ${check.last_success_at ? indiaDate(check.last_success_at) : "No successful check"} (${check.status.toLowerCase()})`).join(" · ") || "No per-company source check recorded."}</p>
+          </div>}
           {latest && (
             <div className="financial-highlights">
               <div>
@@ -1544,7 +1550,7 @@ export function FinancialsSection({
                 {financialValue(latest, "REVENUE_FROM_OPERATIONS")}
               </div>
               <div>
-                <span>EBITDA · calculated</span>
+                <span>{latest.facts.some(fact => fact.metric_code === "EBITDA" && fact.status !== "NEEDS_REVIEW") ? "Reported EBITDA" : "EBITDA proxy · includes other income"}</span>
                 {metricValue(latest, "EBITDA")}
               </div>
               <div>
@@ -1575,8 +1581,8 @@ export function FinancialsSection({
                       <th>Revenue</th>
                       <th>YoY</th>
                       <th>QoQ</th>
-                      <th>EBITDA*</th>
-                      <th>EBITDA margin</th>
+                      <th>EBITDA / proxy*</th>
+                      <th>Margin*</th>
                       <th>Margin Δ YoY</th>
                       <th>PAT</th>
                       <th>PAT YoY</th>
@@ -1619,8 +1625,8 @@ export function FinancialsSection({
             )}
           </div>
           <p className="financial-footnote">
-            * EBITDA is calculated as PBT + finance costs + depreciation and
-            amortisation; the ESDS filing does not report EBITDA directly.
+            * Reported EBITDA is used where available. Otherwise the proxy is calculated as PBT + finance costs + depreciation and
+            amortisation. It can include other income and exceptional items; it is distinct from reported operating EBITDA.
             “Validated” means checked against the PDF table, and does not mean
             audited. Missing comparisons remain blank.
           </p>

@@ -63,3 +63,4 @@ def disable_background_research(monkeypatch):
     # the application database or network from an unrelated TestClient lifespan.
     from app.config import settings
     monkeypatch.setattr(settings, "research_automation_enabled", False)
+    monkeypatch.setattr(settings, "telegram_enabled", False)

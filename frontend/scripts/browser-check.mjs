@@ -199,6 +199,11 @@ async function run() {
       .waitFor();
     await dialog.getByRole("button", { name: "Cancel" }).click();
 
+    await page.locator(".telegram-alerts summary").getByText("Not connected", { exact: false }).waitFor();
+    await page.locator(".telegram-alerts summary").click();
+    assert.ok(await page.getByRole("button", { name: "Send Telegram test" }).isDisabled());
+    assert.match(await page.locator(".telegram-alerts").innerText(), /short AI thesis/);
+    await page.locator(".telegram-alerts summary").click();
     await page.getByRole("button", { name: "Check for events" }).click();
     await page.locator(".event-row").first().waitFor();
     assert.equal(await page.locator(".event-row").count(), 4);

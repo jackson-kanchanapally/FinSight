@@ -1,8 +1,30 @@
 from decimal import Decimal
+import re
 
 from app.models.financial import OriginalUnit
 
 HUNDRED = Decimal("100")
+
+
+def printed_rounding(value: Decimal, unit: OriginalUnit) -> Decimal:
+    """Half of the least displayed unit, normalized to the stored unit."""
+    half = Decimal(1).scaleb(value.as_tuple().exponent) / 2
+    return half if unit == OriginalUnit.INR_PER_SHARE else normalize_currency(half, unit)
+
+
+def reconciliation_tolerance(facts) -> Decimal:
+    facts = list(facts)
+    floor = Decimal(".000001") if facts and all(f.rounding_tolerance is not None for f in facts) else Decimal(".03")
+    return max(floor, sum((f.rounding_tolerance or Decimal(0) for f in facts), Decimal(0)))
+
+
+def exceptional_effect(value, label):
+    """Do not guess the sign of an ambiguously labelled exceptional item."""
+    gain = bool(re.search(r"\b(?:gain|income)\b", label, re.I))
+    loss = bool(re.search(r"\b(?:loss|expense)\b", label, re.I))
+    if gain == loss:
+        return None
+    return value if gain else -abs(value)
 
 
 def normalize_currency(value: Decimal, unit: OriginalUnit) -> Decimal:
