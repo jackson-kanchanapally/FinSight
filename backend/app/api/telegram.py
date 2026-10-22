@@ -60,7 +60,8 @@ def retry_delivery(delivery_id: int, db: Session = Depends(get_db)):
 
 @router.get("/status")
 def status(db: Session = Depends(get_db)):
-    return delivery_status(db)
+    from app.services.telegram_queries import query_status
+    return {**delivery_status(db), "queries": query_status(db)}
 
 
 @router.post("/test")

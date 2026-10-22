@@ -27,6 +27,20 @@ class Settings(BaseSettings):
     telegram_timeout_seconds: float = Field(default=10, ge=1, le=30)
     telegram_poll_seconds: int = Field(default=5, ge=3, le=300)
     telegram_max_event_age_hours: int = Field(default=48, ge=1, le=720)
+    telegram_queries_enabled: bool = False
+    # This deployment has ONE portfolio. Both lists must match a private chat.
+    telegram_allowed_user_ids: list[int] = Field(default_factory=list)
+    telegram_allowed_chat_ids: list[int] = Field(default_factory=list)
+    telegram_company_aliases: dict[str, list[str]] = Field(default_factory=dict)
+    telegram_query_timeout_seconds: float = Field(default=60, ge=1, le=120)
+    telegram_query_cache_seconds: int = Field(default=600, ge=0, le=3600)
+    telegram_query_cooldown_seconds: int = Field(default=15, ge=1, le=300)
+    ai_provider: Literal["ollama", "openai_compatible"] = "ollama"
+    ai_api_base_url: str = ""
+    ai_api_key: SecretStr = SecretStr("")
+    ai_model: str = ""
+    # Explicit operator-maintained list of zero-cost routes. No other model is eligible.
+    ai_free_models: list[str] = Field(default_factory=list)
     report_public_base_url: str = ""
     report_access_secret: SecretStr = SecretStr("")
     report_link_ttl_seconds: int = Field(default=86400, ge=300, le=86400)

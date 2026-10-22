@@ -82,6 +82,22 @@ async def scheduled_telegram():
         logger.warning("telegram.worker_failed error=%s", type(exc).__name__)
 
 
+async def scheduled_telegram_inbox():
+    from app.services.telegram_queries import poll_updates
+    try:
+        await poll_updates(SessionLocal)
+    except Exception as exc:
+        logger.warning("telegram.inbox_failed error=%s", type(exc).__name__)
+
+
+async def scheduled_telegram_queries():
+    from app.services.telegram_queries import answer_one
+    try:
+        await answer_one(SessionLocal)
+    except Exception as exc:
+        logger.warning("telegram.query_failed error=%s", type(exc).__name__)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     scheduler = None
@@ -90,6 +106,11 @@ async def lifespan(_app: FastAPI):
         if settings.telegram_enabled:
             scheduler.add_job(scheduled_telegram, "interval", seconds=settings.telegram_poll_seconds,
                               id="telegram_alerts", max_instances=1, coalesce=True)
+            if settings.telegram_queries_enabled:
+                scheduler.add_job(scheduled_telegram_inbox, "interval", seconds=settings.telegram_poll_seconds,
+                                  id="telegram_inbox", max_instances=1, coalesce=True)
+                scheduler.add_job(scheduled_telegram_queries, "interval", seconds=settings.telegram_poll_seconds,
+                                  id="telegram_queries", max_instances=1, coalesce=True)
         if settings.research_automation_enabled:
             from datetime import datetime, timezone
             scheduler.add_job(scheduled_research, "interval", seconds=settings.research_poll_seconds,

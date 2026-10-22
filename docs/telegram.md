@@ -25,7 +25,7 @@ Other disclosures (dividends, orders, corporate actions, management changes and 
    python3 ops/install-production.py
    ```
 
-   The production launcher applies migrations through `0024_intelligent_earnings_alerts`. It copies the project `.env` into the installed snapshot, so restarting the old snapshot alone will not pick up project configuration changes. Docker Desktop and Ollama must be running; the Mac must be awake. For a development server, run `alembic upgrade head` from `backend` and restart it instead.
+   The production launcher applies migrations through the current Alembic head. It copies the project `.env` into the installed snapshot, so restarting the old snapshot alone will not pick up project configuration changes. Docker Desktop and Ollama must be running; the Mac must be awake. For a development server, run `alembic upgrade head` from `backend` and restart it instead.
 
 5. Open **Company events → Telegram alerts** to check delivery counts or send another connection test. `GET /api/telegram/status` gives the same secret-free status. `POST /api/telegram/test` explicitly sends a test to the configured destination.
 
@@ -42,4 +42,4 @@ These steps use Telegram's official [bot creation instructions](https://core.tel
 - Full-report URLs require separately configured HTTPS routing and an independent signing secret. The short brief shows a link only when one is available; its stored DTO retains the explicit unavailable reason otherwise. Localhost links are never presented as phone-accessible reports. Known staleness, conflicting figures or unverified sources get a short caution instead of a data-quality table. See [remote report setup](intelligent-earnings-alerts.md#formatting-authentication-and-delivery).
 - Set `TELEGRAM_ENABLED=false` and restart to pause enqueuing and delivery. Pending messages remain queued and resume when enabled. Keep the token in the private `.env`; it is never returned to the browser. Telegram transport errors are sanitized and HTTP request logs redact the bot token.
 
-No public webhook, incoming Telegram commands, or Telegram channel ingestion is required. The endpoints follow Almonds's existing trusted-loopback deployment model.
+On-demand private portfolio queries are optional; see [setup and evidence limits](telegram-queries.md). No public webhook or Telegram channel ingestion is required. The endpoints follow Almonds's existing trusted-loopback deployment model.

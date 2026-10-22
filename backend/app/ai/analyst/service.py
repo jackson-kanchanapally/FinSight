@@ -110,11 +110,14 @@ def model_schema(registry: dict, period_id: int, *, quarterly_only=False, allowe
     return schema
 
 
-def configured_provider() -> LLMProvider:
+def configured_provider(*, timeout: float | None = None) -> LLMProvider:
+    if settings.ai_provider == "openai_compatible":
+        from app.ai.providers.compatible import FreeCompatibleProvider
+        return FreeCompatibleProvider(timeout or settings.quarterly_review_timeout_seconds)
     return OllamaProvider(
         settings.ollama_base_url,
         settings.ollama_model,
-        settings.quarterly_review_timeout_seconds,
+        timeout or settings.quarterly_review_timeout_seconds,
         settings.ai_temperature,
         settings.ollama_num_ctx,
     )

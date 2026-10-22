@@ -37,3 +37,37 @@ class TelegramDelivery(Base):
     last_error: Mapped[str | None] = mapped_column(String(200))
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class TelegramInbox(Base):
+    """Durable getUpdates cursor and a short cross-process polling lease."""
+    __tablename__ = "telegram_inbox"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    next_update_id: Mapped[int] = mapped_column(default=0)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_token: Mapped[str | None] = mapped_column(String(36))
+
+
+class TelegramQuery(Base):
+    __tablename__ = "telegram_queries"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    update_id: Mapped[int] = mapped_column(unique=True)
+    user_id: Mapped[str] = mapped_column(String(100))
+    chat_id: Mapped[str] = mapped_column(String(100))
+    company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    latest_data_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    context_hash: Mapped[str | None] = mapped_column(String(64))
+    model_route: Mapped[str | None] = mapped_column(String(200))
+    evidence_registry: Mapped[dict | None] = mapped_column(JSON)
+    structured_output: Mapped[dict | None] = mapped_column(JSON)
+    source_references: Mapped[list | None] = mapped_column(JSON)
+    message: Mapped[str | None] = mapped_column(Text)
+    message_id: Mapped[int | None] = mapped_column(Integer)
+    error: Mapped[str | None] = mapped_column(String(100))
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_token: Mapped[str | None] = mapped_column(String(36))
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(default=0)

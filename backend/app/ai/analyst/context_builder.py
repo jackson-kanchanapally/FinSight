@@ -78,6 +78,7 @@ def build_context(
     period: FinancialPeriod,
     max_chars: int | None = None,
     max_document_chars: int | None = None,
+    include_memory: bool = True,
 ) -> AnalysisContext:
     if period.status != FinancialStatus.VALIDATED:
         raise ValueError("PERIOD_NOT_VALIDATED")
@@ -334,7 +335,8 @@ def build_context(
                 and owner.scope == period.scope
             ):
                 registry[key] = _fact_item(fact, owner)
-    memory = historical_context(db, period, event, registry, report)
+    memory = historical_context(db, period, event, registry, report) if include_memory else {
+        "status": "STORED_EVIDENCE_ONLY", "passages": []}
     registry["I_REVIEW"] = {"kind": "REVIEW_CONTEXT",
         "valuation_implication_status": report["review_packet"]["valuation_implication_status"],
         "changes": report["review_packet"]["changes"], "history_note": report["history_note"],

@@ -1,5 +1,7 @@
 # almonds
 
+[On-demand Telegram analysis](docs/telegram-queries.md) accepts held tickers, company names and maintained aliases in the existing private bot, with owner allowlists, evidence validation and configurable free inference.
+
 Local production tracking is available at **http://127.0.0.1:8000**, managed by the `com.almonds.portfolio` macOS login service. It tracks every registered portfolio entry. See [production tracking and service controls](docs/production-tracking.md) for runtime paths, source gaps, updates and verification.
 
 Optional [Telegram alerts](docs/telegram.md) send new live portfolio disclosures with a short, source-linked local AI thesis. Connect a private bot with `backend/.venv/bin/python backend/scripts/setup_telegram.py --test`, then update/restart the runtime.
