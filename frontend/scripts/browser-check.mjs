@@ -207,6 +207,52 @@ async function run() {
     await page.getByRole("button", { name: "Check for events" }).click();
     await page.locator(".event-row").first().waitFor();
     assert.equal(await page.locator(".event-row").count(), 4);
+    await page.evaluate(async () => {
+      const eventsResponse = await fetch("/api/events?limit=100");
+      const events = await eventsResponse.json();
+      const document = events
+        .flatMap((event) => event.documents)
+        .find((candidate) => candidate.download_url);
+      if (!document) throw new Error("Pagination check needs a stored fixture PDF");
+      const pdfResponse = await fetch(document.download_url);
+      const pdf = new Uint8Array(await pdfResponse.arrayBuffer());
+      for (let index = 1; index <= 2; index += 1) {
+        const suffix = new TextEncoder().encode(`\n% pagination-${index}\n`);
+        const upload = new Uint8Array(pdf.length + suffix.length);
+        upload.set(pdf);
+        upload.set(suffix, pdf.length);
+        const params = new URLSearchParams({
+          title: `Pagination fixture ${index}`,
+          published_on: `2026-09-${18 + index}`,
+          event_type: "OTHER",
+          file_name: `pagination-${index}.pdf`,
+        });
+        const response = await fetch(
+          `/api/companies/ESDS/events/upload-pdf?${params}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/pdf" },
+            body: upload,
+          },
+        );
+        if (!response.ok)
+          throw new Error(`Pagination fixture upload failed: ${response.status}`);
+      }
+    });
+    await page.getByRole("button", { name: "Check for events" }).click();
+    const eventPagination = page.getByRole("navigation", {
+      name: "Event list pagination",
+    });
+    await eventPagination.getByText("Page 1 of 2").waitFor();
+    assert.equal(await page.locator(".event-row").count(), 5);
+    assert.ok(
+      await eventPagination.getByRole("button", { name: "Previous" }).isDisabled(),
+    );
+    await eventPagination.getByRole("button", { name: "Next" }).click();
+    assert.equal(await page.locator(".event-row").count(), 1);
+    assert.match(await eventPagination.innerText(), /Page 2 of 2/);
+    await eventPagination.getByRole("button", { name: "Previous" }).click();
+    assert.equal(await page.locator(".event-row").count(), 5);
     await page
       .locator(".event-row")
       .filter({ hasText: "Unaudited Financial Results" })

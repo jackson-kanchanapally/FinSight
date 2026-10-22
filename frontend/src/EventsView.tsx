@@ -11,6 +11,7 @@ import "./events.css";
 import { TelegramAlerts } from "./TelegramAlerts";
 
 const analysisRequests = new Map<number, Promise<EventAnalysis>>();
+const EVENTS_PER_PAGE = 5;
 
 function analyzeEventOnce(eventId: number) {
   let request = analysisRequests.get(eventId);
@@ -84,6 +85,16 @@ export function EventsSection({
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(events.length / EVENTS_PER_PAGE));
+  const pageEvents = events.slice(
+    (page - 1) * EVENTS_PER_PAGE,
+    page * EVENTS_PER_PAGE,
+  );
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -200,7 +211,7 @@ export function EventsSection({
       )}
       <div className="event-list">
         {events.length ? (
-          events.map((event) => (
+          pageEvents.map((event) => (
             <button
               className="event-row"
               key={event.id}
@@ -244,6 +255,31 @@ export function EventsSection({
           </div>
         )}
       </div>
+      {totalPages > 1 && (
+        <nav className="event-pagination" aria-label="Event list pagination">
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <div>
+            <button
+              type="button"
+              className="button button-outline button-small"
+              disabled={page === 1}
+              onClick={() => setPage((current) => current - 1)}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className="button button-outline button-small"
+              disabled={page === totalPages}
+              onClick={() => setPage((current) => current + 1)}
+            >
+              Next
+            </button>
+          </div>
+        </nav>
+      )}
     </section>
   );
 }

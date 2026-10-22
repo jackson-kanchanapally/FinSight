@@ -20,6 +20,19 @@
   background: var(--surface);
   overflow: hidden;
 }
+.event-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.event-pagination > div {
+  display: flex;
+  gap: 8px;
+}
 .event-row {
   width: 100%;
   border: 0;
