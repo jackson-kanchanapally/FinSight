@@ -45,6 +45,7 @@ class BriefProvider:
             "what_next": claim("Watch for the disclosed payment arrangements."),
             "recommendation": {"action": "WATCH", "reason": "Review the official disclosure.", "evidence_ids": evidence},
             "management_says": None,
+            "impact": {"direction": "POSITIVE", "text": "A dividend returns cash to shareholders; the announcement does not establish a price reaction.", "evidence_ids": evidence},
         })
 
 
@@ -111,7 +112,8 @@ def test_cited_ai_thesis_delivered_once_and_receipt_saved(telegram_env, monkeypa
     factory, storage, provider = telegram_env
     save(factory, storage)
     messages = []
-    async def send(chat_id, message):
+    async def send(chat_id, message, **kwargs):
+        assert kwargs == {"parse_mode": "HTML"}
         messages.append((chat_id, message))
         return 99
     monkeypatch.setattr(alerts, "send_message", send)
@@ -121,8 +123,9 @@ def test_cited_ai_thesis_delivered_once_and_receipt_saved(telegram_env, monkeypa
     assert len(messages) == 1
     chat_id, message = messages[0]
     assert chat_id == "456"
-    for text in ["Almonds · ABC", "AI thesis", "Why it matters", "Watch next", "[E1]", "Source: https://"]:
+    for text in ["ALMONDS | ABC", "<b>AI SUMMARY</b>", "<b>IMPACT: Positive</b>", "WHAT MIGHT HAPPEN NEXT", "View announcement"]:
         assert text in message
+    assert "[E1]" not in message and "Research action" not in message and "Evidence:" not in message
     with factory() as db:
         job = db.scalar(select(TelegramDelivery))
         assert (job.status, job.message_id, job.ai_status) == ("SENT", 99, "SUCCESS")
@@ -135,12 +138,13 @@ def test_ai_unavailable_still_sends_disclosure_with_explicit_label(telegram_env,
     provider.fail = True
     save(factory, storage)
     messages = []
-    async def send(chat_id, message):
+    async def send(chat_id, message, **kwargs):
         messages.append(message)
         return 100
     monkeypatch.setattr(alerts, "send_message", send)
     assert asyncio.run(alerts.deliver_one(factory))
-    assert "AI thesis unavailable" in messages[0]
+    assert "AI summary unavailable" in messages[0]
+    assert "Impact is unclear" in messages[0]
     assert "Why it matters" not in messages[0]
     assert "https://nsearchives" in messages[0]
     with factory() as db:
@@ -153,7 +157,7 @@ def test_rate_limit_persists_cooldown_and_reuses_thesis_on_retry(telegram_env, m
     save(factory, storage, key="two")
     current = alerts.now()
     monkeypatch.setattr(alerts, "now", lambda: current)
-    async def limited(*args):
+    async def limited(*args, **kwargs):
         raise TelegramError("Telegram API error 429", retry_after=120)
     monkeypatch.setattr(alerts, "send_message", limited)
     assert not asyncio.run(alerts.deliver_one(factory))
@@ -164,7 +168,7 @@ def test_rate_limit_persists_cooldown_and_reuses_thesis_on_retry(telegram_env, m
     assert not asyncio.run(alerts.deliver_one(factory))
     assert provider.calls == 1
     monkeypatch.setattr(alerts, "now", lambda: current+timedelta(seconds=121))
-    async def success(*args):
+    async def success(*args, **kwargs):
         return 101
     monkeypatch.setattr(alerts, "send_message", success)
     assert asyncio.run(alerts.deliver_one(factory))
@@ -193,7 +197,7 @@ def test_permanent_failure_and_pause(telegram_env, monkeypatch):
     assert not asyncio.run(alerts.deliver_one(factory))
     assert provider.calls == 0
     monkeypatch.setattr(settings, "telegram_enabled", True)
-    async def blocked(*args):
+    async def blocked(*args, **kwargs):
         raise TelegramError("Telegram API error 403", retryable=False)
     monkeypatch.setattr(alerts, "send_message", blocked)
     assert not asyncio.run(alerts.deliver_one(factory))
@@ -204,17 +208,71 @@ def test_permanent_failure_and_pause(telegram_env, monkeypatch):
         assert "TEST_SECRET" not in json.dumps(status, default=str)
 
 
-def test_long_messages_preserve_source_and_utf16_limit(telegram_env):
+def test_long_messages_escape_html_and_respect_utf16_limit(telegram_env):
     factory, storage, _ = telegram_env
     save(factory, storage)
     with factory() as db:
         event = db.scalar(select(CompanyEvent))
-        event.title = "🌰" * 500
+        event.title = "🌰<script>&" * 500
+        event.company.symbol = "ABC <script>"
         event.source_url = "https://example.com/" + "a" * 2000
         event.document_url = "https://example.com/" + "b" * 2000
         message = alerts._render(event, None)
-        assert len(message.encode("utf-16-le")) <= 8192
-        assert message.endswith(event.source_url)
+        assert len(message.encode("utf-16-le")) <= 7600
+        assert "<script>" not in message and "&lt;script&gt;" in message
+        assert 'href="' + event.source_url + '"' in message
+
+
+@pytest.mark.parametrize("event_type,direction", [(EventType.DIVIDEND, "POSITIVE"),
+    (EventType.ORDER_CANCELLATION, "NEGATIVE"), (EventType.BOARD_MEETING, "NEUTRAL")])
+def test_all_other_events_show_ai_impact_and_possible_next_step(telegram_env, event_type, direction):
+    factory, storage, provider = telegram_env
+    save(factory, storage)
+    with factory() as db:
+        event = db.scalar(select(CompanyEvent))
+        event.event_type = event_type
+        record = analyst.analyze_event(db, event)
+        record.structured_output["impact"]["direction"] = direction
+        record.structured_output["what_next"]["text"] = "Further disclosures may clarify the effect on shareholders."
+        message = alerts._render(event, record)
+        assert f"<b>IMPACT: {direction.title()}</b>" in message
+        assert "may clarify" in message
+        assert "[E" not in message
+        assert record.structured_output["impact"]["evidence_ids"] == [f"E{event.id}"]
+        assert provider.calls == 1
+
+
+@pytest.mark.parametrize("failure", ["unknown_citation", "invented_number", "invalid_direction", "certain_price_move"])
+def test_event_impact_and_forecast_are_validated(telegram_env, failure):
+    from app.ai.events.validator import validate_event_insight
+    from app.ai.analyst.validator import InvalidAnalysis
+    factory, storage, _ = telegram_env
+    save(factory, storage)
+    with factory() as db:
+        record = analyst.analyze_event(db, db.scalar(select(CompanyEvent)))
+        insight = json.loads(json.dumps(record.structured_output))
+        if failure == "unknown_citation":
+            insight["impact"]["evidence_ids"] = ["UNKNOWN"]
+        elif failure == "invented_number":
+            insight["impact"]["text"] = "Shareholders receive 99999 rupees."
+        elif failure == "invalid_direction":
+            insight["impact"]["direction"] = "BUY"
+        else:
+            insight["what_next"]["text"] = "The share price will rise after the announcement."
+        with pytest.raises(InvalidAnalysis):
+            validate_event_insight(json.dumps(insight), record.evidence_registry)
+
+
+def test_legacy_event_insight_keeps_neutral_uncertain_impact_and_no_extra_ai_call(telegram_env):
+    factory, storage, provider = telegram_env
+    save(factory, storage)
+    with factory() as db:
+        event = db.scalar(select(CompanyEvent))
+        record = analyst.analyze_event(db, event)
+        record.structured_output.pop("impact")
+        assert "IMPACT: Neutral" in alerts._render(event, record)
+        assert "do not establish a clear" in alerts._render(event, record)
+        assert provider.calls == 1
 
 
 def test_transport_redacts_token_and_posts_plain_text(monkeypatch, caplog):

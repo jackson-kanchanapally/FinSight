@@ -12,6 +12,9 @@ from app.ai.events.schemas import EventInsight
 
 NUMBER = re.compile(r"(?<![A-Za-z0-9])[-+]?\d[\d,]*(?:\.\d+)?")
 TRADING_CALL = re.compile(r"\b(?:buy|sell|hold|target price|price target)\b", re.I)
+CERTAIN_PRICE_MOVE = re.compile(
+    r"\b(?:share|stock)(?:s| price)?\s+(?:will|must|is guaranteed to|is certain to)\s+"
+    r"(?:rise|fall|rally|crash|increase|decrease|surge|drop)\b", re.I)
 
 
 def validate_event_insight(raw: str, registry: dict[str, dict]) -> EventInsight:
@@ -22,6 +25,8 @@ def validate_event_insight(raw: str, registry: dict[str, dict]) -> EventInsight:
     claims = [insight.summary, insight.why_it_matters, insight.what_next]
     if insight.management_says:
         claims.append(insight.management_says)
+    if insight.impact:
+        claims.append(insight.impact)
     texts = []
     for claim in claims:
         _check_claim(claim.text, claim.evidence_ids, registry)
@@ -32,6 +37,8 @@ def validate_event_insight(raw: str, registry: dict[str, dict]) -> EventInsight:
     texts.append(insight.recommendation.reason)
     if TRADING_CALL.search(" ".join(texts)):
         raise InvalidAnalysis("TRADING_CALL_UNSUPPORTED")
+    if CERTAIN_PRICE_MOVE.search(" ".join(texts)):
+        raise InvalidAnalysis("CERTAIN_PRICE_MOVE_UNSUPPORTED")
     if insight.management_says and not any(
         MANAGEMENT_WORDS.search(registry[item]["text"])
         for item in insight.management_says.evidence_ids

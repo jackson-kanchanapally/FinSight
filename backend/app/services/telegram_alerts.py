@@ -7,7 +7,7 @@ from sqlalchemy import func, select, update
 
 from app.ai.events.service import analyze_event
 from app.config import settings
-from app.models.event import CompanyEvent, DataOrigin, PublicationPrecision
+from app.models.event import CompanyEvent, DataOrigin
 from app.models.event import EventType
 from app.models.financial import FinancialPeriod, FinancialStatus, FinancialScope, PeriodType
 from app.models.telegram import TelegramDelivery
@@ -92,41 +92,8 @@ def _claim(session_factory):
 
 
 def _render(event, record):
-    date = utc(event.published_at).astimezone(timezone(timedelta(hours=5, minutes=30)))
-    stamp = date.strftime("%d %b %Y" if event.publication_precision == PublicationPrecision.DATE
-                          else "%d %b %Y, %H:%M IST")
-    parts = [f"Almonds · {event.company.symbol}", event.title, f"{event.source} · {stamp}"]
-    if record and record.status == "SUCCESS" and record.structured_output:
-        insight = record.structured_output
-        def claim(key):
-            row = insight[key]
-            return f"{row['text']} [{', '.join(row['evidence_ids'])}]"
-        parts.extend(["AI thesis · event impact", claim("summary"),
-                      f"Why it matters: {claim('why_it_matters')}",
-                      f"Watch next: {claim('what_next')}",
-                      f"Research action: {insight['recommendation']['action'].replace('_', ' ')} — "
-                      f"{insight['recommendation']['reason']} "
-                      f"[{', '.join(insight['recommendation']['evidence_ids'])}]"])
-        cited = set()
-        for key in ("summary", "why_it_matters", "what_next", "recommendation"):
-            cited.update(insight[key]["evidence_ids"])
-        pages = [f"{key}: PDF page {record.evidence_registry[key]['page']}"
-                 for key in sorted(cited) if record.evidence_registry.get(key, {}).get("kind") == "DOCUMENT_PAGE"]
-        if pages:
-            parts.append("Evidence: " + "; ".join(pages))
-    else:
-        parts.append("AI thesis unavailable. Open this event in Almonds to retry the analysis.")
-    links = f"Source: {event.source_url}"
-    if event.document_url and event.document_url != event.source_url:
-        extra = f"\n\nPDF: {event.document_url}"
-        if len((links + extra).encode("utf-16-le")) <= 6000:
-            links += extra
-    # Preserve a complete source link, leaving room within 4096 UTF-16 units.
-    body = "\n\n".join(parts)
-    budget = 8000 - len(("\n\n" + links).encode("utf-16-le"))
-    if len(body.encode("utf-16-le")) > budget:
-        body = body.encode("utf-16-le")[:budget-2].decode("utf-16-le", errors="ignore") + "…"
-    return body + "\n\n" + links
+    from app.services.telegram_formatter import format_event
+    return format_event(event, record)
 
 
 def _prepare(session_factory, delivery_id, token):
@@ -186,7 +153,8 @@ def _prepare(session_factory, delivery_id, token):
         message = _render(event, record)
         changed = db.execute(update(TelegramDelivery).where(
             TelegramDelivery.id == delivery_id, TelegramDelivery.lease_token == token,
-        ).values(message=message, analysis_id=record.id, ai_status=record.status))
+        ).values(message=message, message_parts=[message], message_ids=[], parse_mode="HTML",
+                 analysis_id=record.id, ai_status=record.status))
         db.commit()
         return (job.chat_id, message) if changed.rowcount == 1 else None
 

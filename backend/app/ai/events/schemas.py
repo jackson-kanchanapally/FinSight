@@ -17,12 +17,17 @@ class EventRecommendation(StrictText):
     evidence_ids: list[str] = Field(min_length=1, max_length=4)
 
 
+class EventImpact(EventClaim):
+    direction: Literal["POSITIVE", "NEGATIVE", "NEUTRAL"]
+
+
 class EventInsight(StrictText):
     summary: EventClaim
     why_it_matters: EventClaim
     recommendation: EventRecommendation
     what_next: EventClaim
     management_says: EventClaim | None = None
+    impact: EventImpact | None = None
 
 
 class EventAnalysisRead(StrictText):

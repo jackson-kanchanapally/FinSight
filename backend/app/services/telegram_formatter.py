@@ -2,6 +2,8 @@
 from html import escape
 import re
 from app.schemas.earnings_notification import EarningsNotification
+from app.schemas.earnings_notification import public_https_url
+from app.models.event import DataOrigin
 
 
 def units(text):
@@ -15,6 +17,59 @@ def _short(text, limit=320):
 
 def _number(value):
     return f"{value:,.2f}".rstrip("0").rstrip(".")
+
+
+def _bounded_html(text, max_units):
+    """Escape source text without cutting a tag, entity or Unicode character."""
+    text = " ".join(text.split())
+    if units(escape(text)) <= max_units:
+        return escape(text)
+    pieces, used = [], 0
+    for char in text:
+        encoded = escape(char)
+        used += units(encoded)
+        if used > max_units - 1:
+            break
+        pieces.append(encoded)
+    return "".join(pieces).rstrip() + "…"
+
+
+def format_event(event, record):
+    """Concise non-earnings brief; evidence IDs remain in the saved analysis."""
+    from datetime import timezone, timedelta
+    timestamp = event.published_at
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    stamp = timestamp.astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%d %b %Y")
+    kind = event.event_type.value.replace("_", " ").title()
+    sections = [f"<b>ALMONDS | {_bounded_html(event.company.symbol, 120)} | {escape(kind)}</b>", stamp]
+    insight = record.structured_output if record and record.status == "SUCCESS" else None
+    if insight:
+        summary = insight["summary"]["text"]
+        impact = insight.get("impact")
+        direction = impact["direction"] if impact else "NEUTRAL"
+        reason = impact["text"] if impact else "The available details do not establish a clear positive or negative impact."
+        next_step = insight["what_next"]["text"]
+    else:
+        summary = event.title + ". AI summary unavailable."
+        direction = "NEUTRAL"
+        reason = "Impact is unclear without a validated analysis."
+        next_step = "Await further details before assessing the likely effects."
+    sections.extend([
+        "<b>AI SUMMARY</b>\n" + _bounded_html(_short(summary, 350), 1000),
+        "<b>IMPACT: " + escape(direction.title()) + "</b>\n" + _bounded_html(_short(reason, 260), 800),
+        "<b>WHAT MIGHT HAPPEN NEXT</b>\n" + _bounded_html(_short(next_step, 350), 1000),
+    ])
+    if event.data_origin == DataOrigin.FIXTURE:
+        sections.append("<i>Fictional sample event.</i>")
+    elif event.data_origin == DataOrigin.MANUAL:
+        sections.append("<i>Source not independently verified.</i>")
+    body = "\n\n".join(sections)
+    if public_https_url(event.source_url):
+        link = f'<a href="{escape(event.source_url, quote=True)}">View announcement</a>'
+        if units(body + "\n\n" + link) <= 3800:
+            body += "\n\n" + link
+    return body
 
 
 def metric_line(row):
@@ -48,7 +103,7 @@ def format_earnings(notification: EarningsNotification, limit=3800):
     if not 1000 <= limit <= 4000:
         raise ValueError("Telegram part limit must be between 1000 and 4000 UTF-16 units")
     n = notification
-    header = f"<b>ALMONDS | {escape(n.company_symbol)} | {escape(n.reporting_period)}</b>"
+    header = f"<b>Almonds-Results | {escape(n.company_symbol)} | {escape(n.reporting_period)}</b>"
     sections = [escape(n.reporting_basis.title()) + " results · period ended " + n.period_end.strftime("%d %b %Y")]
     def section(title, lines):
         sections.append("<b>" + title + "</b>\n" + "\n".join(lines))

@@ -433,7 +433,7 @@ def test_uncertain_sends_and_expired_inflight_lease_never_auto_retry(telegram_en
     factory, storage, _ = telegram_env
     from tests.test_telegram import save
     save(factory, storage)
-    async def uncertain(*args):
+    async def uncertain(*args, **kwargs):
         raise TelegramError("Telegram delivery outcome is unknown", uncertain=True)
     monkeypatch.setattr(alerts, "send_message", uncertain)
     assert not asyncio.run(alerts.deliver_one(factory))
