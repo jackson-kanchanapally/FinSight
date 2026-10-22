@@ -28,6 +28,7 @@ export type AccuracyEvaluation = {
   result: {
     actual_value: string | null;
     signed_error?: string | null;
+    absolute_error?: string | null;
     absolute_percentage_error?: string | null;
     normalized_unit?: string;
     reason: string;
@@ -43,6 +44,7 @@ export type AccuracyRow = {
   cutoff_at: string;
   definition: AccuracyDefinition;
   status: string;
+  assessment_status: string;
   evaluation: AccuracyEvaluation | null;
   provenance: {
     source_snapshot: {
@@ -60,6 +62,26 @@ export type AccuracyPage = {
   total: number;
   offset: number;
   limit: number;
+};
+export type GuidancePage = Omit<AccuracyPage, "items"> & {
+  items: (AccuracyRow & { possible_duplicate_ids: string[] })[];
+  checkpoint_total: number;
+  ledger_total: number;
+  checkpoint_items: {
+    id: string;
+    quote: string;
+    published_at: string | null;
+    target_period: string | null;
+    target_date: string | null;
+    target: { lower?: string; upper?: string };
+    unit: string | null;
+    status: string;
+    reason: string;
+    measurement_note: string | null;
+    source_verified: boolean;
+    source: { document_url: string; page: number } | null;
+    possible_duplicate_ids: string[];
+  }[];
 };
 export type Calibration = {
   source: string;
@@ -86,6 +108,9 @@ export type AccuracyStats = {
   missed: number;
   partially_met: number;
   unresolved: number;
+  pending: number;
+  excluded: number;
+  unresolved_evidence: number;
   evidence_coverage: { n: number; with_evidence: number; ratio: string | null };
   groups: {
     metric: string;
@@ -138,7 +163,7 @@ export const accuracyApi = {
   stats: (symbol: string, query: string) =>
     request<AccuracyStats>(`${base(symbol)}/accuracy?${query}`),
   guidance: (symbol: string, query: string) =>
-    request<AccuracyPage>(`${base(symbol)}/accuracy/guidance?${query}`),
+    request<GuidancePage>(`${base(symbol)}/accuracy/guidance?${query}`),
   thesis: (symbol: string, query: string) =>
     request<ThesisAccuracy>(`${base(symbol)}/accuracy/thesis-history?${query}`),
   revisions: (symbol: string, id: number) =>

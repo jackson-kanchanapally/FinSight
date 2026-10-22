@@ -299,7 +299,7 @@ export function ValuationPanel({
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Price refresh failed.";
       setError(message.includes("PROVIDER_UNAVAILABLE") || message.includes("PROVIDER_TIMEOUT") ?
-        "NSE price data is temporarily unavailable. Try Refresh EOD price later, or enter a dated price and source above." : message);
+        "NSE price data is temporarily unavailable. Automatic research will retry; the latest valid dated observation remains visible." : message);
     } finally {
       setBusy(false);
     }
@@ -418,8 +418,8 @@ export function ValuationPanel({
       {!valuation && (
         <div className="valuation-setup" role="status">
           <strong>{symbol} valuation needs a dated share price.</strong>
-          <p>{refreshAvailable ? "Use Refresh EOD price above to fetch the latest available NSE close, or enter a sourced price in Share price and valuation." :
-            "Enter a dated, sourced price in Share price and valuation."}</p>
+          <p>{refreshAvailable ? "Automatic research will fetch the latest permitted NSE close. Refresh EOD price can request an additional check." :
+            "No automatic market provider is available. A dated manual snapshot is an optional advanced fallback."}</p>
           {!hasValidatedPeriod && <p>Verified financial results are also needed for P/E and other earnings ratios. A manually uploaded PDF appears in Company events for review, but does not create verified financial facts.</p>}
         </div>
       )}
@@ -428,9 +428,7 @@ export function ValuationPanel({
           {!hasValidatedPeriod && <p className="valuation-setup" role="status">A price is available for {symbol}, but no validated {scope.toLowerCase()} financial period is stored. P/E and other earnings ratios will remain unavailable. Manual PDF uploads are review documents; use an official financial-results event to populate verified facts.</p>}
           {days !== null && days > 7 && (
             <p className="valuation-stale" role="status">
-              Valuation based on price from {market?.as_of_date}. Refresh or
-              enter a newer dated price before using these ratios for a current
-              view.
+              Valuation based on price from {market?.as_of_date}. This price is stale; automatic research will retry the market source.
             </p>
           )}
           <p className="financial-footnote">

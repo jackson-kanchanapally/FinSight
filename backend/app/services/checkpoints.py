@@ -8,7 +8,7 @@ from app.models.checkpoint import InvestorCheckpoint, CheckpointEvaluation
 from app.models.commentary import ManagementGuidance, ManagementStatement, CommentaryDocument
 from app.models.event import CompanyEvent
 from app.models.financial import FinancialPeriod, FinancialStatus
-from app.services.commentary import guidance_target_end
+from app.services.commentary import capex_scope_unclear, guidance_target_end
 from app.services.memory.service import guidance_record, local_day
 
 
@@ -53,7 +53,7 @@ def checkpoint_definition(statement, period, guidance=None):
         metric = key = "CAPEX"
         values = {"lower": capex[1].replace(",", ""), "upper": capex[1].replace(",", "")}
         unit = "INR_CRORE"
-        if re.search(r"additional|don't have the numbers|do not have the numbers", text, re.I):
+        if capex_scope_unclear(text):
             metric = key = "CAPEX_SCOPE_UNCLEAR"
             note = "Total versus additional spending is unclear in the source. Confirm the budget basis before comparing actuals."
     elif gpus and re.search(r"target|we(?:'ll| will).{0,20}deploy", text, re.I):

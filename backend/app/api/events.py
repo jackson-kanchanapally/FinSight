@@ -399,6 +399,13 @@ def create_company_source(
     company = db.scalar(select(Company).where(Company.symbol == symbol.strip().upper()))
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
+    existing = db.scalar(select(CompanySource).where(
+        CompanySource.company_id == company.id, CompanySource.source == payload.source
+    ))
+    if existing is not None:
+        if all(getattr(existing, key) == value for key, value in payload.model_dump().items()):
+            return existing
+        raise HTTPException(status_code=409, detail="Company source already exists; update its configuration explicitly")
     row = CompanySource(company_id=company.id, **payload.model_dump())
     db.add(row)
     try:

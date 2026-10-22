@@ -10,6 +10,7 @@ from app.api import (
     companies,
     events,
     expectations,
+    research,
     financials,
     market,
     memory,
@@ -63,12 +64,24 @@ async def scheduled_market_refresh() -> None:
                 )
 
 
+async def scheduled_research():
+    from app.services.research_jobs import run_due
+    try:
+        await run_due(SessionLocal, limit=settings.research_batch_size)
+    except Exception:
+        logger.exception("research.scheduler_failed")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     scheduler = None
-    if settings.event_monitor_enabled or settings.market_data_enabled:
+    if settings.research_automation_enabled or settings.event_monitor_enabled or settings.market_data_enabled:
         scheduler = AsyncIOScheduler(timezone="UTC")
-        if settings.event_monitor_enabled:
+        if settings.research_automation_enabled:
+            from datetime import datetime, timezone
+            scheduler.add_job(scheduled_research, "interval", seconds=settings.research_poll_seconds,
+                id="autonomous_research", max_instances=1, coalesce=True, next_run_time=datetime.now(timezone.utc))
+        if settings.event_monitor_enabled and not settings.research_automation_enabled:
             scheduler.add_job(
                 scheduled_check,
                 "interval",
@@ -77,7 +90,7 @@ async def lifespan(_app: FastAPI):
                 max_instances=1,
                 coalesce=True,
             )
-        if settings.market_data_enabled and settings.market_data_provider != "manual":
+        if settings.market_data_enabled and not settings.research_automation_enabled and settings.market_data_provider != "manual":
             scheduler.add_job(
                 scheduled_market_refresh,
                 "cron",
@@ -114,6 +127,7 @@ app.include_router(valuation.router)
 app.include_router(memory.router)
 app.include_router(thesis.router)
 app.include_router(expectations.router)
+app.include_router(research.router)
 
 
 @app.get("/health", tags=["health"])

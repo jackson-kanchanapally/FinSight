@@ -1,5 +1,7 @@
 # almonds
 
+Local production tracking is available at **http://127.0.0.1:8000**, managed by the `com.almonds.portfolio` macOS login service. It tracks every registered portfolio entry. See [production tracking and service controls](docs/production-tracking.md) for runtime paths, source gaps, updates and verification.
+
 almonds is a personal investment research and portfolio monitor. Phase 1 provides transaction-based portfolio accounting, Phase 2 adds a React dashboard, Phase 3 adds company event monitoring, Phase 3.5 adds live primary-source ingestion, Phase 4 adds deterministic financial-result extraction and calculations, and Phase 5 adds an optional local AI analyst. Transactions remain the source of truth; there is no separately maintained holdings table.
 
 ## Current functionality
@@ -385,3 +387,11 @@ Apply `alembic upgrade head` in `backend` for migration `0018_living_thesis`. Co
 Verified results, metric corrections, attributed commentary, guidance and material official disclosures now refresh existing theses automatically. **Thesis Monitoring** shows material developments, evidence confidence, unresolved questions, catalysts, source pages and an immutable assessment timeline. Choose any two assessments to compare their stored evidence. Numerical comparisons use deterministic Python; automatic monitoring makes no AI calls.
 
 Apply migration `0019_thesis_monitoring` with `alembic upgrade head`. Run `node scripts/monitoring-check.mjs` in `frontend` for the isolated browser regression. See [Phase 8.2 validation and limits](docs/phase82-report.md).
+
+## Phase 8.3B: forecast accuracy and calibration
+
+The Forecast Accuracy panel retains primary forecast-versus-actual scores while showing later corrections separately. It provides metric/horizon summaries, publication-ordered rolling history, typed paginated comparisons, data-quality reasons and confidence/interval calibration with explicit sample uncertainty. No historical predictions or probabilities are backfilled.
+
+Apply `alembic upgrade head` from `backend` for the reversible `0022_forecast_accuracy` history index. `GET /api/companies/{symbol}/forecasts/accuracy` provides summaries and calibration; `GET /api/companies/{symbol}/forecasts/comparisons` provides observations and exclusions; `POST /api/companies/{symbol}/forecasts/evaluate` queues deterministic scoring through the existing scheduler. Automatic financial-evidence evaluation remains enabled through the existing processing hooks.
+
+See [the Phase 8.3B report](PHASE_8_3B_REPORT.md) for methodology, endpoints, migration/test results, the ESDS/Eternal data limitations, and Phase 8.3C next steps. Run `backend/scripts/verify_forecast_accuracy.py` with the backend virtual environment for a read-only audit of the configured PostgreSQL corpus. The new browser regression is `node scripts/forecast-accuracy-check.mjs` from `frontend`.

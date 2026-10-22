@@ -36,6 +36,9 @@ class ExpectationInput(BaseModel):
     confidence: Number | None = Field(default=None, ge=0, le=1)
     confidence_event: Literal["MET_UNDER_FROZEN_TOLERANCE"] | None = None
     confidence_label: Literal["LOW", "MEDIUM", "HIGH"] | None = None
+    interval_lower: Number | None = None
+    interval_upper: Number | None = None
+    interval_probability: Number | None = Field(default=None, gt=0, lt=1)
     guidance_kind: Literal["FIRM_TARGET", "ASPIRATION", "ESTIMATE", "CONDITIONAL"] | None = None
     guidance_id: int | None = Field(default=None, gt=0)
     checkpoint_id: int | None = Field(default=None, gt=0)
@@ -54,6 +57,13 @@ class ExpectationInput(BaseModel):
                 setattr(self, field, value.astimezone(timezone.utc))
         if (self.confidence is None) != (self.confidence_event is None):
             raise ValueError("Probability requires the explicitly defined confidence event")
+        interval = (self.interval_lower, self.interval_upper, self.interval_probability)
+        if any(v is not None for v in interval):
+            if (any(v is None for v in interval) or self.interval_lower > self.interval_upper
+                    or self.expectation_type != "EXACT"):
+                raise ValueError("Prediction intervals require ordered bounds, nominal probability and an exact point forecast")
+            if self.expected_value is None or not self.interval_lower <= self.expected_value <= self.interval_upper:
+                raise ValueError("Point forecast must lie within its prediction interval")
         if self.expectation_type != "QUALITATIVE":
             from app.services.financials.period import identify_period
             identify_period(self.period, self.period_type)
@@ -99,6 +109,7 @@ class ExpectationRead(BaseModel):
     definition: dict
     provenance: dict
     status: Literal["PENDING", "MATCHED", "EVALUATED", "UNVERIFIABLE", "SUPERSEDED"]
+    assessment_status: Literal["MET", "PARTIALLY_MET", "MISSED", "PENDING", "UNRESOLVED", "EXCLUDED"]
     evaluation: EvaluationRead | None
 
 
@@ -116,6 +127,9 @@ class StatisticsRead(BaseModel):
     missed: int
     partially_met: int
     unresolved: int
+    pending: int
+    excluded: int
+    unresolved_evidence: int
     evidence_coverage: dict
     groups: list[dict]
     calibration: list[dict]
@@ -138,3 +152,37 @@ class ThesisHistoryRead(BaseModel):
 
 class RetryRead(BaseModel):
     processed: int
+
+
+class CheckpointGuidanceRead(BaseModel):
+    id: str
+    checkpoint_id: int
+    company_id: int
+    financial_scope: Scope
+    statement_id: int
+    guidance_id: int | None
+    quote: str
+    published_at: datetime | None
+    target_period: str | None
+    target_date: date | None
+    target: dict
+    unit: str | None
+    metric: str | None
+    status: Literal["PENDING", "UNRESOLVED"]
+    reason: str
+    measurement_note: str | None
+    source_verified: bool
+    source: dict | None
+    possible_duplicate_ids: list[str]
+    scoring_eligible: Literal[False] = False
+
+
+class GuidanceRead(ExpectationRead):
+    possible_duplicate_ids: list[str]
+
+
+class GuidancePage(ExpectationPage):
+    items: list[GuidanceRead]
+    checkpoint_items: list[CheckpointGuidanceRead]
+    ledger_total: int
+    checkpoint_total: int

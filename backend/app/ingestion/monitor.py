@@ -50,6 +50,9 @@ class SourceRunSummary(BaseModel):
     duplicates: int = 0
     documents_downloaded: int = 0
     unresolved_symbols: list[str] = Field(default_factory=list)
+    document_failures: int = 0
+    processing_failures: int = 0
+    retry_after_seconds: int | None = None
     error: str | None = None
 
 
@@ -182,6 +185,7 @@ async def check_for_events(
     storage: DocumentStorage | None = None,
     symbols: set[str] | None = None,
     since_override: datetime | None = None,
+    defer_commentary: bool = False,
 ) -> CheckSummary:
     summary = CheckSummary()
     sources = configured_sources() if sources is None else sources
@@ -211,6 +215,9 @@ async def check_for_events(
                 source_matches = 0
                 source_new = 0
                 source_documents = 0
+                document_failures = 0
+                processing_failures = 0
+                retry_seconds = 0
                 for item in items:
                     raw = SourceEvent.model_validate(item)
                     normalized = normalize_event(
@@ -232,6 +239,8 @@ async def check_for_events(
                             validate_pdf(downloaded)
                         except Exception as exc:
                             document_error = exc
+                            document_failures += 1
+                            retry_seconds = max(retry_seconds, getattr(exc, 'retry_after_seconds', None) or 0)
                             logger.warning(
                                 "event_monitor.document_failed",
                                 extra={
@@ -259,11 +268,12 @@ async def check_for_events(
                                         == reference.event_id
                                     )
                                 )
-                                if stored or prior is None:
+                                if stored or prior is None or prior.status == 'FAILED':
                                     process_financial_event(
                                         db, reference.event_id, storage=storage
                                     )
                             except Exception:
+                                processing_failures += 1
                                 logger.exception(
                                     "financials.auto_process_failed",
                                     extra={
@@ -273,7 +283,7 @@ async def check_for_events(
                                 )
                     if (stored or not was_known) and is_commentary_candidate(
                         normalized.event_type, normalized.title
-                    ):
+                    ) and not defer_commentary:
                         try:
                             await asyncio.to_thread(
                                 refresh_commentary_for_company,
@@ -311,6 +321,9 @@ async def check_for_events(
                     duplicates=duplicates,
                     documents_downloaded=source_documents,
                     unresolved_symbols=getattr(source, "unresolved_symbols", []),
+                    document_failures=document_failures,
+                    processing_failures=processing_failures,
+                    retry_after_seconds=retry_seconds or None,
                 )
                 logger.info(
                     "event_monitor.source_complete",
@@ -331,11 +344,12 @@ async def check_for_events(
                     state = MonitoringState(source=source.name, consecutive_failures=0)
                     db.add(state)
                 state.consecutive_failures += 1
-                state.last_error = type(exc).__name__
+                state.last_error = f'{type(exc).__name__}: {exc}'[:1000]
                 db.commit()
                 summary.errors.append(f"{source.name}: {type(exc).__name__}")
                 summary.sources[source.name] = SourceRunSummary(
-                    status="error", error=type(exc).__name__
+                    status="error", error=state.last_error,
+                    retry_after_seconds=getattr(exc, 'retry_after_seconds', None),
                 )
                 logger.exception(
                     "event_monitor.source_failed", extra={"source": source.name}

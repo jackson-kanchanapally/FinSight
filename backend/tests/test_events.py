@@ -410,7 +410,7 @@ def test_event_api_filters_and_document_download(event_env):
         "/api/companies/esds/sources", json={"source": "FIXTURE", "enabled": False}
     )
     assert source.status_code == 201
-    assert client.get("/api/companies/ESDS/sources").json()[0]["enabled"] is False
+    assert next(row for row in client.get("/api/companies/ESDS/sources").json() if row["source"] == "FIXTURE")["enabled"] is False
     assert client.post("/api/events/check").json()["sources_checked"] == 0
     updated = client.put(
         "/api/companies/ESDS/sources/FIXTURE",

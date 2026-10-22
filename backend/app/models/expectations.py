@@ -41,7 +41,10 @@ class HistoricalExpectationRevision(Base):
 
 class ExpectationEvaluation(Base):
     __tablename__ = "expectation_evaluations"
-    __table_args__ = (UniqueConstraint("revision_id", "fingerprint", name="uq_expectation_evaluation_fingerprint"),)
+    __table_args__ = (
+        UniqueConstraint("revision_id", "fingerprint", name="uq_expectation_evaluation_fingerprint"),
+        Index("ix_expectation_evaluation_history", "revision_id", "id"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     revision_id: Mapped[int] = mapped_column(ForeignKey("historical_expectation_revisions.id", ondelete="RESTRICT"), index=True)
     financial_period_id: Mapped[int | None] = mapped_column(ForeignKey("financial_periods.id", ondelete="RESTRICT"))

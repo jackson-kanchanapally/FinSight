@@ -18,6 +18,7 @@ from xml.etree import ElementTree
 import httpx
 
 from app.config import settings
+from app.ingestion.retry_policy import retry_after_seconds
 from app.ingestion.downloader import SafePdfDownloader
 from app.ingestion.sources.base import (
     EventSource,
@@ -226,6 +227,8 @@ class NSESource(EventSource):
                 return []
             for attempt in range(3):
                 try:
+                    if policy := getattr(self, 'access_policy', None):
+                        await policy.check(FEED_URL)
                     async with client.stream(
                         "GET", FEED_URL, follow_redirects=False
                     ) as response:
@@ -239,7 +242,7 @@ class NSESource(EventSource):
                                 await asyncio.sleep(int(retry_after))
                                 continue
                             raise SourceUnavailableError(
-                                "NSE rate limited the RSS request"
+                                "NSE rate limited the RSS request", retry_after_seconds(response.headers)
                             )
                         if response.status_code == 403:
                             raise SourceUnavailableError("NSE denied the RSS request")
@@ -293,12 +296,14 @@ class NSESource(EventSource):
     async def _fetch_directory(self, client: httpx.AsyncClient, url: str) -> bytes:
         for attempt in range(3):
             try:
+                if policy := getattr(self, 'access_policy', None):
+                    await policy.check(url)
                 async with client.stream(
                     "GET", url, follow_redirects=False
                 ) as response:
                     if response.status_code == 429:
                         raise SourceUnavailableError(
-                            "NSE rate limited the securities CSV"
+                            "NSE rate limited the securities CSV", retry_after_seconds(response.headers)
                         )
                     if response.status_code >= 500:
                         raise httpx.HTTPStatusError(

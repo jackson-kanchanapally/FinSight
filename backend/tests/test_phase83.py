@@ -324,16 +324,17 @@ def test_evidence_restoration_records_new_current_state(db, clock):
     assert service.list_expectations(db, company.id)["items"][0]["evaluation"]["id"] == third.id
 
 
-def test_guidance_revision_appends_and_does_not_double_count(db, clock):
+def test_distinct_guidance_statements_are_not_implicit_revisions(db, clock):
     company, period, _ = setup(db)
     clock[0] = AFTER
     call(db, company, period, "CEO: We target PAT margins of 15% to 20% for FY27.", published="2026-07-25")
     ledger = db.scalar(select(HistoricalExpectation).where(HistoricalExpectation.source_type == "MANAGEMENT"))
     call(db, company, period, "CEO: We target PAT margins of 20% to 25% for FY27.", published="2026-07-26")
     history = service.revisions_view(db, company.id, ledger.id)
-    assert len(history) == 2 and history[0]["definition"]["lower_value"] == "15.0000"
-    assert history[1]["definition"]["lower_value"] == "20.0000"
-    assert statistics(db, company.id)["total"] == 1
+    assert len(history) == 1 and history[0]["definition"]["lower_value"] == "15.0000"
+    assert statistics(db, company.id)["total"] == 2
+    service.refresh_expectations(db, company.id)
+    assert statistics(db, company.id)["total"] == 2
 
 
 def test_date_only_publication_excludes_same_day_capture(db, clock):
@@ -355,13 +356,20 @@ def test_sqlite_additive_migration_and_immutability(tmp_path, clock):
     engine = create_engine(f"sqlite:///{tmp_path / 'migration.db'}")
     names = {"historical_expectations", "historical_expectation_revisions", "expectation_evaluations"}
     Base.metadata.create_all(engine, tables=[t for t in Base.metadata.sorted_tables if t.name not in names])
+    with Session(engine) as session:
+        existing_company, existing_period, existing_fact = setup(session)
+        preserved = (existing_company.id, existing_period.id, existing_fact.id, existing_fact.value)
     spec = importlib.util.spec_from_file_location("phase83migration", Path(__file__).parents[1] / "alembic/versions/0020_historical_expectations.py")
     migration = importlib.util.module_from_spec(spec); spec.loader.exec_module(migration)
     with engine.begin() as connection:
         with Operations.context(MigrationContext.configure(connection)):
             migration.upgrade()
     with Session(engine) as session:
-        company, _, _ = setup(session)
+        from app.models.company import Company
+        from app.models.financial import FinancialFact
+        company = session.get(Company, preserved[0])
+        retained = session.get(FinancialFact, preserved[2])
+        assert retained.financial_period_id == preserved[1] and retained.value == preserved[3]
         service.save(session, company.id, data()); session.commit()
         with pytest.raises(DBAPIError, match="EXPECTATION_HISTORY_IS_IMMUTABLE"):
             session.execute(text("UPDATE historical_expectations SET created_at='2000-01-01'"))

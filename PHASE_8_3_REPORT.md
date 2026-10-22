@@ -1,5 +1,7 @@
 # Phase 8.3 — Historical Thesis Accuracy & Expectations Intelligence
 
+Follow-up: [2026-10-14 audit and hardening report](PHASE_8_3_AUDIT_REPORT.md) documents the checkpoint guidance integration, corrected statement separation, and current verification results.
+
 Implemented in the existing FastAPI / SQLAlchemy / PostgreSQL / React application. This phase measures recorded expectations against verified business outcomes; it does not predict prices or change investment verdicts. No new infrastructure, paid API, hosted model, or additional Ollama call is used.
 
 ## Implementation and reuse
@@ -88,3 +90,5 @@ Reproduce with `cd backend && .venv/bin/python -m pytest -q -rs`, `ALMONDS_PG_AC
 - No scheduled polling was added. Failed evaluation retries on subsequent ingestion or through **Evaluate available results**; the new accuracy GET endpoints do not mutate the ledger (the existing thesis-read refresh can still invoke its monitoring hook). Initial registration of previously ingested guidance uses those same paths.
 - Rates are descriptive frequencies, not evidence of independent forecasting skill. Forecasts about the same underlying result can be correlated; no significance test or benchmark-skill claim is supplied.
 - Existing unrelated valuation fixture failures remain, as detailed in validation. No production valuation calculations or freshness rules were weakened to make those tests pass.
+
+Autonomous upgrade implementation and current verification: [PHASE_8_3_AUTONOMOUS_REPORT.md](PHASE_8_3_AUTONOMOUS_REPORT.md).

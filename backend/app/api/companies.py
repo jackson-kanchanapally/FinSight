@@ -36,7 +36,10 @@ logger = logging.getLogger(__name__)
 def create_company(payload: CompanyCreate, db: Session = Depends(get_db)) -> Company:
     company = Company(**payload.model_dump())
     db.add(company)
+    from app.services.research_jobs import ensure_jobs
     try:
+        db.flush()
+        ensure_jobs(db, company)
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -70,6 +73,11 @@ def delete_company(symbol: str, db: Session = Depends(get_db)) -> None:
     if db.scalar(select(ThesisPillar.id).where(ThesisPillar.company_id == company.id).limit(1)):
         raise HTTPException(status_code=409, detail="This company has immutable thesis history. Deactivate its pillars to retain the investment audit trail.")
 
+    from app.models.expectations import HistoricalExpectation
+    from app.models.research import ResearchJob
+    if db.scalar(select(HistoricalExpectation.id).where(HistoricalExpectation.company_id == company.id).limit(1)):
+        raise HTTPException(status_code=409, detail="This company has immutable forecast history and must be retained.")
+    db.execute(delete(ResearchJob).where(ResearchJob.company_id == company.id))
     company_id = company.id
     company_symbol = company.symbol
     document_paths = {

@@ -54,7 +54,15 @@ from app.services.financials.period import identify_period
 
 
 @pytest.fixture
-def market_db():
+def market_db(monkeypatch):
+    # These fixtures describe September 2026; freeze freshness, not production rules.
+    class FixtureDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            value = datetime(2026, 9, 30, 12, tzinfo=timezone.utc)
+            return value.astimezone(tz) if tz else value.replace(tzinfo=None)
+    monkeypatch.setattr('app.market.expectations.datetime', FixtureDatetime)
+    monkeypatch.setattr('app.ai.analyst.context_builder.datetime', FixtureDatetime)
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )

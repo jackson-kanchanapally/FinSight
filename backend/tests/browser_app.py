@@ -1,12 +1,11 @@
 """Isolated API app for the frontend browser check.
 
-Run only on localhost through frontend/scripts/browser-check.mjs. The in-memory
+Run only on localhost through frontend/scripts/browser-check.mjs. The temporary
 database is discarded when the server stops.
 """
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -14,8 +13,9 @@ from app.config import settings
 from app.database import Base, get_db
 from app.main import app
 
+database_dir = TemporaryDirectory(prefix="almonds-browser-db-")
 engine = create_engine(
-    "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    f"sqlite:///{Path(database_dir.name) / 'test.db'}", connect_args={"check_same_thread": False}
 )
 document_dir = TemporaryDirectory(prefix="almonds-browser-docs-")
 settings.document_storage_path = Path(document_dir.name)
@@ -34,3 +34,7 @@ def override_db():
 
 
 app.dependency_overrides[get_db] = override_db
+
+# Browser fixtures own their test database; never start production background jobs.
+from app.config import settings
+settings.research_automation_enabled = False

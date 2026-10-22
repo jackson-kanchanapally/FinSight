@@ -31,10 +31,18 @@ def latest_revision(db, expectation_id):
     return db.scalar(select(Revision).where(Revision.expectation_id == expectation_id).order_by(Revision.version.desc()))
 
 
-def save(db, company_id, data, expectation_id=None):
+def save(db, company_id, data, expectation_id=None, *, forecast_metadata=None):
     lock(db, company_id)
     now = utcnow()
     definition = data.model_dump(mode="json", exclude={"expected_version"})
+    if forecast_metadata is not None:
+        definition["forecast"] = forecast_metadata
+        information_cutoff = utc(datetime.fromisoformat(forecast_metadata["information_cutoff"]))
+        if information_cutoff > now or information_cutoff > data.cutoff_at:
+            raise ValueError("FORECAST_INFORMATION_CUTOFF_IN_FUTURE")
+        for item in forecast_metadata.get("inputs", []):
+            if utc(datetime.fromisoformat(item["available_at"])) > information_cutoff:
+                raise ValueError("FORECAST_INPUT_AFTER_INFORMATION_CUTOFF")
     metric = definition["metric"]
     if data.expectation_type != "QUALITATIVE":
         normalize(0, data.unit, metric)
@@ -60,7 +68,7 @@ def save(db, company_id, data, expectation_id=None):
         pillar = db.get(ThesisPillar, thesis.pillar_id) if thesis else None
         if not pillar or pillar.company_id != company_id or pillar.scope != data.financial_scope:
             raise ValueError("THESIS_COMPANY_SCOPE_MISMATCH")
-        if utc(thesis.created_at) > data.cutoff_at:
+        if utc(thesis.created_at) > min(now, data.cutoff_at):
             raise ValueError("THESIS_CREATED_AFTER_CUTOFF")
     if data.checkpoint_id:
         checkpoint = db.get(InvestorCheckpoint, data.checkpoint_id)
@@ -84,13 +92,15 @@ def save(db, company_id, data, expectation_id=None):
                 data = data.model_copy(update={"checkpoint_id": checkpoint.id})
                 definition["checkpoint_id"] = checkpoint.id
     if data.guidance_id:
-        from app.services.commentary import guidance_target_end
+        from app.services.commentary import guidance_target_end, capex_scope_unclear
         from app.services.expectation_guidance import METRICS
         guidance = db.get(ManagementGuidance, data.guidance_id)
         if (not guidance or guidance.company_id != company_id or data.evidence_id != f"S{guidance.statement_id}"
             or data.source_type != "MANAGEMENT") and not withdrawal:
             raise ValueError("GUIDANCE_SOURCE_MISMATCH")
         if not withdrawal:
+            if guidance.metric == "CAPEX" and capex_scope_unclear(source.get("source_quote", "")):
+                raise ValueError("AMBIGUOUS_MANAGEMENT_TARGET")
             low = data.lower_value if data.expectation_type == "RANGE" else data.expected_value
             high = data.upper_value if data.expectation_type == "RANGE" else data.expected_value
             if (METRICS.get(guidance.metric) != metric or guidance_target_end(guidance.target_period) != data.period
@@ -124,8 +134,8 @@ def save(db, company_id, data, expectation_id=None):
                 or not re.search(r"withdraw|cancel", source.get("source_quote", ""), re.I)
                 or not re.search(r"previous|prior|original", source.get("source_quote", ""), re.I)):
                 raise ValueError("WITHDRAWAL_REQUIRES_NEW_OFFICIAL_EVIDENCE")
-            for key in ("expected_value", "lower_value", "upper_value", "expectation_type", "unit", "confidence", "confidence_event", "direction", "guidance_id", "checkpoint_id", "baseline_evidence_id"):
-                if definition[key] != previous.definition[key]:
+            for key in ("expected_value", "lower_value", "upper_value", "expectation_type", "unit", "confidence", "confidence_event", "confidence_label", "interval_lower", "interval_upper", "interval_probability", "direction", "guidance_id", "checkpoint_id", "baseline_evidence_id"):
+                if definition.get(key) != previous.definition.get(key):
                     raise ValueError("WITHDRAWAL_CANNOT_REWRITE_FORECAST")
     elif data.expected_version:
         raise ValueError("EXPECTATION_NOT_FOUND")
@@ -182,8 +192,8 @@ def evaluate_revision(db, ledger, revision):
                     result.update(outcome="MET" if checkpoint["status"] == "DELIVERED" else "MISSED",
                                   reason="Verified checkpoint outcome", checkpoint=checkpoint)
                     # Do not count a management claim as independent delivery evidence.
-                    if any(v.get("kind") not in {"FACT", "METRIC", "CORPORATE_DISCLOSURE"} for v in registry.values()):
-                        result.update(outcome="INSUFFICIENT_EVIDENCE", reason="Checkpoint lacks independent outcome evidence")
+                    if any(v.get("kind") not in {"FACT", "METRIC", "CORPORATE_DISCLOSURE"} or not v.get("published_at") for v in registry.values()):
+                        result.update(outcome="INSUFFICIENT_EVIDENCE", reason="Checkpoint lacks independent dated outcome evidence")
     else:
         period, actual, registry = actual_evidence(db, ledger, now)
         if actual:
@@ -241,8 +251,32 @@ def evaluate_revision(db, ledger, revision):
         result["eligibility_note"] = "Aspirational or conditional guidance is descriptive, excluded from credibility statistics"
     if definition["source_type"] == "AI" and definition["historical_import"]:
         result.update(outcome="INSUFFICIENT_EVIDENCE", reason="Imported AI expectations have no independently verified pre-outcome capture")
+    forecast = definition.get("forecast")
+    if forecast and actual:
+        from decimal import Decimal
+        baseline = forecast.get('direction_baseline')
+        if baseline:
+            predicted = Decimal(forecast['base']) - Decimal(baseline['value'])
+            observed = Decimal(actual['value']) - Decimal(baseline['value'])
+            sign = lambda value: (value > 0) - (value < 0)
+            result['directional_correctness'] = sign(predicted) == sign(observed)
+            result['direction_baseline'] = baseline['value']
+            result['direction_method'] = forecast['direction_method']
+        result["forecast_interval"] = {"low": forecast["low"], "high": forecast["high"],
+            "covered": Decimal(forecast["low"]) <= Decimal(actual["value"]) <= Decimal(forecast["high"]),
+            "method": forecast["interval_method"], "probability": None}
+    if actual and definition.get("interval_probability") is not None:
+        low = normalize(definition["interval_lower"], definition["unit"], ledger.metric)
+        high = normalize(definition["interval_upper"], definition["unit"], ledger.metric)
+        from decimal import Decimal
+        result["forecast_interval"] = {"low": str(low), "high": str(high),
+            "covered": low <= Decimal(actual["value"]) <= high,
+            "probability": definition["interval_probability"], "method": "Frozen nominal prediction interval"}
     result.update(evidence=registry, outcome_published_at=published.isoformat() if published else None,
         cutoff_at=cutoff.isoformat(), captured_at=captured.isoformat(), withdrawn=withdrawn)
+    if definition["expectation_type"] != "QUALITATIVE":
+        from app.services.forecast_observations import match_diagnostics
+        match_diagnostics(db, ledger, period, actual, registry, result, revision)
     existing = db.scalar(select(Evaluation).where(Evaluation.revision_id == revision.id).order_by(Evaluation.id.desc()))
     if existing and digest(existing.result) == digest(result):
         return existing
@@ -273,6 +307,16 @@ def evaluation_view(row):
         "created_at": utc(row.created_at)}
 
 
+def assessment_status(revision, evaluation=None):
+    if revision.definition.get("historical_import") or (evaluation and not evaluation.prospective_eligible):
+        return "EXCLUDED"
+    if utcnow() < utc(revision.cutoff_at):
+        return "PENDING"
+    if not evaluation or evaluation.outcome in {"INSUFFICIENT_EVIDENCE", "NOT_COMPARABLE"}:
+        return "UNRESOLVED"
+    return evaluation.outcome
+
+
 def view(ledger, revision, evaluation=None, superseded=False):
     status = "SUPERSEDED" if superseded else "PENDING" if not evaluation else (
         "PENDING" if evaluation.result.get("reason") == "Expectation cutoff has not been reached" else
@@ -280,6 +324,7 @@ def view(ledger, revision, evaluation=None, superseded=False):
     return {"id": ledger.id, "company_id": ledger.company_id, "revision_id": revision.id, "version": revision.version,
         "created_at": utc(revision.created_at), "cutoff_at": utc(revision.cutoff_at), "definition": revision.definition,
         "provenance": revision.provenance, "status": status,
+        "assessment_status": assessment_status(revision, evaluation),
         "evaluation": evaluation_view(evaluation) if evaluation else None}
 
 
@@ -289,19 +334,23 @@ def latest_evaluations(db, revision_ids):
     return {r.revision_id: r for r in db.scalars(select(Evaluation).join(latest, Evaluation.id == latest.c.last_id))}
 
 
-def ledger_query(company_id=None, scope=None, period=None, metric=None, source=None):
+def ledger_query(company_id=None, scope=None, period=None, metric=None, source=None, automated=False):
     query = select(Ledger)
+    if automated:
+        query = query.where(Ledger.id.in_(select(Revision.expectation_id).where(Revision.definition["forecast"]["engine_version"].as_string().is_not(None))))
     for column, value in ((Ledger.company_id, company_id), (Ledger.scope, scope), (Ledger.period_end, period), (Ledger.metric, metric), (Ledger.source_type, source)):
         if value is not None:
             query = query.where(column == value)
     return query
 
 
-def list_expectations(db, company_id=None, *, scope=None, period=None, metric=None, source=None, offset=0, limit=50):
-    query = ledger_query(company_id, scope, period, metric, source)
+def list_expectations(db, company_id=None, *, scope=None, period=None, metric=None, source=None, offset=0, limit=50, automated=False, original=False, upcoming=False):
+    query = ledger_query(company_id, scope, period, metric, source, automated)
+    if upcoming:
+        query = query.where(Ledger.period_end >= utcnow().date())
     total = db.scalar(select(func.count()).select_from(query.subquery()))
     ledgers = list(db.scalars(query.order_by(Ledger.id.desc()).offset(offset).limit(limit)))
-    latest = select(Revision.expectation_id, func.max(Revision.version).label("v")).where(
+    latest = select(Revision.expectation_id, (func.min(Revision.version) if original else func.max(Revision.version)).label("v")).where(
         Revision.expectation_id.in_([r.id for r in ledgers])).group_by(Revision.expectation_id).subquery()
     revisions = {r.expectation_id: r for r in db.scalars(select(Revision).join(latest,
         (Revision.expectation_id == latest.c.expectation_id) & (Revision.version == latest.c.v)))}

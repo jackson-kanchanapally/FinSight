@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 
 from app.config import settings
 from app.ingestion.downloader import SafePdfDownloader
+from app.ingestion.retry_policy import retry_after_seconds
 from app.ingestion.sources.base import (
     DownloadedDocument,
     EventSource,
@@ -245,6 +246,8 @@ class ESDSIRSource(EventSource):
         try:
             for attempt in range(3):
                 try:
+                    if policy := getattr(self, 'access_policy', None):
+                        await policy.check(IR_URL)
                     async with client.stream(
                         "GET", IR_URL, follow_redirects=False
                     ) as response:
@@ -258,7 +261,7 @@ class ESDSIRSource(EventSource):
                                 await asyncio.sleep(int(retry_after))
                                 continue
                             raise SourceUnavailableError(
-                                "ESDS IR rate limited the page request"
+                                "ESDS IR rate limited the page request", retry_after_seconds(response.headers)
                             )
                         if response.status_code == 403:
                             raise SourceUnavailableError(

@@ -67,6 +67,65 @@ try {
   await panel
     .getByRole("heading", { name: "Expectation vs actual", exact: true })
     .waitFor();
+  const automatic = panel.locator('[aria-label="Autonomous research"]');
+  await automatic
+    .getByRole("heading", { name: "Upcoming forecasts", exact: true })
+    .waitFor();
+  await automatic
+    .getByText("No eligible future forecasts yet.", { exact: false })
+    .waitFor();
+  assert.ok(
+    await automatic
+      .getByText("No original Almonds forecasts have been captured yet.", {
+        exact: true,
+      })
+      .isVisible(),
+  );
+  assert.ok(
+    await automatic
+      .getByRole("heading", { name: "Valuation intelligence", exact: true })
+      .isVisible(),
+  );
+  assert.ok(
+    await automatic
+      .getByRole("heading", { name: "Research automation status", exact: true })
+      .isVisible(),
+  );
+  assert.equal(await automatic.locator("form").count(), 0);
+  // The autonomous panels retain partial results, report failures, and recover.
+  await page.route(
+    "**/api/companies/ACCURACY/valuation/automated?**",
+    (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "test unavailable" }),
+      }),
+  );
+  await page.route("**/api/companies/ACCURACY/forecasts?**", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await route.continue();
+  });
+  await page.reload();
+  await automatic
+    .getByRole("status")
+    .filter({ hasText: "Loading automatic research" })
+    .waitFor();
+  await automatic
+    .getByRole("alert")
+    .filter({ hasText: "Some research panels are unavailable" })
+    .waitFor();
+  assert.ok(
+    await automatic
+      .getByRole("heading", { name: "Upcoming forecasts", exact: true })
+      .isVisible(),
+  );
+  await page.unroute("**/api/companies/ACCURACY/valuation/automated?**");
+  await page.unroute("**/api/companies/ACCURACY/forecasts?**");
+  await automatic
+    .getByRole("button", { name: "Retry automatic research", exact: true })
+    .click();
+  await automatic.getByRole("alert").waitFor({ state: "hidden" });
   assert.ok(
     await panel
       .getByText("Evidence coverage: 3 / 3", { exact: false })
@@ -79,6 +138,34 @@ try {
   assert.ok(
     await panel.getByText("Brier score: —", { exact: false }).isVisible(),
   );
+  assert.equal(
+    await panel.getByRole("heading", { name: /Management checkpoint/ }).count(),
+    5,
+  );
+  assert.equal(
+    await panel
+      .getByRole("heading", { name: /Management checkpoint · pending/ })
+      .count(),
+    3,
+  );
+  assert.ok(
+    await panel
+      .getByText(
+        "No explicit deadline; no reporting period has been inferred.",
+        { exact: true },
+      )
+      .isVisible(),
+  );
+  assert.ok(
+    await panel
+      .getByText(/Ambiguous target: total versus additional capex/)
+      .isVisible(),
+  );
+  assert.equal(
+    await panel.getByRole("link", { name: /Original source · page/ }).count(),
+    5,
+  );
+  assert.equal(await panel.getByText(/Possible overlap with K/).count(), 2);
   await panel.getByText("Revision history", { exact: true }).first().click();
   await panel.getByText("Version 1", { exact: false }).first().waitFor();
   assert.match(
@@ -134,7 +221,9 @@ try {
   await panel
     .getByRole("heading", { name: "Accuracy by metric", exact: true })
     .waitFor();
-  await panel.getByText("Register an expectation", { exact: true }).click();
+  await panel
+    .getByText("Advanced: register a manual expectation", { exact: true })
+    .click();
   const form = panel.locator("form");
   await form
     .getByLabel("Target period end", { exact: true })

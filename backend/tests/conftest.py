@@ -55,3 +55,11 @@ def post_tx(client, kind, qty, price, day, charges="0"):
             "charges": charges,
         },
     )
+
+
+@pytest.fixture(autouse=True)
+def disable_background_research(monkeypatch):
+    # Tests explicitly exercise queue workers with disposable sessions; never use
+    # the application database or network from an unrelated TestClient lifespan.
+    from app.config import settings
+    monkeypatch.setattr(settings, "research_automation_enabled", False)

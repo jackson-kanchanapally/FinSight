@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session
 from app.api.analysis import _company
 from app.database import get_db
 from app.models.expectations import HistoricalExpectationRevision as Revision, ExpectationEvaluation as Evaluation
-from app.schemas.expectations import ExpectationInput, ExpectationRead, ExpectationPage, EvaluationRead, StatisticsRead, Scope, Source, CalibrationRead, ThesisHistoryRead, RetryRead
+from app.schemas.expectations import ExpectationInput, ExpectationRead, ExpectationPage, EvaluationRead, StatisticsRead, Scope, Source, CalibrationRead, ThesisHistoryRead, RetryRead, GuidancePage
 from app.services import expectations as service
 from app.services.expectation_statistics import statistics, thesis_history
+from app.services.checkpoint_guidance import guidance_page
 
 router = APIRouter(tags=["historical accuracy"])
 PREFIX = "/api/companies/{symbol}/expectations"
@@ -96,10 +97,10 @@ def confidence_calibration(symbol: str, scope: Scope | None = None, db: Session 
     return {"items": stats["calibration"], "minimum_n": stats["policy"]["minimum_n"]}
 
 
-@router.get("/api/companies/{symbol}/accuracy/guidance", response_model=ExpectationPage)
+@router.get("/api/companies/{symbol}/accuracy/guidance", response_model=GuidancePage)
 def guidance(symbol: str, scope: Scope | None = None, offset: int = Query(0, ge=0),
              limit: int = Query(50, ge=1, le=200), db: Session = Depends(get_db)):
-    return service.list_expectations(db, _company(db, symbol).id, source="MANAGEMENT", scope=scope, offset=offset, limit=limit)
+    return guidance_page(db, _company(db, symbol).id, scope=scope, offset=offset, limit=limit)
 
 
 @router.get("/api/companies/{symbol}/accuracy/thesis-history", response_model=ThesisHistoryRead)

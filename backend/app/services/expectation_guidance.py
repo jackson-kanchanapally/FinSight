@@ -7,7 +7,7 @@ from app.models.financial import FinancialPeriod
 from app.models.expectations import HistoricalExpectation, HistoricalExpectationRevision
 from app.models.checkpoint import InvestorCheckpoint
 from app.schemas.expectations import ExpectationInput
-from app.services.commentary import guidance_target_end
+from app.services.commentary import guidance_target_end, capex_scope_unclear
 from app.services.expectation_evidence import statement_evidence, utc
 
 METRICS = {"REVENUE_GROWTH": "REVENUE_YOY", "PAT_GROWTH": "PAT_YOY", "PAT_MARGIN": "PAT_MARGIN",
@@ -16,16 +16,16 @@ METRICS = {"REVENUE_GROWTH": "REVENUE_YOY", "PAT_GROWTH": "PAT_YOY", "PAT_MARGIN
 
 
 def register_guidance(db, company_id, now):
-    from app.services.expectations import save, latest_revision
-    registered = set(db.scalars(select(HistoricalExpectationRevision.guidance_id).where(
-        HistoricalExpectationRevision.guidance_id.is_not(None))))
+    from app.services.expectations import save
+    registered = set(db.scalars(select(HistoricalExpectationRevision.guidance_id).join(HistoricalExpectation).where(
+        HistoricalExpectation.company_id == company_id, HistoricalExpectationRevision.guidance_id.is_not(None))))
     for guidance in db.scalars(select(ManagementGuidance).where(ManagementGuidance.company_id == company_id).order_by(ManagementGuidance.published_at, ManagementGuidance.id)):
         if guidance.id in registered or guidance.metric not in METRICS:
             continue
         statement = db.get(ManagementStatement, guidance.statement_id)
         owner = db.get(FinancialPeriod, guidance.financial_period_id)
         end = guidance_target_end(guidance.target_period)
-        if not statement or not owner or not end:
+        if not statement or not owner or not end or (guidance.metric == "CAPEX" and capex_scope_unclear(statement.raw_statement)):
             continue
         evidence = statement_evidence(db, statement, company_id, owner.scope.value, now)
         if not evidence:
@@ -47,13 +47,6 @@ def register_guidance(db, company_id, now):
             source_reference=f"G{guidance.id}", evidence_id=statement.evidence_id,
             historical_import=imported, issued_at=utc(statement.published_at) if imported else None,
             guidance_kind=kind, guidance_id=guidance.id, checkpoint_id=checkpoint.id if checkpoint and checkpoint.target_date == end else None)
-        prior = db.scalar(select(HistoricalExpectation).where(HistoricalExpectation.company_id == company_id,
-            HistoricalExpectation.source_type == "MANAGEMENT", HistoricalExpectation.metric == METRICS[guidance.metric],
-            HistoricalExpectation.scope == owner.scope.value, HistoricalExpectation.period_end == end,
-            HistoricalExpectation.period_type == data.period_type.value).order_by(HistoricalExpectation.id.desc()))
-        previous = latest_revision(db, prior.id) if prior else None
-        if previous and previous.guidance_id and imported == previous.definition["historical_import"] and utc(previous.cutoff_at) == cutoff:
-            data = data.model_copy(update={"expected_version": previous.version})
-            save(db, company_id, data, prior.id)
-        else:
-            save(db, company_id, data)
+        # Same metric and deadline do not establish revision lineage. Preserve each
+        # source statement; explicit user revisions remain available through the API.
+        save(db, company_id, data)

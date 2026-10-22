@@ -8,7 +8,9 @@ from app.models.event import DataOrigin, PublicationPrecision, ReportingBasis
 
 
 class SourceUnavailableError(Exception):
-    pass
+    def __init__(self, message, retry_after_seconds=None):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
 
 
 @dataclass(frozen=True)

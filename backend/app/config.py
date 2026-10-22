@@ -11,9 +11,12 @@ class Settings(BaseSettings):
     database_password: str = "finsight_dev"
     database_host: str = "localhost"
     database_port: int = 5432
+    research_automation_enabled: bool = True
+    research_poll_seconds: int = Field(default=60, ge=10, le=3600)
+    research_batch_size: int = Field(default=12, ge=1, le=100)
     event_monitor_enabled: bool = False
     event_monitor_interval_minutes: int = Field(default=30, ge=1)
-    event_source_mode: Literal["fixture", "live", "none"] = "fixture"
+    event_source_mode: Literal["fixture", "live", "none"] = "live"
     nse_source_enabled: bool = True
     bse_source_enabled: bool = False
     company_ir_source_enabled: bool = True
@@ -27,7 +30,7 @@ class Settings(BaseSettings):
     expectation_met_tolerance_pct: float = Field(default=5, ge=0, le=10)
     expectation_partial_tolerance_pct: float = Field(default=10, ge=10, le=100)
     expectation_percentage_tolerance_pp: float = Field(default=0.5, ge=0, le=5)
-    expectation_min_sample: int = Field(default=20, ge=10)
+    expectation_min_sample: int = Field(default=20, ge=20)
     alpha_vantage_api_key: str = ""
     document_storage_path: Path = (
         Path(__file__).resolve().parents[1] / "data" / "documents"

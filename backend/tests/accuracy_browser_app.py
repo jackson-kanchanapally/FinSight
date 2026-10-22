@@ -5,7 +5,7 @@ from app.services import expectations as service
 from tests.test_phase71 import issuer
 
 with Session() as db:
-    company, _, _ = setup(db)
+    company, period, _ = setup(db)
     issuer(db, "EMPTY")
     original_clock = service.utcnow
     try:
@@ -16,5 +16,8 @@ with Session() as db:
         db.commit()
         service.utcnow = lambda: AFTER
         service.refresh_expectations(db, company.id)
+        from tests.test_phase72 import call
+        from tests.test_phase83_audit import TEXT
+        call(db, company, period, TEXT)
     finally:
         service.utcnow = original_clock

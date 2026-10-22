@@ -10,6 +10,7 @@ from typing import Protocol
 from zoneinfo import ZoneInfo
 
 import httpx
+from app.ingestion.retry_policy import retry_after_seconds
 
 from app.models.company import Company
 
@@ -17,8 +18,9 @@ INDIA = ZoneInfo("Asia/Kolkata")
 
 
 class MarketProviderError(ValueError):
-    def __init__(self, reason: str):
+    def __init__(self, reason: str, retry_after_seconds=None):
         self.reason = reason
+        self.retry_after_seconds = retry_after_seconds
         super().__init__(reason)
 
 
@@ -120,7 +122,7 @@ class NSEMarketDataProvider:
                 },
             )
             if response.status_code == 429:
-                raise MarketProviderError("RATE_LIMITED")
+                raise MarketProviderError("RATE_LIMITED", retry_after_seconds(response.headers))
             response.raise_for_status()
             if method == "initialize":
                 self._last_session_id = response.headers.get("mcp-session-id")

@@ -3,11 +3,13 @@ import {
   accuracyApi,
   type AccuracyRow,
   type AccuracyPage,
+  type GuidancePage,
   type AccuracyStats,
   type ThesisAccuracy,
   type Calibration,
 } from "./accuracyApi";
 import "./accuracy.css";
+import { AutonomousResearch } from "./AutonomousResearch";
 const label = (value: string) => value.replaceAll("_", " ").toLowerCase();
 const number = (value: string | null | undefined) =>
   value == null
@@ -81,8 +83,7 @@ function Revisions({ symbol, id }: { symbol: string; id: number }) {
               Version {row.version} · {label(row.status)}
             </strong>
             <p>
-              {expected(row)} ·{" "}
-              {row.evaluation ? label(row.evaluation.outcome) : "Pending"}
+              {expected(row)} · {label(row.assessment_status)}
             </p>
             <small>
               Captured {new Date(row.created_at).toLocaleString()} · cutoff{" "}
@@ -242,7 +243,7 @@ function Register({
   }
   return (
     <details className="accuracy-register">
-      <summary>Register an expectation</summary>
+      <summary>Advanced: register a manual expectation</summary>
       <form onSubmit={submit}>
         <p>
           Capture the expectation before its result cutoff. Imports remain
@@ -405,12 +406,14 @@ export function HistoricalAccuracy({
 }) {
   const [rows, setRows] = useState<AccuracyPage | null>(null);
   const [stats, setStats] = useState<AccuracyStats | null>(null);
-  const [guidance, setGuidance] = useState<AccuracyPage | null>(null);
+  const [guidance, setGuidance] = useState<GuidancePage | null>(null);
   const [thesis, setThesis] = useState<ThesisAccuracy | null>(null);
   const [period, setPeriod] = useState("");
   const [metric, setMetric] = useState("");
   const [source, setSource] = useState("");
   const [offset, setOffset] = useState(0);
+  const [guidanceOffset, setGuidanceOffset] = useState(0);
+  const [thesisOffset, setThesisOffset] = useState(0);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -428,8 +431,14 @@ export function HistoricalAccuracy({
     Promise.all([
       accuracyApi.list(symbol, `${query}&offset=${offset}&limit=20`),
       accuracyApi.stats(symbol, String(query)),
-      accuracyApi.guidance(symbol, `scope=${scope}&limit=20&offset=${offset}`),
-      accuracyApi.thesis(symbol, `scope=${scope}&limit=20&offset=${offset}`),
+      accuracyApi.guidance(
+        symbol,
+        `scope=${scope}&limit=20&offset=${guidanceOffset}`,
+      ),
+      accuracyApi.thesis(
+        symbol,
+        `scope=${scope}&limit=20&offset=${thesisOffset}`,
+      ),
     ])
       .then(([r, s, g, t]) => {
         if (active) {
@@ -449,7 +458,17 @@ export function HistoricalAccuracy({
     return () => {
       active = false;
     };
-  }, [symbol, scope, period, metric, source, offset, revision]);
+  }, [
+    symbol,
+    scope,
+    period,
+    metric,
+    source,
+    offset,
+    guidanceOffset,
+    thesisOffset,
+    revision,
+  ]);
   async function evaluate() {
     setBusy(true);
     setError("");
@@ -470,7 +489,7 @@ export function HistoricalAccuracy({
       <header className="thesis-header">
         <div>
           <span className="thesis-eyebrow">EXPECTATIONS & ACCOUNTABILITY</span>
-          <h3>Historical Accuracy</h3>
+          <h3>Almonds Forecasts &amp; Accuracy</h3>
           <p>
             {symbol} · {label(scope)} · Expectations captured before results,
             measured against verified outcomes.
@@ -484,6 +503,13 @@ export function HistoricalAccuracy({
           {busy ? "Evaluating…" : "Evaluate available results"}
         </button>
       </header>
+      <AutonomousResearch symbol={symbol} scope={scope} />
+      <p>
+        The filters below apply to the expectation ledger, its summaries and
+        calibration. The ledger shows latest evidence, including corrections;
+        Almonds forecast statistics retain the first eligible actual shown above.
+        Guidance and thesis history use the selected company and financial scope.
+      </p>
       <div className="accuracy-filters">
         <label>
           Period end
@@ -565,7 +591,9 @@ export function HistoricalAccuracy({
                 ["Met", stats.met],
                 ["Partially met", stats.partially_met],
                 ["Missed", stats.missed],
-                ["Unresolved / excluded", stats.unresolved],
+                ["Pending", stats.pending],
+                ["Missing outcome evidence", stats.unresolved_evidence],
+                ["Excluded", stats.excluded],
               ].map(([name, value]) => (
                 <div key={name}>
                   <strong>{value}</strong>
@@ -579,10 +607,16 @@ export function HistoricalAccuracy({
               . Scores use original expectations; minimum n ={" "}
               {stats.policy.minimum_n}.
             </p>
+            {stats.evaluated === 0 && (
+              <p>
+                No eligible prospective evaluations yet. Pending, unresolved,
+                and excluded records do not enter accuracy scores.
+              </p>
+            )}
             <h4>Expectation vs actual</h4>
             {!rows.total ? (
               <p className="table-empty">
-                No expectations match these filters. Register an expectation to
+                No expectations match these filters. Automatic research will
                 begin an auditable history.
               </p>
             ) : (
@@ -637,9 +671,9 @@ export function HistoricalAccuracy({
                         </td>
                         <td>
                           <span
-                            className={`accuracy-outcome outcome-${row.evaluation?.outcome || "PENDING"}`}
+                            className={`accuracy-outcome outcome-${row.assessment_status}`}
                           >
-                            {label(row.evaluation?.outcome || row.status)}
+                            {label(row.assessment_status)}
                           </span>
                           <small>{row.evaluation?.result.reason}</small>
                         </td>
@@ -699,15 +733,18 @@ export function HistoricalAccuracy({
                   ))}
               </div>
             )}
-            <h4>Management guidance</h4>
+            <h4>Management accountability</h4>
             <p>
               Management commitments are assessed separately from Almonds
               forecasts. Missing disclosure is unresolved.
             </p>
-            {!guidance?.items.length ? (
-              <p>No registered guidance for this company and scope.</p>
+            {guidance?.total === 0 ? (
+              <p>
+                No management guidance or investor checkpoints for this company
+                and scope.
+              </p>
             ) : (
-              guidance.items.map((row) => (
+              guidance?.items.map((row) => (
                 <article className="accuracy-guidance" key={row.id}>
                   <blockquote>
                     {row.provenance.source_snapshot?.source_quote ||
@@ -725,17 +762,74 @@ export function HistoricalAccuracy({
                   <p>
                     Expected {expected(row)} · Actual{" "}
                     {number(row.evaluation?.result.actual_value)} ·{" "}
-                    {label(row.evaluation?.outcome || row.status)}
+                    {label(row.assessment_status)}
                     {row.evaluation?.result.withdrawn ||
                     row.definition.lifecycle === "WITHDRAWN"
                       ? " · Withdrawn"
                       : ""}
                   </p>
+                  {!!row.possible_duplicate_ids.length && (
+                    <p>
+                      Possible overlap with{" "}
+                      {row.possible_duplicate_ids.join(", ")}; retained
+                      separately for review.
+                    </p>
+                  )}
                   <EvidenceLinks row={row} />
                   <Revisions symbol={symbol} id={row.id} />
                 </article>
               ))
             )}
+            {guidance?.checkpoint_items.map((cp) => (
+              <article className="accuracy-guidance" key={cp.id}>
+                <h5>
+                  {cp.id} · Management checkpoint · {label(cp.status)}
+                </h5>
+                <blockquote>{cp.quote}</blockquote>
+                <p>
+                  Disclosed {cp.published_at?.slice(0, 10) || "Unknown"} ·
+                  Target {cp.target_period || "No stated period"}
+                  {cp.target_date
+                    ? ` · ${cp.target_date}`
+                    : " · No explicit deadline"}
+                </p>
+                {cp.target.lower && (
+                  <p>
+                    Stated target {number(cp.target.lower)}–
+                    {number(cp.target.upper)} {label(cp.unit || "")}
+                  </p>
+                )}
+                <p>{cp.reason}</p>
+                <p>{cp.measurement_note}</p>
+                <small>
+                  Management commitment; excluded from forecast accuracy
+                  samples.
+                </small>
+                {cp.source_verified && cp.source && (
+                  <p>
+                    <a
+                      href={cp.source.document_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Original source · page {cp.source.page}
+                    </a>
+                  </p>
+                )}
+                {!!cp.possible_duplicate_ids.length && (
+                  <p>
+                    Possible overlap with {cp.possible_duplicate_ids.join(", ")}
+                    ; retained separately for review.
+                  </p>
+                )}
+              </article>
+            ))}
+            <PageControls
+              name="Management guidance"
+              offset={guidanceOffset}
+              total={guidance?.total || 0}
+              change={setGuidanceOffset}
+            />
             <h4>Thesis history</h4>
             {!thesis?.items.length ? (
               <p>No expectations linked to an original thesis version.</p>
@@ -758,7 +852,7 @@ export function HistoricalAccuracy({
                     <div key={row.revision_id}>
                       <p>
                         {row.definition.description} ·{" "}
-                        {label(row.evaluation?.outcome || row.status)}
+                        {label(row.assessment_status)}
                       </p>
                       <EvidenceLinks row={row} />
                     </div>
@@ -767,26 +861,18 @@ export function HistoricalAccuracy({
                 </article>
               ))
             )}
-            <div className="accuracy-pagination">
-              <button
-                className="button button-outline button-small"
-                disabled={offset === 0}
-                onClick={() => setOffset((n) => Math.max(0, n - 20))}
-              >
-                Previous
-              </button>
-              <span>Page {offset / 20 + 1}</span>
-              <button
-                className="button button-outline button-small"
-                disabled={
-                  offset + 20 >=
-                  Math.max(rows.total, guidance?.total || 0, thesis?.total || 0)
-                }
-                onClick={() => setOffset((n) => n + 20)}
-              >
-                Next
-              </button>
-            </div>
+            <PageControls
+              name="Thesis history"
+              offset={thesisOffset}
+              total={thesis?.total || 0}
+              change={setThesisOffset}
+            />
+            <PageControls
+              name="Expectations"
+              offset={offset}
+              total={rows.total}
+              change={setOffset}
+            />
           </>
         )
       )}
@@ -798,5 +884,40 @@ export function HistoricalAccuracy({
         saved={() => setRevision((n) => n + 1)}
       />
     </section>
+  );
+}
+
+function PageControls({
+  name,
+  offset,
+  total,
+  change,
+}: {
+  name: string;
+  offset: number;
+  total: number;
+  change: (offset: number) => void;
+}) {
+  if (total <= 20 && offset === 0) return null;
+  return (
+    <nav className="accuracy-pagination" aria-label={`${name} pages`}>
+      <button
+        className="button button-outline button-small"
+        disabled={offset === 0}
+        onClick={() => change(Math.max(0, offset - 20))}
+      >
+        Previous
+      </button>
+      <span>
+        {name} · Page {offset / 20 + 1}
+      </span>
+      <button
+        className="button button-outline button-small"
+        disabled={offset + 20 >= total}
+        onClick={() => change(offset + 20)}
+      >
+        Next
+      </button>
+    </nav>
   );
 }

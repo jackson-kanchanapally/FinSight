@@ -6,7 +6,7 @@ from sqlalchemy import select, func
 from app.config import settings
 from app.models.expectations import HistoricalExpectation as Ledger, HistoricalExpectationRevision as Revision
 from app.models.thesis import ThesisPillar, ThesisPillarRevision
-from app.services.expectations import ledger_query, latest_evaluations, view
+from app.services.expectations import ledger_query, latest_evaluations, view, assessment_status
 from app.services.expectation_math import canonical_unit
 from app.services.expectation_evidence import utc
 
@@ -17,6 +17,7 @@ SCORED = {"MET", "PARTIALLY_MET", "MISSED"}
 def calibration(rows, minimum):
     buckets = defaultdict(list)
     eligible = [(r, e) for r, e in rows if r.definition.get("confidence") is not None and e.outcome in SCORED
+                and e.prospective_eligible and not r.definition.get("historical_import")
                 and r.definition.get("confidence_event") == "MET_UNDER_FROZEN_TOLERANCE"]
     for revision, evaluation in eligible:
         probability = D(revision.definition["confidence"])
@@ -67,14 +68,22 @@ def statistics(db, company_id=None, **filters):
     pairs = db.execute(select(Ledger, Revision).join(Revision, Revision.expectation_id == Ledger.id).where(
         Ledger.id.in_(query.with_only_columns(Ledger.id)), Revision.version == 1).order_by(Ledger.period_end, Ledger.id)).all()
     evaluations = latest_evaluations(db, [r.id for _, r in pairs])
+    from app.services.forecast_observations import observation_history
+    primary, _ = observation_history(db, {r.id: r for l, r in pairs if l.source_type == "AI"})
     minimum = settings.expectation_min_sample
     groups = defaultdict(list)
     period_groups = defaultdict(lambda: defaultdict(list))
     counts = defaultdict(int)
     evidence_count = 0
+    states = defaultdict(int)
     for ledger, revision in pairs:
-        evaluation = evaluations.get(revision.id)
-        if evaluation and evaluation.result.get("evidence"):
+        latest = evaluations.get(revision.id)
+        evaluation = primary.get(revision.id) if ledger.source_type == "AI" else latest
+        state = assessment_status(revision, evaluation or latest)
+        if ledger.source_type == "AI" and not evaluation and latest and latest.outcome in SCORED:
+            state = "EXCLUDED"
+        states[state] += 1
+        if latest and latest.result.get("evidence"):
             evidence_count += 1
         if not evaluation or not evaluation.prospective_eligible or evaluation.outcome not in SCORED:
             continue
@@ -98,10 +107,11 @@ def statistics(db, company_id=None, **filters):
     evaluated = sum(counts.values())
     return {"total": total, "evaluated": evaluated, "met": counts["MET"], "missed": counts["MISSED"],
         "partially_met": counts["PARTIALLY_MET"], "unresolved": total - evaluated,
+        "pending": states["PENDING"], "excluded": states["EXCLUDED"], "unresolved_evidence": states["UNRESOLVED"],
         "evidence_coverage": {"n": total, "with_evidence": evidence_count, "ratio": str(D(evidence_count) / total) if total else None},
         "groups": summaries, "calibration": calibrations,
         "policy": {"minimum_n": minimum, "amount_met_pct": settings.expectation_met_tolerance_pct,
-            "amount_partial_pct": settings.expectation_partial_tolerance_pct, "percentage_met_pp": settings.expectation_percentage_tolerance_pp, "sample": "Original revision only; latest stored evaluation per original; imports excluded",
+            "amount_partial_pct": settings.expectation_partial_tolerance_pct, "percentage_met_pp": settings.expectation_percentage_tolerance_pp, "sample": "Original revision only; first eligible actual for AI forecasts, latest evaluation for other sources; imports excluded",
             "aggregation": "Separate metric, scope, period type, source, category, unit and reporting basis; median errors; no composite score",
             "reliability": "No reliability rating below minimum_n; raw error summaries remain descriptive",
             "brier": "mean((probability_of_MET - indicator(outcome == MET))^2); PARTIALLY_MET has indicator 0",
@@ -118,12 +128,13 @@ def thesis_history(db, company_id, *, scope=None, offset=0, limit=50):
     revisions = list(db.scalars(select(Revision).where(Revision.thesis_revision_id.in_(ids)).order_by(Revision.id.desc())))
     evaluations = latest_evaluations(db, [r.id for r in revisions])
     grouped = defaultdict(list)
-    ledgers = {r.id: r for r in db.scalars(query)}
+    ledgers = {r.id: r for r in db.scalars(query.where(Ledger.id.in_([r.expectation_id for r in revisions])))}
+    theses = {r.id: r for r in db.scalars(select(ThesisPillarRevision).where(ThesisPillarRevision.id.in_(ids)))}
     for revision in revisions:
         grouped[revision.thesis_revision_id].append(view(ledgers[revision.expectation_id], revision, evaluations.get(revision.id)))
     result = []
     for thesis_id, items in grouped.items():
-        thesis = db.get(ThesisPillarRevision, thesis_id)
+        thesis = theses[thesis_id]
         originals = [i for i in items if i["version"] == 1]
         outcomes = [i["evaluation"]["outcome"] if i["evaluation"] else None for i in originals]
         if all(o == "MET" for o in outcomes):

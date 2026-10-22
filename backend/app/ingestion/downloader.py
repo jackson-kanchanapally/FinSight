@@ -7,13 +7,16 @@ from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
 import httpx
+from app.ingestion.retry_policy import retry_after_seconds
 
 if TYPE_CHECKING:
     from app.ingestion.sources.base import DownloadedDocument
 
 
 class DocumentDownloadError(Exception):
-    pass
+    def __init__(self, message, retry_after_seconds=None):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
 
 
 def sha256_bytes(content: bytes) -> str:
@@ -46,6 +49,7 @@ class SafePdfDownloader:
         self.timeout_seconds = timeout_seconds
         self.retries = retries
         self.client = client
+        self.access_policy = None
 
     def validate_url(self, url: str) -> None:
         parts = urlsplit(url)
@@ -75,6 +79,8 @@ class SafePdfDownloader:
         try:
             for attempt in range(self.retries + 1):
                 try:
+                    if self.access_policy:
+                        await self.access_policy.check(url)
                     async with client.stream(
                         "GET", url, follow_redirects=False
                     ) as response:
@@ -90,7 +96,7 @@ class SafePdfDownloader:
                             )
                         if response.status_code != 200:
                             raise DocumentDownloadError(
-                                f"Document request returned HTTP {response.status_code}"
+                                f"Document request returned HTTP {response.status_code}", retry_after_seconds(response.headers)
                             )
                         try:
                             declared_size = int(

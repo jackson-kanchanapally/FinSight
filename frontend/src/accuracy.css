@@ -188,3 +188,26 @@
     padding: 0.8rem;
   }
 }
+
+.accuracy-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin: 1rem 0;
+}
+.accuracy-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+.accuracy-filters select,
+.accuracy-filters input {
+  max-width: 100%;
+  min-height: 2.5rem;
+}
+.accuracy-panel caption {
+  text-align: left;
+  padding: 0.6rem 0;
+  color: var(--muted);
+}

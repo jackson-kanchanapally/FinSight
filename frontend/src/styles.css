@@ -1194,6 +1194,7 @@ td strong {
   .side-nav a {
     padding: 8px;
     font-size: 0;
+    gap: 0;
   }
   .side-nav a svg {
     width: 17px;

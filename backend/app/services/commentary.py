@@ -167,6 +167,10 @@ def parse_statement(line: str) -> dict | None:
     }
 
 
+def capex_scope_unclear(raw: str) -> bool:
+    return bool(re.search(r"additional|don't have the numbers|do not have the numbers", raw, re.I))
+
+
 def parse_guidance(statement: dict) -> dict | None:
     if statement["statement_type"] not in {"GUIDANCE", "TARGET"}:
         return None
@@ -192,6 +196,8 @@ def parse_guidance(statement: dict) -> dict | None:
     ):
         metric = "DEBT_REDUCTION"
     if not metric:
+        return None
+    if metric == "CAPEX" and capex_scope_unclear(raw):
         return None
     amount_metric = metric in {"CAPEX", "ORDER_BOOK", "DEBT", "DEBT_REDUCTION", "CASH_FLOW"}
     match = AMOUNT_RANGE.search(raw) if amount_metric else RANGE.search(raw)
@@ -586,7 +592,7 @@ def commentary_availability(db: Session, period: FinancialPeriod) -> dict:
     ]}
 
 
-def refresh_commentary_for_company(engine, company_id: int) -> dict:
+def refresh_commentary_for_company(engine, company_id: int, *, index_memory: bool = True) -> dict:
     """Associate new filings, then send their pages through Phase 7 indexing."""
     from app.config import settings
     from app.services.memory.clients import MemoryUnavailable, OllamaEmbeddings, QdrantStore
@@ -604,7 +610,7 @@ def refresh_commentary_for_company(engine, company_id: int) -> dict:
         document_ids = set(db.scalars(select(CommentaryDocument.document_id).where(
             CommentaryDocument.company_id == company_id,
         )))
-        if not document_ids or not settings.company_memory_enabled:
+        if not document_ids or not settings.company_memory_enabled or not index_memory:
             return {"associated_documents": len(document_ids), "indexed": 0}
         # Existing indexed documents are rechecked by index_document's revision
         # guard; this also refreshes official references on a deduplicated PDF.
