@@ -1,4 +1,4 @@
-"""Validate Qwen review items independently and repair only rejected items."""
+"""Validate Codex review items independently and repair only rejected items."""
 
 import json
 import re

@@ -1,5 +1,6 @@
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
@@ -10,7 +11,7 @@ from app.ai.analyst.prompts import PROMPT_VERSION
 from app.ai.analyst.service import analyze_period
 from app.ai.analyst.validator import InvalidAnalysis, validate_output
 from app.ai.providers.base import LLMError, LLMProvider
-from app.ai.providers.ollama import OllamaProvider
+from app.ai.providers.codex import CodexProvider
 from app.models.analysis import AIAnalysis
 from app.models.company import Company
 from app.models.financial import (
@@ -51,32 +52,28 @@ class FakeProvider(LLMProvider):
         return self.responses.pop(0)
 
 
-def test_ollama_request_expands_context_window(monkeypatch):
-    from app.ai.providers import ollama
+def test_codex_request_uses_read_only_ephemeral_schema(monkeypatch):
+    from app.ai.providers import codex
 
-    def fake_post(url, **kwargs):
-        assert url == "http://localhost:11434/api/chat"
-        assert kwargs["json"]["options"]["num_ctx"] == 8192
-        assert kwargs["json"]["options"]["temperature"] == 0.1
+    def fake_run(command, **kwargs):
+        assert command[:4] == ["codex", "exec", "--model", "gpt-6.1-sol"]
+        assert command[command.index("--sandbox") + 1] == "read-only"
+        assert "--ephemeral" in command
+        assert "--output-schema" in command
+        assert kwargs["input"].startswith("system\n\nuser")
+        output = Path(command[command.index("--output-last-message") + 1])
+        output.write_text("{}", encoding="utf-8")
 
-        class Response:
-            status_code = 200
+        class Result:
+            returncode = 0
+            stderr = ""
 
-            def raise_for_status(self):
-                pass
+        return Result()
 
-            def json(self):
-                return {"message": {"content": "{}"}}
-
-        return Response()
-
-    monkeypatch.setattr(ollama.httpx, "post", fake_post)
-    assert (
-        OllamaProvider("http://localhost:11434", "qwen3:8b", 120, 0.1).generate(
-            "system", "user", {}
-        )
-        == "{}"
-    )
+    monkeypatch.setattr(codex.subprocess, "run", fake_run)
+    assert CodexProvider("codex", "gpt-6.1-sol", 360).generate(
+        "system", "user", {}
+    ) == "{}"
 
 
 def setup(financial_env):
@@ -327,7 +324,7 @@ def test_missing_extended_analysis_retries_with_injected_provider(financial_env)
 
 
 @pytest.mark.parametrize(
-    "reason", ["OLLAMA_UNAVAILABLE", "OLLAMA_TIMEOUT", "MODEL_UNAVAILABLE"]
+    "reason", ["CODEX_UNAVAILABLE", "CODEX_TIMEOUT", "MODEL_UNAVAILABLE"]
 )
 def test_provider_failure_does_not_modify_financial_data(financial_env, reason):
     _, db, company, period, _, _, _ = setup(financial_env)
@@ -340,7 +337,7 @@ def test_provider_failure_does_not_modify_financial_data(financial_env, reason):
 
 def test_recent_fallback_prevents_repeated_model_attempts(financial_env):
     _, db, company, period, _, revenue, yoy = setup(financial_env)
-    first = analyze_period(db, company, period, FakeProvider(error="OLLAMA_TIMEOUT"))
+    first = analyze_period(db, company, period, FakeProvider(error="CODEX_TIMEOUT"))
     assert first.status == "VERIFIED_FALLBACK"
     retry = FakeProvider([valid(revenue, yoy)])
     cached = analyze_period(db, company, period, retry, regenerate=True)
@@ -517,12 +514,12 @@ def test_api_scope_validation_and_failure_response(financial_env, monkeypatch):
     from app.ai.analyst import service
 
     monkeypatch.setattr(
-        service, "configured_provider", lambda: FakeProvider(error="OLLAMA_UNAVAILABLE")
+        service, "configured_provider", lambda: FakeProvider(error="CODEX_UNAVAILABLE")
     )
     response = client.post(f"/api/companies/ESDS/financials/{period.id}/analyze")
     assert response.status_code == 200
     assert response.json()["status"] == "VERIFIED_FALLBACK"
-    assert response.json()["failure_reason"] == "OLLAMA_UNAVAILABLE"
+    assert response.json()["failure_reason"] == "CODEX_UNAVAILABLE"
     assert (
         client.post(f"/api/companies/OTHER/financials/{period.id}/analyze").status_code
         == 404

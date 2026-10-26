@@ -424,7 +424,7 @@ export function EventDetails({
           <div className="panel event-ai-panel">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">LOCAL AI / SOURCE LINKED</p>
+                <p className="eyebrow">AI / SOURCE LINKED</p>
                 <h2>Event brief</h2>
               </div>
               <button

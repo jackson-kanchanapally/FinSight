@@ -145,7 +145,7 @@ def test_invalid_model_rows_fall_back_without_losing_supported_rows(env,change,r
     provider=Provider([proposed(one.id,key,**change),proposed(two.id,key)])
     result=evaluate_thesis(db,c.id,a.id,provider=provider,today=D1)
     assert result['impacts'][0]['method']=='DETERMINISTIC'
-    assert result['impacts'][1]['method']=='QWEN_VALIDATED'
+    assert result['impacts'][1]['method']=='CODEX_VALIDATED'
     assert any(reason in str(r) for r in result['diagnostics'])
 
 
@@ -170,7 +170,7 @@ def test_single_miss_not_broken_but_repeated_core_failures_can_be(env):
     save_expectation(db,c.id,item.id,requirement(nextp,'120'),today=D2)
     result=evaluate_thesis(db,c.id,nexta.id,provider=Provider([proposed(item.id,nextkey,proposed_status='BROKEN',contradiction=True,summary='Repeated verified outcomes contradict the core investment requirement.')]),today=D2)
     assert result['impacts'][0]['new_status']=='BROKEN'
-    assert result['impacts'][0]['method']=='QWEN_VALIDATED'
+    assert result['impacts'][0]['method']=='CODEX_VALIDATED'
     with pytest.raises(ValueError,match='OLDER_REVIEW'): evaluate_thesis(db,c.id,a.id,today=D2,use_ai=False)
 
 

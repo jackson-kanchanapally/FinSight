@@ -1,4 +1,4 @@
-"""A compact, typed view of existing authoritative investor evidence for Qwen."""
+"""A compact, typed view of existing authoritative investor evidence for Codex."""
 
 import json
 

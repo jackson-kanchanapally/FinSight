@@ -469,7 +469,7 @@ def test_end_to_end_ingestion_earnings_analysis_queue_and_delivery(telegram_env,
     factory, storage, _ = telegram_env
     class OfflineProvider:
         name, model, supports_quarterly_review = "offline-test", "test", True
-        def generate(self, *args): raise LLMError("OLLAMA_UNAVAILABLE")
+        def generate(self, *args): raise LLMError("CODEX_UNAVAILABLE")
     monkeypatch.setattr("app.ai.analyst.service.configured_provider", lambda: OfflineProvider())
     monkeypatch.setattr(settings, "document_storage_path", storage.root)
     class Source(EventSource):

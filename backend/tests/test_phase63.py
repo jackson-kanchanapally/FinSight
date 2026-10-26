@@ -209,7 +209,7 @@ def test_exact_source_precision_is_valid_but_neighbor_value_is_rejected():
     assert diagnostic["model_value"] == "-47.126438" and diagnostic["expected"]
 
 
-def test_qwen_can_explain_but_cannot_change_conditional_python_valuation():
+def test_codex_can_explain_but_cannot_change_conditional_python_valuation():
     registry = {
         "A_BASE": {"kind": "SCENARIO", "valuation_verdict": "EXTREMELY_OVERVALUED"}
     }
@@ -229,7 +229,7 @@ def test_qwen_can_explain_but_cannot_change_conditional_python_valuation():
             _check_valuation_judgment(text, ids, registry, "summary")
 
 
-def test_qwen_cannot_inject_deterministic_verdict_and_failure_has_diagnostics(
+def test_codex_cannot_inject_deterministic_verdict_and_failure_has_diagnostics(
     financial_env,
 ):
     _, db, issuer, period, _, revenue, yoy = setup(financial_env)
@@ -246,7 +246,7 @@ def test_qwen_cannot_inject_deterministic_verdict_and_failure_has_diagnostics(
     assert report["results"]["confidence"] == "MEDIUM"
 
 
-def test_deterministic_report_available_without_qwen(financial_env):
+def test_deterministic_report_available_without_codex(financial_env):
     client, db, issuer, period, _, _, _ = setup(financial_env)
     response = client.post(
         f"/api/companies/{issuer.symbol}/financials/{period.id}/analyze?deterministic_only=true"

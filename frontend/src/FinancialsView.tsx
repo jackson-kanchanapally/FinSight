@@ -671,8 +671,10 @@ function AnalysisPanel({
             {analysis?.model_provider === "deterministic"
               ? "VERIFIED FACTS · DETERMINISTIC ANALYSIS"
               : analysis?.status === "VERIFIED_FALLBACK"
-                ? "VERIFIED FACTS · LOCAL FALLBACK"
-                : "LOCAL MODEL · EVIDENCE CHECKED"}
+                ? "VERIFIED FACTS · MODEL FALLBACK"
+                : analysis?.model_provider === "codex"
+                  ? "CODEX · EVIDENCE CHECKED"
+                  : "AI · EVIDENCE CHECKED"}
           </p>
           <h3>AI Analysis · {periodName(period)}</h3>
         </div>
@@ -706,9 +708,10 @@ function AnalysisPanel({
       {analysis?.status === "VERIFIED_FALLBACK" &&
         !report?.investor_conclusion && (
           <p className="financial-footnote" role="status">
-            {analysis.failure_reason?.startsWith("OLLAMA_") ||
+            {analysis.failure_reason?.startsWith("CODEX_") ||
+            analysis.failure_reason?.startsWith("OLLAMA_") ||
             analysis.failure_reason === "MODEL_UNAVAILABLE"
-              ? "The local model was unavailable or timed out. Showing an interpretation built from verified results."
+              ? "The model was unavailable or timed out. Showing an interpretation built from verified results."
               : "The model response did not pass validation. Showing an interpretation built from verified results."}
             {retryCoolingDown &&
               " A repeat request within 15 minutes uses this saved analysis."}

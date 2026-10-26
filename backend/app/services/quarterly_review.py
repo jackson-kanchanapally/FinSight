@@ -284,7 +284,7 @@ def build_review(db, period, registry, report):
 
 
 def refresh_quarterly_reviews(db, company_id):
-    """New results/commentary refresh the latest review; Qwen remains optional."""
+    """New results/commentary refresh the latest review; Codex remains optional."""
     import logging
     from app.ai.analyst.service import analyze_period
     from app.models.company import Company

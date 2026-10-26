@@ -65,8 +65,8 @@ locally and described in the database. Financial processing converts eligible
 result documents into periods, facts, evidence, metrics, and investor reports.
 Market snapshots feed deterministic valuation. Commentary, quarterly review,
 company memory, and the living thesis use the same stored company evidence.
-Ollama provides local model completion and embeddings; Qdrant stores document
-vectors. See [main.py](../../backend/app/main.py),
+Codex provides schema-constrained analysis, Ollama provides local document
+embeddings, and Qdrant stores document vectors. See [main.py](../../backend/app/main.py),
 [App.tsx](../../frontend/src/App.tsx), and
 [database.py](../../backend/app/database.py).
 
@@ -80,7 +80,7 @@ The backend has these actual boundaries:
 | HTTP routes | [api](../../backend/app/api) | Request validation, transaction boundaries, service orchestration |
 | Domain services | [services](../../backend/app/services) | Portfolio, financials, commentary, reports, memory, thesis |
 | Ingestion | [ingestion](../../backend/app/ingestion) | Source adapters, polling, normalization, deduplication, PDF storage |
-| AI | [ai](../../backend/app/ai) | Evidence packets, prompts, Ollama calls, validation, repair, fallback |
+| AI | [ai](../../backend/app/ai) | Evidence packets, prompts, Codex calls, validation, repair, fallback |
 | Market/valuation | [market](../../backend/app/market) | Providers, dated snapshots, deterministic valuation and expectations |
 | Persistence | [models](../../backend/app/models), [database.py](../../backend/app/database.py) | SQLAlchemy entities and sessions |
 | Contracts | [schemas](../../backend/app/schemas) | Pydantic request/response contracts |
@@ -202,7 +202,8 @@ promoted to invented direct edges.
 | Local files | [storage.py](../../backend/app/ingestion/storage.py) | SHA-256-addressed PDF/document storage |
 | NSE market data | [providers.py](../../backend/app/market/providers.py) | NSE MCP Bhavcopy provider |
 | Alpha Vantage | [providers.py](../../backend/app/market/providers.py) | Optional configured daily market-data provider |
-| Ollama | [ollama.py](../../backend/app/ai/providers/ollama.py), [memory clients](../../backend/app/services/memory/clients.py) | Local Qwen completion and embeddings |
+| Codex | [codex.py](../../backend/app/ai/providers/codex.py) | Schema-constrained company analysis through the Codex CLI |
+| Ollama | [memory clients](../../backend/app/services/memory/clients.py) | Local document embeddings |
 | Qdrant | [memory clients](../../backend/app/services/memory/clients.py) | Company document vector storage/search |
 | PostgreSQL | [database.py](../../backend/app/database.py) | Authoritative relational persistence |
 
@@ -247,7 +248,7 @@ ingests commentary, builds a bounded context in
 [context_builder.py](../../backend/app/ai/analyst/context_builder.py) and
 [quarterly_packet.py](../../backend/app/ai/analyst/quarterly_packet.py), applies
 the instructions in [prompts.py](../../backend/app/ai/analyst/prompts.py), and
-calls `OllamaProvider`. Pydantic schemas, deterministic validators, evidence
+calls `CodexProvider`. Pydantic schemas, deterministic validators, evidence
 checks, repair prompts, and [fallback.py](../../backend/app/ai/analyst/fallback.py)
 control the returned analysis before `AIAnalysis` persistence. Deterministic
 Python report and valuation verdicts remain authoritative; prompts explicitly
@@ -411,7 +412,7 @@ All five Archify artifacts passed `validate`, `deliver`, `check`, and headless
 the pinned repository revision. Spot checks covered React -> API -> service ->
 database, NSE/manual source -> event/document -> financial extraction -> facts
 -> metrics -> UI, facts/market snapshot -> valuation -> verdict, and commentary
--> evidence packet -> Ollama -> validator -> saved analysis. All referenced
+-> evidence packet -> provider -> validator -> saved analysis. All referenced
 files and named functions in those paths exist.
 
 Automated route review reports a small number of shared-node crossovers and

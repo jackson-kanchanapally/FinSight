@@ -187,7 +187,7 @@ def test_manual_results_process_period_scopes_pages_financials_and_ai(
             )
             monkeypatch.setattr(
                 "app.ai.analyst.service.configured_provider",
-                lambda: FakeProvider(error="OLLAMA_UNAVAILABLE"),
+                lambda: FakeProvider(error="CODEX_UNAVAILABLE"),
             )
             analysis = client.post(
                 f"/api/companies/ETERNAL/financials/{period.id}/analyze"

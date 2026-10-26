@@ -126,7 +126,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title="almonds",
     version="0.5.0",
-    description="Portfolio, verified reporting, and local AI interpretation",
+    description="Portfolio, verified reporting, and Codex interpretation",
     lifespan=lifespan,
 )
 app.include_router(companies.router)

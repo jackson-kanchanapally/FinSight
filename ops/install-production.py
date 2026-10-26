@@ -13,11 +13,24 @@ def main():
     root = Path(__file__).resolve().parents[1]
     if not (root / "frontend/dist/index.html").is_file():
         raise SystemExit("Build the dashboard first: cd frontend && npm run build")
+    runtime = Path.home() / "Library/Application Support/Almonds"
+    installed_revisions = {
+        path.name for path in (runtime / "backend/alembic/versions").glob("*.py")
+    }
+    source_revisions = {
+        path.name for path in (root / "backend/alembic/versions").glob("*.py")
+    }
+    missing_revisions = sorted(installed_revisions - source_revisions)
+    if missing_revisions:
+        raise SystemExit(
+            "This checkout lacks migrations used by the installed service: "
+            + ", ".join(missing_revisions)
+            + ". Install from a checkout that includes them."
+        )
     uid = os.getuid()
     service = f"gui/{uid}/com.almonds.portfolio"
     # Stop the previous snapshot before replacing code/dependencies beneath it.
     subprocess.run(["launchctl", "bootout", service], capture_output=True)
-    runtime = Path.home() / "Library/Application Support/Almonds"
     runtime.mkdir(parents=True, exist_ok=True)
     runtime.chmod(0o700)
     # launchd cannot read a Desktop workspace under macOS privacy controls.

@@ -34,7 +34,7 @@ class BriefProvider:
     def generate(self, system, user, schema):
         self.calls += 1
         if self.fail:
-            raise LLMError("OLLAMA_UNAVAILABLE")
+            raise LLMError("CODEX_UNAVAILABLE")
         context = json.loads(user.split("CONTEXT:\n", 1)[1])
         evidence = [context["evidence"][0]["id"]]
         def claim(text):

@@ -34,7 +34,7 @@ EVALUATION = json.loads((Path(__file__).parent / "fixtures/memory_evaluation.jso
 
 
 class Embeddings:
-    """Deterministic test-only vectors, independent of Qwen."""
+    """Deterministic test-only vectors, independent of model generation."""
     calls = 0
     def embed(self, texts, *, query=False):
         self.calls += 1

@@ -1,6 +1,6 @@
 # almonds
 
-**almonds** is a self-hosted investment research and portfolio monitor. It combines transaction-based portfolio accounting with company disclosure monitoring, financial statement extraction, valuation tools, and an optional local AI research assistant.
+**almonds** is a self-hosted investment research and portfolio monitor. It combines transaction-based portfolio accounting with company disclosure monitoring, financial statement extraction, valuation tools, and an optional Codex research assistant.
 
 The application is designed for a trusted local environment. Several API endpoints do not require authentication; do not expose the service to the public internet without adding and reviewing suitable access controls. The software provides research tools, not investment advice.
 
@@ -19,7 +19,7 @@ The application is designed for a trusted local environment. Several API endpoin
 - Read the official NSE announcements RSS feed and ESDS investor announcements in live mode; label live, fixture, and manual records by origin.
 - Extract financial statement facts from stored official PDFs with period, scope, units, page provenance, and validation status.
 - Calculate EBITDA, margins, YoY and QoQ in Python, then inspect them in the Financials section.
-- Open any event for a short local AI brief with source citations and a research action. Financial results have a deeper analysis of metrics, management commentary where reported, possible scenarios, and valuation context.
+- Open any event for a short Codex brief with source citations and a research action. Financial results have a deeper analysis of metrics, management commentary where reported, possible scenarios, and valuation context.
 - Store dated official NSE MCP EOD OHLCV or manual observations, calculate point-in-time valuation from verified facts, inspect price and multiple history, compare imported Market Lens references, and run forward or reverse user-defined scenarios. The results analyst uses a snapshot only while it is at most seven days old.
 
 Accounting uses weighted average cost. BUY charges are added to acquisition cost. SELL charges are deducted from proceeds and therefore reduce realised P&L. A SELL removes cost basis at the current weighted average; it does not change the per-share cost of remaining shares. Values use decimal numeric types, never binary floating point.
@@ -45,7 +45,7 @@ LIVE financial-results event + verified PDF
 
 validated period + verified facts + Python metrics + relevant stored PDF lines
   -> bounded context with evidence IDs
-  -> local Ollama via LLMProvider
+  -> Codex CLI via LLMProvider
   -> structured JSON, citation and number validation
   -> separate ai_analyses record
   -> Financials AI Analysis panel
@@ -274,7 +274,7 @@ alembic check
 
 `alembic check` connects to PostgreSQL and should be run after `alembic upgrade head`. The frontend type and production build check is:
 
-The AI unit and API tests use a fake `LLMProvider`, so the normal suite never needs Ollama. To run the optional real local model check against a seeded ESDS period, run `OLLAMA_TEST_ENABLED=true .venv/bin/python -m pytest -q -s tests/test_ai_live_optional.py` after starting Ollama and PostgreSQL. The check prints a per-question evaluation report.
+The AI unit and API tests use a fake `LLMProvider`, so the normal suite never calls Codex. To run the optional real Codex check against a seeded ESDS period, run `CODEX_TEST_ENABLED=true .venv/bin/python -m pytest -q -s tests/test_ai_live_optional.py` after signing in to the Codex CLI and starting PostgreSQL. The check prints a per-question evaluation report.
 
 The optional official-PDF integration check uses a previously downloaded local ESDS PDF and never fetches a live site:
 
@@ -331,11 +331,11 @@ After buying 34 shares at ₹429 and selling 24 at ₹1,191, with no charges:
 - Remaining cost basis: ₹4,290
 - Realised P&L: (₹1,191 − ₹429) × 24 = ₹18,288
 
-## Local AI analyst
+## Codex analyst
 
-Install [Ollama](https://ollama.com/), run `ollama pull qwen3:8b`, and start its local server (`ollama serve` if it is not already running). The default model was chosen from the models installed on this development machine; set `OLLAMA_MODEL` to any compatible local model in `.env`. Set `OLLAMA_BASE_URL`, `OLLAMA_TIMEOUT_SECONDS`, `OLLAMA_NUM_CTX`, `AI_TEMPERATURE`, `AI_MAX_CONTEXT_CHARS`, and `AI_MAX_DOCUMENT_CHARS` there as needed. `OLLAMA_NUM_CTX` defaults to 8192 so the model can see the full results context and citation guide. No cloud model or paid API is used. The local Ollama HTTP endpoint is intended for a trusted local machine.
+Install the [Codex CLI](https://learn.chatgpt.com/en/articles/11381614-codex-cli), sign in, and make its executable available through `CODEX_CLI`. Almonds runs `codex exec` in read-only, ephemeral mode and constrains each response with the existing JSON schema. Set `CODEX_MODEL`, `CODEX_TIMEOUT_SECONDS`, `CODEX_REASONING_EFFORT`, `AI_MAX_CONTEXT_CHARS`, and `AI_MAX_DOCUMENT_CHARS` in `.env` as needed. The default model is `gpt-6.1-sol`. Codex usage follows the limits and billing of the signed-in account.
 
-Open any event to request its short local AI brief automatically. Successful briefs are cached by event content, model, and prompt; **Regenerate** requests another. Open **Financial performance → AI Analysis** for a validated period and select **Analyze Results** for a deeper review. Financial analysis is manual. Results and failures are stored separately from financial facts. The deeper view shows a summary, positives, concerns, a cited positive/negative/neutral view of the results, management statements when found, conditional scenarios, valuation context, research action, and evidence links.
+Open any event to request its short Codex brief automatically. Successful briefs are cached by event content, model, and prompt; **Regenerate** requests another. Open **Financial performance → AI Analysis** for a validated period and select **Analyze Results** for a deeper review. Financial analysis is manual. Results and failures are stored separately from financial facts. The deeper view shows a summary, positives, concerns, a cited positive/negative/neutral view of the results, management statements when found, conditional scenarios, valuation context, research action, and evidence links.
 
 For a valuation comparison, enter a dated closing price, optional source P/E reference and market cap, and an HTTPS source link in **Financial performance**. You may also enter a sourced forward annual EPS growth estimate and its source type. Almonds calculates its own P/E from verified trailing EPS, then calculates forward PEG from that P/E and the growth estimate in percentage points. The source P/E and legacy PEG are reference values only. A snapshot over seven days old is excluded from new AI analysis. The result review explains both annual and sequential performance and treats valuation conclusions as provisional when forecasts, cash flow or balance-sheet inputs are missing.
 
@@ -348,7 +348,7 @@ curl -X POST http://127.0.0.1:8000/api/events/1/analyze
 curl http://127.0.0.1:8000/api/companies/ESDS/market-snapshot
 ```
 
-Replace `42` with a real validated period ID from `GET /api/companies/ESDS/financials`. Invalid model output is retried once. If both responses fail validation, the API returns `VERIFIED_FALLBACK` with a cited summary assembled from verified facts and calculated metrics; the dashboard labels it and offers **Retry AI analysis**. The last validation reason remains in `failure_reason`. Provider failures return `FAILED` with a reason such as `OLLAMA_UNAVAILABLE` or `OLLAMA_TIMEOUT`. See [the analyst design and evaluation](docs/local-ai-analyst.md) for the schema, provenance rules, and limitations.
+Replace `42` with a real validated period ID from `GET /api/companies/ESDS/financials`. Invalid model output is retried once. If both responses fail validation, the API returns `VERIFIED_FALLBACK` with a cited summary assembled from verified facts and calculated metrics; the dashboard labels it and offers **Retry AI analysis**. The last validation reason remains in `failure_reason`. Provider failures return a reason such as `CODEX_UNAVAILABLE`, `CODEX_AUTH_REQUIRED`, or `CODEX_TIMEOUT`. See [the analyst design and evaluation](docs/local-ai-analyst.md) for the schema, provenance rules, and limitations.
 
 ## Phase 6.3 investor report
 
@@ -366,15 +366,15 @@ Apply migration `0015_company_memory` with `alembic upgrade head`. Start a local
 
 In **Financial performance → company → consolidated/standalone period → AI analysis**, the primary report is now a concise quarterly investor review. **View full commentary** retains the complete transcript and page links; calculations and valuation scenarios remain in a separate disclosure panel.
 
-Apply migration `0017_investor_checkpoints` with `alembic upgrade head`. Results/commentary updates refresh the deterministic review and source-backed checkpoints. Use the existing AI analysis action for Qwen interpretation; rejected model output preserves the deterministic review. See [Phase 7.2 implementation, ESDS checkpoints and validation](docs/phase72-report.md).
+Apply migration `0017_investor_checkpoints` with `alembic upgrade head`. Results/commentary updates refresh the deterministic review and source-backed checkpoints. Use the existing AI analysis action for Codex interpretation; rejected model output preserves the deterministic review. See [Phase 7.2 implementation, ESDS checkpoints and validation](docs/phase72-report.md).
 
 ## Phase 7.3 evidence-safe synthesis
 
-The existing AI analysis action now sends Qwen a compact, attributed investor packet and checks each quarterly-review item independently. Supported interpretation survives when another item fails; one bounded repair attempts to fix rejected items. The saved analysis includes item diagnostics and a `review_trace`. Financial values, checkpoint outcomes and valuation verdicts remain Python outputs. `QUARTERLY_REVIEW_TIMEOUT_SECONDS` defaults to 360 for the local quarterly model. See [Phase 7.3 diagnosis, ESDS comparison and tests](docs/phase73-report.md).
+The existing AI analysis action sends Codex a compact, attributed investor packet and checks each quarterly-review item independently. Supported interpretation survives when another item fails; one bounded repair attempts to fix rejected items. The saved analysis includes item diagnostics and a `review_trace`. Financial values, checkpoint outcomes and valuation verdicts remain Python outputs. `CODEX_TIMEOUT_SECONDS` defaults to 360. See [Phase 7.3 diagnosis, ESDS comparison and tests](docs/phase73-report.md).
 
 ## Phase 7.4 investor materiality
 
-The quarterly review now prioritizes dated milestones, capex, funding, demand, and unusual management assumptions before Qwen. “What Changed” describes supported investment-story revisions. The existing validator rejects invented target periods and uncited delays. See [the Phase 7.4 ESDS comparison and tests](docs/phase74-report.md).
+The quarterly review now prioritizes dated milestones, capex, funding, demand, and unusual management assumptions before Codex. “What Changed” describes supported investment-story revisions. The existing validator rejects invented target periods and uncited delays. See [the Phase 7.4 ESDS comparison and tests](docs/phase74-report.md).
 
 ## Phase 8 living investment thesis
 

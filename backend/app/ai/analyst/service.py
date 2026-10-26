@@ -22,7 +22,7 @@ from app.ai.analyst.validator import InvalidAnalysis, citation_feedback, validat
 from app.ai.analyst.quarterly_packet import quarterly_packet
 from app.ai.analyst.quarterly_validation import assess_review, repair_schema, repair_prompt, apply_repairs
 from app.ai.providers.base import LLMError, LLMProvider
-from app.ai.providers.ollama import OllamaProvider
+from app.ai.providers.codex import CodexProvider
 from app.config import settings
 from app.models.analysis import AIAnalysis
 from app.models.company import Company
@@ -111,12 +111,11 @@ def model_schema(registry: dict, period_id: int, *, quarterly_only=False, allowe
 
 
 def configured_provider() -> LLMProvider:
-    return OllamaProvider(
-        settings.ollama_base_url,
-        settings.ollama_model,
-        settings.quarterly_review_timeout_seconds,
-        settings.ai_temperature,
-        settings.ollama_num_ctx,
+    return CodexProvider(
+        settings.codex_cli,
+        settings.codex_model,
+        settings.codex_timeout_seconds,
+        settings.codex_reasoning_effort,
     )
 
 

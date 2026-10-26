@@ -1,4 +1,4 @@
-"""Explicit opt-in only: uses configured local Ollama and a seeded local database."""
+"""Explicit opt-in only: uses configured Codex and a seeded local database."""
 
 import os
 
@@ -14,9 +14,9 @@ from app.models.financial import FinancialPeriod, FinancialScope, FinancialStatu
 
 
 def test_live_esds_analyst():
-    if os.environ.get("OLLAMA_TEST_ENABLED", "").lower() != "true":
+    if os.environ.get("CODEX_TEST_ENABLED", "").lower() != "true":
         pytest.skip(
-            "Set OLLAMA_TEST_ENABLED=true for local Ollama and PostgreSQL integration"
+            "Set CODEX_TEST_ENABLED=true for Codex and PostgreSQL integration"
         )
     with SessionLocal() as db:
         company = db.scalar(select(Company).where(Company.symbol == "ESDS"))

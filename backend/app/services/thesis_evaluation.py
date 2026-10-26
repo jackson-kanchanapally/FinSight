@@ -300,7 +300,7 @@ def evaluate_thesis(db, company_id, analysis_id, *, provider=None, use_ai=True, 
         item = proposed.get(entry["pillar"].id)
         if item:
             assessment.update(new_status=item.proposed_status, reason=item.summary,
-                              evidence_ids=item.evidence_ids, contradiction=item.contradiction, method="QWEN_VALIDATED")
+                              evidence_ids=item.evidence_ids, contradiction=item.contradiction, method="CODEX_VALIDATED")
         gaps = []
         for outcome in entry["outcomes"]:
             if outcome["status"] in {"INSUFFICIENT_EVIDENCE", "NOT_YET_ASSESSABLE"}:
