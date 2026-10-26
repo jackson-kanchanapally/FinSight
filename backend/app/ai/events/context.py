@@ -46,7 +46,9 @@ def build_event_context(db: Session, event: CompanyEvent) -> EventContext:
             break
         if number > 2 and not MANAGEMENT_WORDS.search(page_text):
             continue
-        excerpt = re.sub(r"\s+", " ", page_text).strip()[: min(1100, remaining)]
+        # Filing headers often precede the material table; keep enough of each
+        # page to include amounts and dates without exceeding the packet budget.
+        excerpt = re.sub(r"\s+", " ", page_text).strip()[: min(2200, remaining)]
         if not excerpt:
             continue
         registry[f"D{document_id}P{number}"] = {

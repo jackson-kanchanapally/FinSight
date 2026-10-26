@@ -6,6 +6,22 @@ from pathlib import Path
 from app.ai.providers.base import LLMError, LLMProvider
 
 
+def strict_output_schema(schema: dict) -> dict:
+    """Adapt Pydantic's schema to Codex's strict structured output format."""
+    def convert(value):
+        if isinstance(value, list):
+            return [convert(item) for item in value]
+        if not isinstance(value, dict):
+            return value
+        result = {key: convert(item) for key, item in value.items() if key != "default"}
+        if "properties" in result:
+            result["required"] = list(result["properties"])
+            result["additionalProperties"] = False
+        return result
+
+    return convert(schema)
+
+
 class CodexProvider(LLMProvider):
     """Run a bounded, schema-constrained Codex analysis."""
 
@@ -35,7 +51,9 @@ class CodexProvider(LLMProvider):
                 workdir = Path(directory)
                 schema_path = workdir / "schema.json"
                 output_path = workdir / "response.json"
-                schema_path.write_text(json.dumps(schema), encoding="utf-8")
+                schema_path.write_text(
+                    json.dumps(strict_output_schema(schema)), encoding="utf-8"
+                )
                 result = subprocess.run(
                     [
                         self.executable,
