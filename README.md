@@ -64,6 +64,9 @@ The default `FIXTURE` source replays four **invented ESDS disclosures** and gene
 - Python 3.11 or newer
 - Docker with Docker Compose
 - Node.js 20.19+ or 22.12+ and npm
+- Git, if you are cloning the project
+
+Ollama and Qdrant are optional. Install them later if you want local AI analysis or Company Memory; the portfolio and disclosure dashboard can run without them.
 
 ## Local setup
 
@@ -72,51 +75,51 @@ From the project root:
 ```sh
 cp backend/.env.example .env
 python3 -m venv backend/.venv
-source backend/.venv/bin/activate
-pip install -r backend/requirements.txt
-docker compose up -d db
+backend/.venv/bin/pip install -r backend/requirements.txt
+cd frontend
+npm install
+cd ..
 ```
 
-The example credentials are for local development only. Keep `.env` private; it is ignored by Git. To connect to an existing database, edit the `DATABASE_*` values in `.env`.
-
-Run migrations and start the API from the backend directory:
-
-```sh
-cd backend
-alembic upgrade head
-alembic current
-uvicorn app.main:app --reload
-```
-
-Swagger UI: <http://127.0.0.1:8000/docs>. Health check: <http://127.0.0.1:8000/health>.
-
-The event migrations are 0002 and 0003; Phase 4 adds 0004_financial_reporting and 0005_calculated_fact_provenance; Phase 5 adds 0006_local_ai_analyst. Event briefs and dated market snapshots add 0007 and 0008; sourced forward EPS growth for PEG adds 0009. Phase 6 adds 0010_market_valuation_history and 0011_market_ohlcv_reference. Phase 6.2 adds 0012_management_commentary and 0013_commentary_documents. Run `alembic upgrade head` against the configured PostgreSQL database before starting the API.
+The example credentials are for local development only. Keep `.env` private; it is ignored by Git. To use an existing PostgreSQL database, update the `DATABASE_*` values in `.env` and make sure that database is running. `./run.sh` applies all current database migrations automatically.
 
 ## Start the dashboard
 
-After completing local setup, run both servers from the project root with:
+After completing local setup, start the database and both app servers from the project root:
 
 ```sh
 ./run.sh
 ```
 
-The launcher checks the existing `.env`, Python and frontend dependencies, starts PostgreSQL through Docker Compose if needed, applies Alembic migrations, and starts FastAPI and Vite. Press Ctrl+C to stop the application servers. Event scanning follows the settings in `.env`; the launcher does not change fixture or live mode.
+The launcher checks the `.env` and installed dependencies, starts PostgreSQL through Docker Compose if needed, applies Alembic migrations, and starts FastAPI and Vite. Open <http://127.0.0.1:5173>. Press Ctrl+C in this terminal to stop the application servers. Event scanning follows the settings in `.env`.
+
+The API is at <http://127.0.0.1:8000>; its interactive documentation is <http://127.0.0.1:8000/docs> and its health check is <http://127.0.0.1:8000/health>.
 
 For Phase 6 provider setup, point-in-time rules, formulas, API examples and ESDS integration, see [market data and valuation](docs/market-valuation.md).
 
 For Phase 6.2 commentary, deterministic verdicts, tested P/E scenarios, and the ESDS audit, see [the Phase 6.2 report](docs/phase62-report.md).
 
-Leave FastAPI running on port 8000. In a second terminal from the project root:
-
-```sh
-cd frontend
-npm install
-npm run dev
-```
-
-Open <http://localhost:5173>. The Vite development server forwards `/api` requests to FastAPI on `127.0.0.1:8000`, so no browser CORS change is needed for local development. For a production build, run `npm run build`; serve `frontend/dist` and route `/api` to FastAPI on the same origin.
+For manual development, first start PostgreSQL with `docker compose up -d db`. In one terminal, run `cd backend && .venv/bin/python -m alembic upgrade head && .venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`. In a second terminal, run `cd frontend && npm run dev`. The Vite development server forwards `/api` requests to FastAPI on `127.0.0.1:8000`. For a production build, run `npm run build` from `frontend`; serve `frontend/dist` and route `/api` to FastAPI on the same origin.
 
 Start by adding a company, then record a BUY. Current holdings and allocation are based on remaining cost basis. Realised P&L includes charges and closed positions; no live market values are shown.
+
+## Set up Telegram alerts (optional)
+
+Telegram alerts send new live disclosures for monitored portfolio companies to a private chat. To enable them:
+
+1. In Telegram, open [@BotFather](https://t.me/BotFather), send `/newbot`, follow its prompts, and keep the bot token private.
+2. Open your new bot and send it `/start` from the account that should receive alerts.
+3. With the app dependencies installed and from the project root, run the setup helper:
+
+   ```sh
+   backend/.venv/bin/python backend/scripts/setup_telegram.py --test
+   ```
+
+   Paste the token when prompted (it is entered without showing it on screen). The helper finds your private chat, saves the token and chat ID in `.env`, and sends a test message. If it says no private chat was found, send `/start` to the bot and run the helper again. Use a dedicated bot that has no webhook configured.
+
+4. If the app is running, stop it with Ctrl+C, then run `./run.sh` from the project root to load the new settings. In the dashboard, open **Company events → Telegram alerts** to check its status or send another test.
+
+The token stays in the ignored, private `.env` file; never share it or commit it. Telegram is optional and disabled until configured. New alerts are for live disclosures; demo fixtures and manually uploaded records do not send alerts. See [the complete Telegram guide](docs/telegram.md) for earnings messages, delivery behavior, retries, and troubleshooting.
 
 ## Try the event pipeline
 
@@ -127,7 +130,7 @@ curl -X POST http://127.0.0.1:8000/api/events/check
 curl 'http://127.0.0.1:8000/api/events?symbol=ESDS'
 ```
 
-In default fixture mode, the first check creates four events and stores one generated PDF with two numbered text pages. The next check reports `new_events: 0`. Select an event to view its source trail, PDF status, hash, and document link. These fixtures do not contain a real future meeting date, so the UI has no Upcoming Events section yet.
+The example `.env` uses live sources, so the check contacts the configured public sources and may find no recent ESDS item. To try the four invented demo disclosures instead, set `EVENT_SOURCE_MODE=fixture` in `.env` and restart the app before checking. The first fixture check creates four demo events and one generated PDF with two numbered text pages; the next check reports `new_events: 0`. Select an event to view its source trail, PDF status, hash, and document link. Fixture records are labeled as demos and do not represent real filings.
 
 ## Live ESDS setup
 
