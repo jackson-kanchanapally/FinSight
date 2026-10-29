@@ -119,7 +119,7 @@ Telegram alerts send new live disclosures for monitored portfolio companies to a
 
 4. If the app is running, stop it with Ctrl+C, then run `./run.sh` from the project root to load the new settings. In the dashboard, open **Company events → Telegram alerts** to check its status or send another test.
 
-The token stays in the ignored, private `.env` file; never share it or commit it. Telegram is optional and disabled until configured. New alerts are for live disclosures; demo fixtures and manually uploaded records do not send alerts. See [the complete Telegram guide](docs/telegram.md) for earnings messages, delivery behavior, retries, and troubleshooting.
+The token stays in the ignored, private `.env` file; never share it or commit it. Telegram is optional and disabled until configured. Automatic messages are limited to selected investor-relevant live event types; routine notices remain in the dashboard, and demo fixtures/manual uploads are not sent. Edit `TELEGRAM_IMPORTANT_EVENT_TYPES` in `.env` to customize the filter. See [the complete Telegram guide](docs/telegram.md) for the default types, earnings messages, delivery behavior, retries, and troubleshooting.
 
 ## Try the event pipeline
 

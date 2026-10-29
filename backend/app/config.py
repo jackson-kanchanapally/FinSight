@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     telegram_timeout_seconds: float = Field(default=10, ge=1, le=30)
     telegram_poll_seconds: int = Field(default=5, ge=3, le=300)
     telegram_max_event_age_hours: int = Field(default=48, ge=1, le=720)
+    telegram_important_event_types: str = (
+        "FINANCIAL_RESULTS,DIVIDEND,ORDER_WIN,ORDER_CANCELLATION,ACQUISITION,DIVESTMENT,CAPEX,"
+        "MANAGEMENT_CHANGE,AUDITOR_CHANGE,BUYBACK,FUND_RAISE,CREDIT_RATING,"
+        "PROMOTER_TRANSACTION,PLEDGE,REGULATORY,LITIGATION"
+    )
     report_public_base_url: str = ""
     report_access_secret: SecretStr = SecretStr("")
     report_link_ttl_seconds: int = Field(default=86400, ge=300, le=86400)

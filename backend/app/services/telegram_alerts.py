@@ -23,11 +23,26 @@ def now():
     return datetime.now(timezone.utc)
 
 
+def _important_event_types():
+    """Return the configured allowlist for automatic disclosure alerts."""
+    result = set()
+    for value in settings.telegram_important_event_types.split(","):
+        value = value.strip().upper()
+        if not value:
+            continue
+        try:
+            result.add(EventType(value))
+        except ValueError:
+            continue
+    return result
+
+
 def enqueue_event(db, event):
     """Called before the first event commit; never replay historical imports."""
     current = now()
     if (not settings.telegram_enabled or not configured()
             or event.data_origin != DataOrigin.LIVE
+            or event.event_type not in _important_event_types()
             or utc(event.published_at) < current-timedelta(hours=settings.telegram_max_event_age_hours)
             or utc(event.published_at) > current+timedelta(days=1)):
         return
@@ -101,12 +116,20 @@ def _prepare(session_factory, delivery_id, token):
         job = db.get(TelegramDelivery, delivery_id)
         if job is None or job.lease_token != token:
             return None
+        event = db.get(CompanyEvent, job.event_id)
+        # Also discard routine events left in the queue before the importance
+        # filter was enabled. Explicit earnings queue requests have a period ID.
+        if (job.financial_period_id is None and
+                (event is None or event.event_type not in _important_event_types())):
+            job.status, job.last_error = "SUPERSEDED", "Filtered by Telegram important-event settings"
+            job.lease_token = job.lease_until = None
+            db.commit()
+            return None
         if job.message_parts:
             index = len(job.message_ids or [])
             return (job.chat_id, job.message_parts[index]) if index < len(job.message_parts) else None
         if job.message:
             return job.chat_id, job.message
-        event = db.get(CompanyEvent, job.event_id)
         if event.event_type == EventType.FINANCIAL_RESULTS:
             from app.ai.analyst.service import analyze_period
             from app.models.analysis import AIAnalysis
