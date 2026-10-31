@@ -105,6 +105,8 @@ Start by adding a company, then record a BUY. Current holdings and allocation ar
 
 ## Set up Telegram alerts (optional)
 
+The separate **IPOs** section monitors mainboard IPOs, ranks them by GMP percentage, and sends an attractive-only weekly shortlist plus fresh pre-opening reviews through the same Telegram bot. See [IPO schedules, sources and screening rules](docs/ipos.md).
+
 Telegram alerts send new live disclosures for monitored portfolio companies to a private chat. To enable them:
 
 1. In Telegram, open [@BotFather](https://t.me/BotFather), send `/newbot`, follow its prompts, and keep the bot token private.

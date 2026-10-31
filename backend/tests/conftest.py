@@ -64,3 +64,4 @@ def disable_background_research(monkeypatch):
     from app.config import settings
     monkeypatch.setattr(settings, "research_automation_enabled", False)
     monkeypatch.setattr(settings, "telegram_enabled", False)
+    monkeypatch.setattr(settings, "ipo_monitor_enabled", False)

@@ -12,8 +12,8 @@ class TelegramDelivery(Base):
     __table_args__ = (UniqueConstraint("event_id", "chat_id", "version", name="uq_telegram_event_version"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("company_events.id", ondelete="CASCADE"), nullable=False)
+    event_id: Mapped[int | None] = mapped_column(
+        ForeignKey("company_events.id", ondelete="CASCADE"), nullable=True)
     version: Mapped[str] = mapped_column(String(80), default="automatic-v2", server_default="automatic-v2")
     idempotency_key: Mapped[str | None] = mapped_column(String(64), unique=True)
     financial_analysis_id: Mapped[int | None] = mapped_column(ForeignKey("ai_analyses.id", ondelete="SET NULL"))

@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     company_ir_source_enabled: bool = True
     live_source_timeout_seconds: float = Field(default=15, ge=3, le=60)
     telegram_enabled: bool = False
+    ipo_monitor_enabled: bool = True
+    ipo_check_hour_ist: int = Field(default=8, ge=0, le=8)
+    ipo_min_gmp_pct: float = Field(default=10, ge=0, le=1000)
+    ipo_max_pe: float = Field(default=40, gt=0, le=1000)
+    ipo_gmp_max_age_hours: int = Field(default=24, ge=1, le=48)
     telegram_bot_token: SecretStr = SecretStr("")
     telegram_chat_id: str = ""
     telegram_timeout_seconds: float = Field(default=10, ge=1, le=30)

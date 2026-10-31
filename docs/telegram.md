@@ -25,7 +25,7 @@ Other disclosures (dividends, orders, corporate actions, management changes and 
    python3 ops/install-production.py
    ```
 
-   The production launcher applies migrations through `0024_intelligent_earnings_alerts`. It copies the project `.env` into the installed snapshot, so restarting the old snapshot alone will not pick up project configuration changes. Docker Desktop and Ollama must be running; the Mac must be awake. For a development server, run `alembic upgrade head` from `backend` and restart it instead.
+   The production launcher applies migrations through `0026_mainboard_ipos`. It copies the project `.env` into the installed snapshot, so restarting the old snapshot alone will not pick up project configuration changes. Docker Desktop and Ollama must be running; the Mac must be awake. For a development server, run `alembic upgrade head` from `backend` and restart it instead.
 
 5. Open **Company events → Telegram alerts** to check delivery counts or send another connection test. `GET /api/telegram/status` gives the same secret-free status. `POST /api/telegram/test` explicitly sends a test to the configured destination.
 

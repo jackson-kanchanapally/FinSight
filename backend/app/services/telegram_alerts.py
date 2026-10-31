@@ -116,6 +116,16 @@ def _prepare(session_factory, delivery_id, token):
         job = db.get(TelegramDelivery, delivery_id)
         if job is None or job.lease_token != token:
             return None
+        if job.notification and job.notification.get("kind") == "IPO":
+            from app.services.ipos import validate_delivery
+            reason = validate_delivery(db, job, now())
+            if reason:
+                job.status, job.last_error = "SUPERSEDED", reason
+                job.lease_token = job.lease_until = None
+                db.commit()
+                return None
+            index = len(job.message_ids or [])
+            return (job.chat_id, job.message_parts[index]) if index < len(job.message_parts or []) else None
         event = db.get(CompanyEvent, job.event_id)
         # Also discard routine events left in the queue before the importance
         # filter was enabled. Explicit earnings queue requests have a period ID.

@@ -20,6 +20,7 @@ from app.api import (
     thesis,
     telegram,
     reports,
+    ipos,
 )
 from app.config import settings
 from app.database import SessionLocal
@@ -82,11 +83,24 @@ async def scheduled_telegram():
         logger.warning("telegram.worker_failed error=%s", type(exc).__name__)
 
 
+async def scheduled_ipos():
+    from app.services.ipos import run_due
+    try:
+        await run_due(SessionLocal)
+    except Exception as exc:
+        logger.warning("ipo.scheduler_failed error=%s", type(exc).__name__)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     scheduler = None
-    if settings.research_automation_enabled or settings.event_monitor_enabled or settings.market_data_enabled or settings.telegram_enabled:
+    if settings.research_automation_enabled or settings.event_monitor_enabled or settings.market_data_enabled or settings.telegram_enabled or settings.ipo_monitor_enabled:
         scheduler = AsyncIOScheduler(timezone="UTC")
+        if settings.ipo_monitor_enabled:
+            from datetime import datetime, timezone
+            scheduler.add_job(scheduled_ipos, "interval", minutes=5,
+                              id="ipo_monitor", max_instances=1, coalesce=True,
+                              next_run_time=datetime.now(timezone.utc))
         if settings.telegram_enabled:
             scheduler.add_job(scheduled_telegram, "interval", seconds=settings.telegram_poll_seconds,
                               id="telegram_alerts", max_instances=1, coalesce=True)
@@ -143,6 +157,7 @@ app.include_router(expectations.router)
 app.include_router(research.router)
 app.include_router(telegram.router)
 app.include_router(reports.router)
+app.include_router(ipos.router)
 
 
 @app.get("/health", tags=["health"])

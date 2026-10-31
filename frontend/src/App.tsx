@@ -21,6 +21,7 @@ import { displayDate, money, quantity, todayLocal } from "./format";
 import { EventDetails, EventsSection } from "./EventsView";
 import { FinancialsSection } from "./FinancialsView";
 import { CompanyMemory } from "./CompanyMemory";
+import { IPOsSection } from "./IPOsSection";
 
 type DashboardData = {
   companies: Company[];
@@ -676,6 +677,7 @@ function App() {
   const selectedEventId = /^#event-(\d+)$/.test(navHash)
     ? Number(navHash.slice("#event-".length))
     : null;
+  const showingIPOs = navHash === "#ipos";
   const [dialog, setDialog] = useState<Dialog>(null);
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
   const [notice, setNotice] = useState("");
@@ -723,6 +725,13 @@ function App() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+  useEffect(() => {
+    if (!navHash.startsWith("#") || selectedEventId !== null) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(navHash.slice(1))?.scrollIntoView();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [navHash, selectedEventId]);
   useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(""), 4500);
@@ -867,6 +876,9 @@ function App() {
           <a href="#memory" className={navHash === "#memory" ? "active" : ""}>
             <Icon name="search" /> Company Memory
           </a>
+          <a href="#ipos" className={navHash === "#ipos" ? "active" : ""}>
+            <Icon name="trend" /> IPOs
+          </a>
         </nav>
         <div className="sidebar-spacer" />
         <div className="sidebar-note">
@@ -884,19 +896,25 @@ function App() {
           <span className="breadcrumb">
             Workspace <span>/</span>{" "}
             <strong>
-              {selectedEventId !== null ? "Event details" : "Overview"}
+              {selectedEventId !== null
+                ? "Event details"
+                : showingIPOs
+                  ? "IPOs"
+                  : "Overview"}
             </strong>
           </span>
           <div className="topbar-right">
             <span className="today-label">{displayDate(todayLocal())}</span>
-            <button
-              className="icon-button refresh-button"
-              onClick={() => void refresh()}
-              aria-label="Refresh dashboard"
-              title="Refresh dashboard"
-            >
-              <Icon name="refresh" size={18} />
-            </button>
+            {!showingIPOs && (
+              <button
+                className="icon-button refresh-button"
+                onClick={() => void refresh()}
+                aria-label="Refresh dashboard"
+                title="Refresh dashboard"
+              >
+                <Icon name="refresh" size={18} />
+              </button>
+            )}
           </div>
         </header>
         <div className="page-content">
@@ -906,6 +924,8 @@ function App() {
               onBack={closeEvent}
               onViewValuation={viewCompanyValuation}
             />
+          ) : showingIPOs ? (
+            <IPOsSection />
           ) : (
             <>
               <div className="hero">
@@ -1144,7 +1164,6 @@ function App() {
                     requestedSymbol={financialSymbol}
                   />
                   <CompanyMemory companies={companies} />
-
                   <section id="holdings" className="section-block">
                     <div className="section-heading">
                       <div>
