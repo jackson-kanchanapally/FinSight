@@ -30,7 +30,7 @@ RULES: tuple[tuple[EventType, str], ...] = (
     (EventType.NEW_PRODUCT, r"new product|product launch"),
     (
         EventType.MANAGEMENT_CHANGE,
-        r"management change|appointment of director|resignation of director|chief executive",
+        r"management change|change in management|change in directors?/kmp|appointment of director|resignation of director|chief executive",
     ),
     (
         EventType.AUDITOR_CHANGE,
@@ -48,7 +48,7 @@ RULES: tuple[tuple[EventType, str], ...] = (
     (EventType.SHAREHOLDING, r"shareholding pattern"),
     (EventType.PROMOTER_TRANSACTION, r"promoter transaction|promoter acquisition"),
     (EventType.PLEDGE, r"pledge|encumbrance"),
-    (EventType.REGULATORY, r"regulatory|sebi order|regulation"),
+    (EventType.REGULATORY, r"regulatory (?:action|order|approval|penalty|proceedings|investigation)|sebi (?:order|penalty|notice|approval)|actions? (?:initiated|taken) or orders? passed"),
     (EventType.LITIGATION, r"litigation|legal proceedings|court order"),
     (EventType.COMPLIANCE, r"trading window|compliance|disclosure under regulation"),
 )

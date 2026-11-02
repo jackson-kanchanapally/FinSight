@@ -15,7 +15,7 @@ from app.ai.events import service as analyst
 from app.ai.providers.base import LLMError
 from app.config import settings
 from app.database import Base
-from app.ingestion.normalizer import NormalizedEvent
+from app.ingestion.normalizer import NormalizedEvent, classify_event
 from app.ingestion.storage import LocalDocumentStorage
 from app.models.company import Company
 from app.models.event import CompanyEvent, DataOrigin, EventType, PublicationPrecision
@@ -66,11 +66,11 @@ def telegram_env(tmp_path, monkeypatch):
     engine.dispose()
 
 
-def save(factory, storage, *, key="one", origin=DataOrigin.LIVE, age=0):
+def save(factory, storage, *, key="one", origin=DataOrigin.LIVE, age=0, event_type=EventType.DIVIDEND):
     with factory() as db:
         company = db.scalar(select(Company))
         normalized = NormalizedEvent(
-            company_id=company.id, symbol=company.symbol, source="NSE", event_type=EventType.DIVIDEND,
+            company_id=company.id, symbol=company.symbol, source="NSE", event_type=event_type,
             title=f"Dividend announcement {key}", description=None,
             published_at=alerts.now()-timedelta(hours=age), external_id=key,
             source_url=f"https://nsearchives.nseindia.com/{key}", document_url=None,
@@ -89,6 +89,41 @@ def test_live_event_and_alert_are_saved_once(telegram_env):
         queued = list(db.scalars(select(TelegramDelivery)))
         assert len(queued) == 1
         assert queued[0].chat_id == "456"
+
+
+def test_only_approved_company_categories_enqueue_even_with_broad_setting(telegram_env, monkeypatch):
+    factory, storage, _ = telegram_env
+    monkeypatch.setattr(settings, "telegram_important_event_types", "BOARD_MEETING,OTHER,DIVIDEND,FINANCIAL_RESULTS")
+    save(factory, storage, key="meeting", event_type=EventType.BOARD_MEETING)
+    save(factory, storage, key="generic", event_type=EventType.OTHER)
+    save(factory, storage, key="dividend", event_type=EventType.DIVIDEND)
+    with factory() as db:
+        events = list(db.scalars(select(CompanyEvent)))
+        queued = list(db.scalars(select(TelegramDelivery)))
+        assert len(events) == 3
+        assert len(queued) == 1
+        assert db.get(CompanyEvent, queued[0].event_id).event_type == EventType.DIVIDEND
+
+
+def test_queued_routine_company_event_is_superseded_before_send(telegram_env, monkeypatch):
+    factory, storage, _ = telegram_env
+    save(factory, storage)
+    with factory() as db:
+        event = db.scalar(select(CompanyEvent))
+        event.event_type = EventType.EARNINGS_CALL
+        db.commit()
+    async def unexpected_send(*args, **kwargs):
+        raise AssertionError("Routine event must not be sent")
+    monkeypatch.setattr(alerts, "send_message", unexpected_send)
+    assert not asyncio.run(alerts.deliver_one(factory))
+    with factory() as db:
+        assert db.scalar(select(TelegramDelivery)).status == "SUPERSEDED"
+
+
+def test_generic_regulation_notice_is_not_a_regulatory_alert():
+    assert classify_event("General Updates", "Disclosure under Regulation 30 of SEBI LODR") == EventType.COMPLIANCE
+    assert classify_event("SEBI order imposing penalty") == EventType.REGULATORY
+    assert classify_event("Change in Directors/KMP/SMP/Auditor/RTA") == EventType.MANAGEMENT_CHANGE
 
 
 @pytest.mark.parametrize("origin,age,enabled,token", [

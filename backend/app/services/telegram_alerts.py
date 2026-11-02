@@ -15,6 +15,17 @@ from app.services.telegram_client import TelegramError, configured, send_message
 from app.services.result_sources import digest
 
 
+APPROVED_EVENT_TYPES = frozenset({
+    EventType.FINANCIAL_RESULTS, EventType.DIVIDEND,
+    EventType.ORDER_WIN, EventType.ORDER_CANCELLATION,
+    EventType.ACQUISITION, EventType.DIVESTMENT, EventType.CAPEX,
+    EventType.MANAGEMENT_CHANGE, EventType.AUDITOR_CHANGE,
+    EventType.BUYBACK, EventType.FUND_RAISE, EventType.CREDIT_RATING,
+    EventType.PROMOTER_TRANSACTION, EventType.PLEDGE,
+    EventType.REGULATORY, EventType.LITIGATION,
+})
+
+
 def utc(value):
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
@@ -34,7 +45,7 @@ def _important_event_types():
             result.add(EventType(value))
         except ValueError:
             continue
-    return result
+    return result & APPROVED_EVENT_TYPES
 
 
 def enqueue_event(db, event):
