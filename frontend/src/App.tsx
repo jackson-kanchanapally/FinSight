@@ -22,6 +22,7 @@ import { EventDetails, EventsSection } from "./EventsView";
 import { FinancialsSection } from "./FinancialsView";
 import { CompanyMemory } from "./CompanyMemory";
 import { IPOsSection } from "./IPOsSection";
+import { GoldOverview, GoldSection } from "./GoldSection";
 
 type DashboardData = {
   companies: Company[];
@@ -45,6 +46,7 @@ function Icon({
     | "check"
     | "wallet"
     | "trend"
+    | "gold"
     | "receipt"
     | "search"
     | "trash";
@@ -88,6 +90,12 @@ function Icon({
       <>
         <path d="m3 17 6-6 4 4 8-8" />
         <path d="M15 7h6v6" />
+      </>
+    ),
+    gold: (
+      <>
+        <path d="M6 5h12l3 7H3l3-7ZM5 15h14l2 6H3l2-6Z" />
+        <path d="M9 5 7 12m8-7 2 7M9 15l-1 6m7-6 1 6" />
       </>
     ),
     receipt: (
@@ -678,6 +686,7 @@ function App() {
     ? Number(navHash.slice("#event-".length))
     : null;
   const showingIPOs = navHash === "#ipos";
+  const showingGold = navHash === "#gold";
   const [dialog, setDialog] = useState<Dialog>(null);
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
   const [notice, setNotice] = useState("");
@@ -879,6 +888,9 @@ function App() {
           <a href="#ipos" className={navHash === "#ipos" ? "active" : ""}>
             <Icon name="trend" /> IPOs
           </a>
+          <a href="#gold" className={showingGold ? "active" : ""}>
+            <Icon name="gold" /> Gold
+          </a>
         </nav>
         <div className="sidebar-spacer" />
         <div className="sidebar-note">
@@ -900,12 +912,14 @@ function App() {
                 ? "Event details"
                 : showingIPOs
                   ? "IPOs"
-                  : "Overview"}
+                  : showingGold
+                    ? "Gold"
+                    : "Overview"}
             </strong>
           </span>
           <div className="topbar-right">
             <span className="today-label">{displayDate(todayLocal())}</span>
-            {!showingIPOs && (
+            {!showingIPOs && !showingGold && (
               <button
                 className="icon-button refresh-button"
                 onClick={() => void refresh()}
@@ -926,6 +940,8 @@ function App() {
             />
           ) : showingIPOs ? (
             <IPOsSection />
+          ) : showingGold ? (
+            <GoldSection />
           ) : (
             <>
               <div className="hero">
@@ -1148,6 +1164,7 @@ function App() {
                     </div>
                   </section>
 
+                  <GoldOverview />
                   <EventsSection
                     companies={companies}
                     events={events}

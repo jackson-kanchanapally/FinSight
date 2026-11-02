@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     ipo_min_gmp_pct: float = Field(default=10, ge=0, le=1000)
     ipo_max_pe: float = Field(default=40, gt=0, le=1000)
     ipo_gmp_max_age_hours: int = Field(default=24, ge=1, le=48)
+    gold_monitor_enabled: bool = True
+    gold_poll_minutes: int = Field(default=15, ge=5, le=60)
+    gold_alert_times_ist: str = "10:45,13:00,21:00"
+    gold_price_move_pct: float = Field(default=1, ge=0.1, le=25)
+    gold_move_cooldown_minutes: int = Field(default=60, ge=15, le=1440)
+    gold_source_timeout_seconds: float = Field(default=15, ge=3, le=60)
     telegram_bot_token: SecretStr = SecretStr("")
     telegram_chat_id: str = ""
     telegram_timeout_seconds: float = Field(default=10, ge=1, le=30)
@@ -77,6 +83,19 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file="../.env", env_file_encoding="utf-8", extra="ignore"
     )
+
+    @field_validator("gold_alert_times_ist")
+    @classmethod
+    def validate_gold_times(cls, value: str) -> str:
+        from datetime import datetime
+        parts = [part.strip() for part in value.split(",")]
+        try:
+            parsed = [datetime.strptime(part, "%H:%M").strftime("%H:%M") for part in parts]
+        except ValueError as exc:
+            raise ValueError("Gold alert times must be three HH:MM values in IST") from exc
+        if len(parsed) != 3 or parsed != sorted(set(parsed)):
+            raise ValueError("Gold alert times must contain three distinct times in increasing order")
+        return ",".join(parsed)
 
     @property
     def database_url(self) -> str:

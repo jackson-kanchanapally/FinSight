@@ -65,3 +65,4 @@ def disable_background_research(monkeypatch):
     monkeypatch.setattr(settings, "research_automation_enabled", False)
     monkeypatch.setattr(settings, "telegram_enabled", False)
     monkeypatch.setattr(settings, "ipo_monitor_enabled", False)
+    monkeypatch.setattr(settings, "gold_monitor_enabled", False)

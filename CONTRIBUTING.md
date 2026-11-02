@@ -26,4 +26,6 @@ Follow the [local setup instructions](README.md#local-setup). Create your own `.
 
 - In the pull request, summarize the change, list checks run, and note any migration or configuration impact. Include screenshots for visual changes when useful.
 
+For an optional DeepSeek review, configure Pi's Velona credential in your terminal, then run `./scripts/reviewer.sh` from any directory. The script reviews staged, unstaged, and untracked Git changes in bounded sections and writes one ignored report to `.reviews/latest-review.md`. Larger diffs use multiple Velona requests; completed sections are cached under `.reviews/reviewer-cache/` so a failed run can resume without repeating them. It uses the configured `velona/deepseek/deepseek-v4.1-flash` model with low reasoning effort. Set `REVIEW_PROVIDER` and `REVIEW_MODEL` to select another configured provider/model. Keep the API key out of the repository and command arguments.
+
 By submitting a contribution, you agree that it may be distributed under the project's MIT license.

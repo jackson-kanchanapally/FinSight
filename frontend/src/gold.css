@@ -1,0 +1,446 @@
+.gold-section {
+  scroll-margin-top: 26px;
+  min-width: 0;
+}
+.gold-rate-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+.gold-rate-toolbar > small {
+  color: var(--subtle);
+  font-size: 10px;
+}
+.gold-region-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.gold-region-picker > span {
+  color: var(--muted);
+  font-size: 11px;
+  margin-right: 7px;
+}
+.gold-region-picker button {
+  color: var(--muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px 13px;
+  font-size: 11px;
+}
+.gold-region-picker button[aria-pressed="true"] {
+  color: var(--gold);
+  border-color: #927843;
+  background: #30291b;
+}
+.gold-region-picker button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.gold-rate-toolbar + .gold-price-grid {
+  margin-top: 14px;
+}
+.gold-driver > strong {
+  font-size: 13px;
+}
+.gold-section .gold-driver > a {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.gold-local-context {
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  margin-top: 20px;
+}
+.gold-local-context strong {
+  font-size: 12px;
+}
+.gold-local-context p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 8px 0;
+}
+.gold-local-context small {
+  color: var(--subtle);
+  font-size: 10px;
+  line-height: 1.7;
+}
+.gold-intro {
+  font-size: 13px;
+  line-height: 1.7;
+  max-width: 720px;
+}
+.gold-price-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+.gold-price-card {
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: linear-gradient(140deg, #292318, var(--surface) 65%);
+  padding: 22px;
+  min-width: 0;
+}
+.gold-price-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--gold);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+.gold-price-label span:last-child {
+  color: var(--subtle);
+  text-align: right;
+}
+.gold-price-value {
+  display: block;
+  margin: 20px 0 12px;
+  font-size: clamp(23px, 2.5vw, 34px);
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.gold-price-card p,
+.gold-price-note {
+  color: var(--subtle);
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 14px 0 0;
+}
+.gold-price-card[data-stale="true"] {
+  border-color: #7c643d;
+}
+.gold-change {
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.gold-change small {
+  color: var(--subtle);
+  font-weight: 400;
+  font-size: 10px;
+  margin-left: 4px;
+}
+.gold-change[data-direction="up"] {
+  color: var(--green);
+}
+.gold-change[data-direction="down"] {
+  color: var(--red);
+}
+.gold-age {
+  color: var(--gold);
+  font-size: 10px;
+  display: block;
+  margin-top: 8px;
+}
+.gold-source-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--subtle);
+  font-size: 10px;
+  line-height: 1.7;
+  margin: 13px 0 24px;
+}
+.gold-source-line a {
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.gold-compact-footer {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+.gold-impact {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--surface-hover);
+  color: var(--muted);
+}
+.gold-impact[data-impact="POSITIVE"] {
+  background: #173e2b;
+  color: var(--green);
+}
+.gold-impact[data-impact="NEGATIVE"] {
+  background: #432c26;
+  color: var(--red);
+}
+.gold-impact[data-impact="MIXED"] {
+  background: #40351f;
+  color: var(--gold);
+}
+.gold-research-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 18px;
+  margin: 24px 0;
+}
+.gold-analysis,
+.gold-alert-plan,
+.gold-news-panel {
+  padding: 26px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  min-width: 0;
+}
+.gold-section h3 {
+  font-size: 19px;
+  margin-bottom: 12px;
+}
+.gold-panel-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.gold-panel-heading .eyebrow {
+  margin-top: 5px;
+}
+.gold-analysis > p,
+.gold-driver p,
+.gold-outlook p,
+.gold-material p,
+.gold-alert-plan > p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.gold-driver {
+  border-top: 1px solid var(--border);
+  padding: 15px 0 0;
+  margin-top: 15px;
+}
+.gold-driver a {
+  display: block;
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.7;
+}
+.gold-driver a:hover,
+.gold-news-item > a:hover {
+  color: var(--gold);
+}
+.gold-driver small {
+  color: var(--gold);
+  font-size: 10px;
+  display: block;
+  margin-top: 6px;
+}
+.gold-driver p {
+  margin: 7px 0 0;
+}
+.gold-outlook {
+  margin: 22px 0 14px;
+  padding: 17px;
+  background: #262218;
+  border-left: 3px solid var(--gold);
+}
+.gold-outlook strong,
+.gold-material strong {
+  font-size: 12px;
+}
+.gold-outlook p {
+  margin: 7px 0 0;
+}
+.gold-method {
+  display: block;
+  font-size: 10px;
+  color: var(--subtle);
+  line-height: 1.7;
+}
+.gold-schedule {
+  margin-top: 22px;
+}
+.gold-schedule > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  border-top: 1px solid var(--border);
+  padding: 16px 0;
+  gap: 6px 14px;
+}
+.gold-schedule > div > span {
+  text-transform: capitalize;
+  font-size: 12px;
+  color: var(--muted);
+}
+.gold-schedule strong {
+  color: var(--gold);
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+.gold-schedule small {
+  font-size: 9px;
+  color: var(--subtle);
+  font-weight: 500;
+}
+.gold-schedule p {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 10px;
+  color: var(--subtle);
+  line-height: 1.5;
+}
+.gold-material {
+  background: var(--surface-raised);
+  padding: 17px;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+.gold-material p {
+  margin: 8px 0 0;
+}
+.gold-check-time {
+  margin-bottom: 0;
+  font-size: 10px !important;
+  color: var(--subtle) !important;
+}
+.gold-news-panel .section-heading {
+  margin-bottom: 10px;
+}
+.gold-news-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 28px;
+}
+.gold-news-item {
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+  min-width: 0;
+}
+.gold-news-item > a {
+  display: block;
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 10px 0;
+}
+.gold-news-item > small {
+  color: var(--subtle);
+  font-size: 10px;
+}
+.gold-material-tag {
+  margin-left: 9px;
+  font-size: 9px;
+  color: var(--gold);
+}
+.gold-history {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.gold-history summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.gold-history > p {
+  font-size: 11px;
+  margin: 14px 0;
+}
+.gold-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.gold-history table {
+  min-width: 660px;
+}
+.gold-history th,
+.gold-history td {
+  padding: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.gold-history li {
+  color: var(--muted);
+  margin: 8px 0;
+}
+.gold-notice,
+.gold-source-warning {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.gold-source-warning {
+  border-color: #7c643d;
+  background: #282217;
+}
+.gold-source-warning p {
+  color: var(--muted);
+  margin: 5px 0 0;
+}
+@media (max-width: 1100px) {
+  .gold-price-card {
+    padding: 18px;
+  }
+  .gold-price-label {
+    flex-direction: column;
+  }
+  .gold-price-label span:last-child {
+    text-align: left;
+  }
+  .gold-research-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .gold-price-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .gold-price-label {
+    flex-direction: row;
+  }
+  .gold-price-value {
+    font-size: 32px;
+    margin-top: 14px;
+  }
+  .gold-analysis,
+  .gold-alert-plan,
+  .gold-news-panel {
+    padding: 20px;
+  }
+  .gold-news-list {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 500px) {
+  .gold-section > .section-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .gold-section > .section-heading .button {
+    min-height: 40px;
+  }
+  .gold-panel-heading {
+    flex-direction: column;
+  }
+  .gold-compact-footer {
+    align-items: start;
+    flex-direction: column;
+  }
+}

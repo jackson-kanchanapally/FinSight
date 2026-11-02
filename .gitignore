@@ -4,6 +4,8 @@
 !.env.*.example
 .DS_Store
 .archify/
+.reviews/
+scripts/.reviews/
 __pycache__/
 *.py[cod]
 .pytest_cache/

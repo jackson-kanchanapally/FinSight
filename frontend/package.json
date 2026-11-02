@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test:browser": "node scripts/browser-check.mjs",
+    "test:gold": "node scripts/gold-browser-check.mjs",
     "preview": "vite preview",
     "format": "prettier --write src scripts vite.config.ts index.html"
   },

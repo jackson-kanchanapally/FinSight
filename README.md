@@ -107,6 +107,8 @@ Start by adding a company, then record a BUY. Current holdings and allocation ar
 
 The separate **IPOs** section monitors mainboard IPOs, ranks them by GMP percentage, and sends an attractive-only weekly shortlist plus fresh pre-opening reviews through the same Telegram bot. See [IPO schedules, sources and screening rules](docs/ipos.md).
 
+**Gold watch** tracks global USD/troy-ounce prices and India/Hyderabad 22K/24K references per gram. Choose India or Hyderabad on the dashboard; Telegram briefs include both at 10:45 am, 1:00 pm and 9:00 pm IST, with additional material-news and price-move alerts. The dashboard explains reported drivers in plain language and shows source dates, conditional next steps and recorded prices. See [gold sources, timings and alert rules](docs/gold.md).
+
 Telegram alerts send new live disclosures for monitored portfolio companies to a private chat. To enable them:
 
 1. In Telegram, open [@BotFather](https://t.me/BotFather), send `/newbot`, follow its prompts, and keep the bot token private.

@@ -1239,7 +1239,8 @@ td strong {
   .side-nav {
     width: 100%;
     margin-left: 0;
-    overflow: visible;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
   .side-nav a {
     flex: 1;
