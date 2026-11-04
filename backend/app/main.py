@@ -22,6 +22,7 @@ from app.api import (
     reports,
     ipos,
     gold,
+    market_briefs,
 )
 from app.config import settings
 from app.database import SessionLocal
@@ -100,11 +101,24 @@ async def scheduled_gold():
         logger.warning("gold.scheduler_failed error=%s", type(exc).__name__)
 
 
+async def scheduled_market_briefs():
+    from app.services.market_briefs import run_due
+    try:
+        await run_due(SessionLocal)
+    except Exception as exc:
+        logger.warning("market_briefs.scheduler_failed error=%s", type(exc).__name__)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     scheduler = None
-    if settings.research_automation_enabled or settings.event_monitor_enabled or settings.market_data_enabled or settings.telegram_enabled or settings.ipo_monitor_enabled or settings.gold_monitor_enabled:
+    if settings.research_automation_enabled or settings.event_monitor_enabled or settings.market_data_enabled or settings.telegram_enabled or settings.ipo_monitor_enabled or settings.gold_monitor_enabled or settings.market_briefs_enabled:
         scheduler = AsyncIOScheduler(timezone="UTC")
+        if settings.market_briefs_enabled:
+            from datetime import datetime, timezone
+            scheduler.add_job(scheduled_market_briefs, "cron", minute="*", timezone="Asia/Kolkata",
+                              id="market_briefs", max_instances=1, coalesce=True,
+                              next_run_time=datetime.now(timezone.utc))
         if settings.gold_monitor_enabled:
             from datetime import datetime, timezone
             scheduler.add_job(scheduled_gold, "interval", minutes=5,
@@ -173,6 +187,7 @@ app.include_router(telegram.router)
 app.include_router(reports.router)
 app.include_router(ipos.router)
 app.include_router(gold.router)
+app.include_router(market_briefs.router)
 
 
 @app.get("/health", tags=["health"])

@@ -24,6 +24,7 @@ settings.event_monitor_enabled = False
 settings.telegram_enabled = False
 settings.ipo_monitor_enabled = False
 settings.gold_monitor_enabled = False
+settings.market_briefs_enabled = False
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 Base.metadata.create_all(engine)
 

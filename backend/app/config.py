@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     gold_price_move_pct: float = Field(default=1, ge=0.1, le=25)
     gold_move_cooldown_minutes: int = Field(default=60, ge=15, le=1440)
     gold_source_timeout_seconds: float = Field(default=15, ge=3, le=60)
+    market_briefs_enabled: bool = True
+    market_brief_times_ist: str = "08:45,11:00,12:30,16:00"
+    market_brief_source_timeout_seconds: float = Field(default=12, ge=3, le=30)
+    market_brief_ai_timeout_seconds: float = Field(default=90, ge=10, le=180)
+    market_brief_direction_threshold_pct: float = Field(default=0.3, ge=0.1, le=1)
     telegram_bot_token: SecretStr = SecretStr("")
     telegram_chat_id: str = ""
     telegram_timeout_seconds: float = Field(default=10, ge=1, le=30)
@@ -96,6 +101,27 @@ class Settings(BaseSettings):
         if len(parsed) != 3 or parsed != sorted(set(parsed)):
             raise ValueError("Gold alert times must contain three distinct times in increasing order")
         return ",".join(parsed)
+
+    @field_validator("market_brief_times_ist")
+    @classmethod
+    def validate_market_brief_times(cls, value: str) -> str:
+        from datetime import datetime, time, timedelta
+        values = [part.strip() for part in value.split(",")]
+        # Preserve the prior three review times when adding the new update.
+        if len(values) == 3:
+            values.insert(1, "11:00")
+        if any(len(part) != 5 for part in values):
+            raise ValueError("Market times must use HH:MM in IST")
+        parts = [time.fromisoformat(part) for part in values]
+        if (len(parts) != 4 or parts != sorted(set(parts)) or
+                not time(7) <= parts[0] <= time(9) or
+                not time(10) <= parts[1] <= time(11, 30) or
+                not time(11) <= parts[2] <= time(13, 30) or
+                not time(16) <= parts[3] <= time(18)):
+            raise ValueError("Market times require pre-open, midmorning, midday, and post-close slots")
+        if datetime.combine(datetime.min.date(), parts[2]) - datetime.combine(datetime.min.date(), parts[1]) < timedelta(minutes=30):
+            raise ValueError("Midmorning and midday market review windows must not overlap")
+        return ",".join(part.strftime("%H:%M") for part in parts)
 
     @property
     def database_url(self) -> str:

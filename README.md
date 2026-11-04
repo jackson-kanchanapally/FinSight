@@ -105,6 +105,8 @@ Start by adding a company, then record a BUY. Current holdings and allocation ar
 
 ## Set up Telegram alerts (optional)
 
+**Market reviews** arrive on regular NSE trading days at **8:45 am, 11:00 am, 12:30 pm and 4:00 pm IST**. They cover Nifty 50, Sensex, Bank Nifty, volatility, breadth and dated domestic/global news. The 11 am alert refreshes the morning brief and its saved news and outlook feed the noon update. Intraday and closing reviews retain a comparison with the original pre-open forecast; closing scenarios feed the next morning. See [market sources, forecast comparisons and delivery rules](docs/market-briefs.md).
+
 The separate **IPOs** section monitors mainboard IPOs, ranks them by GMP percentage, and sends an attractive-only weekly shortlist plus fresh pre-opening reviews through the same Telegram bot. See [IPO schedules, sources and screening rules](docs/ipos.md).
 
 **Gold watch** tracks global USD/troy-ounce prices and India/Hyderabad 22K/24K references per gram. Choose India or Hyderabad on the dashboard; Telegram briefs include both at 10:45 am, 1:00 pm and 9:00 pm IST, with additional material-news and price-move alerts. The dashboard explains reported drivers in plain language and shows source dates, conditional next steps and recorded prices. See [gold sources, timings and alert rules](docs/gold.md).
