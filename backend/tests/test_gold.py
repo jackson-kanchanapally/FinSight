@@ -16,10 +16,10 @@ from app.models.gold import GoldHeadline, GoldSnapshot, GoldState
 from app.models.telegram import TelegramDelivery
 from app.schemas.gold import DollarRupeeQuote, GlobalGoldQuote, GoldNewsData, IndiaGoldQuote
 from app.services import gold, telegram_alerts
-from app.services.gold_sources import GoldFetch, GoldProvider, IST, headline_impact, parse_global, parse_india, parse_news
+from app.services.gold_sources import GoldFetch, GoldProvider, IST, headline_impact, major_event_key, parse_global, parse_india, parse_news
 from app.services.gold_reasoning import build_analysis, explain_headline
 
-NOW = datetime(2026, 11, 2, 10, 45, tzinfo=IST)
+NOW = datetime(2026, 11, 2, 11, 0, tzinfo=IST)
 
 
 def quotes(current=NOW, price="4000", fx_rate="90"):
@@ -144,15 +144,15 @@ def test_provider_obeys_robots_without_bypassing_denied_html():
     assert any(row["reason"] == "ROBOTS_ACCESS_DISALLOWED" for row in result.errors)
 
 
-def test_three_daily_alerts_are_ist_idempotent_and_expire(store):
+def test_two_daily_alerts_are_ist_idempotent_and_expire(store):
     with store() as db:
         provider = Provider()
-        for hour, minute in [(10, 40), (10, 45), (10, 50), (13, 0), (13, 15), (21, 0), (21, 15)]:
+        for hour, minute in [(10, 55), (11, 0), (11, 5), (13, 0), (17, 0), (17, 15), (21, 0)]:
             asyncio.run(gold.refresh(db, provider=provider, current=NOW.replace(hour=hour, minute=minute), notify=True))
         jobs = list(db.scalars(select(TelegramDelivery).order_by(TelegramDelivery.id)))
-        assert [job.notification["brief_kind"] for job in jobs] == ["morning", "noon", "evening"]
+        assert [job.notification["brief_kind"] for job in jobs] == ["morning", "evening"]
         assert all(job.event_id is None and job.parse_mode == "HTML" for job in jobs)
-        assert gold.validate_delivery(db, jobs[0], NOW + timedelta(minutes=16)) == "Gold brief expired"
+        assert gold.validate_delivery(db, jobs[0], NOW + timedelta(minutes=31)) == "Gold brief expired"
         assert "Hyderabad: 22K" in jobs[0].message and "India: 22K" in jobs[0].message
         assert "$4,000.00/troy oz" in jobs[0].message
         assert "USD/INR: <b>$1 = ₹90.0000</b>" in jobs[0].message
@@ -161,7 +161,7 @@ def test_three_daily_alerts_are_ist_idempotent_and_expire(store):
         assert "INR spot:" not in jobs[0].message
         assert "₹360,000.00/troy oz" not in jobs[0].message
         assert "GST/making" not in jobs[0].message
-    assert gold.active_slot(NOW.replace(hour=11, minute=0)) is None
+    assert gold.active_slot(NOW.replace(hour=11, minute=30)) is None
     assert gold.active_slot(NOW.replace(hour=14, minute=0)) is None
     assert gold.active_slot(NOW.replace(hour=22, minute=30)) is None
 
@@ -240,16 +240,16 @@ def test_scheduler_forces_a_fresh_morning_pass_before_periodic_poll(store):
         assert len(list(db.scalars(select(TelegramDelivery)))) == 1
 
 
-def test_important_news_is_not_backfilled_or_sent_twice(store):
+def test_important_news_is_collected_without_separate_alerts(store):
     start = NOW.replace(hour=10, minute=0)
     provider = Provider(headlines=[headline("old", start - timedelta(minutes=1))])
     with store() as db:
         assert asyncio.run(gold.refresh(db, current=start, provider=provider, notify=True))["queued"] == 0
         provider.headlines += [headline("new", start + timedelta(minutes=5))] * 2
-        assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=15), provider=provider, notify=True))["queued"] == 1
+        assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=15), provider=provider, notify=True))["queued"] == 0
         assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=30), provider=provider, notify=True))["queued"] == 0
         assert len(list(db.scalars(select(GoldHeadline)))) == 2
-        assert len(list(db.scalars(select(TelegramDelivery)))) == 1
+        assert len(list(db.scalars(select(TelegramDelivery)))) == 0
 
 
 def test_price_move_uses_last_alert_anchor_and_cooldown(store):
@@ -265,6 +265,171 @@ def test_price_move_uses_last_alert_anchor_and_cooldown(store):
         jobs = list(db.scalars(select(TelegramDelivery)))
         assert all(job.notification["brief_kind"] == "move" for job in jobs)
         assert "+1.10%" in jobs[0].message
+
+
+def test_only_large_moves_trigger_extra_alerts_in_either_direction(store):
+    start = NOW.replace(hour=8, minute=0)
+    provider = Provider()
+    with store() as db:
+        asyncio.run(gold.refresh(db, current=start, provider=provider, notify=True))
+        provider.price = "4039.6"
+        assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=15), provider=provider, notify=True))["queued"] == 0
+        provider.price = "3959.6"
+        assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=30), provider=provider, notify=True))["queued"] == 1
+        job = db.scalar(select(TelegramDelivery))
+        assert job.notification["brief_kind"] == "move" and "-1.01%" in job.message
+
+
+@pytest.mark.parametrize("kind", ["news", "major_news", "noon", "morning"])
+def test_legacy_news_and_schedule_messages_are_superseded(store, monkeypatch, kind):
+    with store() as db:
+        asyncio.run(gold.refresh(db, current=NOW, provider=Provider()))
+        snapshot = gold.latest_snapshot(db)
+        assert gold.queue_message(db, snapshot, NOW, kind, "legacy", NOW + timedelta(minutes=30))
+        db.flush()
+        job = db.scalar(select(TelegramDelivery))
+        note = dict(job.notification)
+        note.pop("scheduled_times", None)
+        job.notification = note
+        db.commit()
+    monkeypatch.setattr(telegram_alerts, "now", lambda: gold.utc(NOW + timedelta(minutes=1)))
+    assert not asyncio.run(telegram_alerts.deliver_one(store))
+    with store() as db:
+        assert db.scalar(select(TelegramDelivery)).status == "SUPERSEDED"
+
+
+@pytest.mark.parametrize("title,source,family", [
+    ("Federal Reserve issues FOMC statement", "Federal Reserve", "FED_POLICY_DECISION"),
+    ("Gold gains after Fed cuts interest rates", "FXStreet", "FED_POLICY_DECISION"),
+    ("Gold falls after US CPI rises above expectations", "FXStreet", "US_INFLATION_SURPRISE"),
+    ("Gold falls after US CPI rises above forecasts", "FXStreet", "US_INFLATION_SURPRISE"),
+    ("Gold falls after US core PCE rises above expectations", "FXStreet", "US_INFLATION_SURPRISE"),
+    ("Gold gains after US Nonfarm Payrolls miss forecasts", "FXStreet", "US_JOBS_SURPRISE"),
+    ("Gold rises after US launches airstrikes on Iran", "FXStreet", "CONFLICT_ESCALATION"),
+    ("Gold falls as Israel ceasefire agreed", "FXStreet", "CEASEFIRE_AGREEMENT"),
+    ("Gold rises as Israel ceasefire collapses", "FXStreet", "CEASEFIRE_BREAKDOWN"),
+    ("US announces ceasefire between Israel and Iran", "BBC World", "CEASEFIRE_AGREEMENT"),
+    ("Israel ceasefire collapsed", "BBC World", "CEASEFIRE_BREAKDOWN"),
+    ("India cuts gold import duty", "FXStreet", "INDIA_GOLD_POLICY"),
+    ("Gold rallies as China central bank resumes gold buying", "FXStreet", "CENTRAL_BANK_GOLD_POLICY"),
+])
+def test_major_event_filter_recognizes_reported_developments(title, source, family):
+    assert major_event_key(title, source).split(":", 1)[0] == family
+
+
+@pytest.mark.parametrize("title,source", [
+    ("Gold rises as the dollar weakens", "FXStreet"),
+    ("Gold surges to a record high", "FXStreet"),
+    ("Gold awaits Fed interest rate decision", "FXStreet"),
+    ("Gold could surge if Fed cuts interest rates", "FXStreet"),
+    ("Gold forecast: Fed cuts interest rates", "FXStreet"),
+    ("Gold slips ahead of US CPI", "FXStreet"),
+    ("Gold steadies as US CPI expectations rise", "FXStreet"),
+    ("Gold steadies as Fed has not cut interest rates", "FXStreet"),
+    ("Gold rises on rumours Fed will cut interest rates", "FXStreet"),
+    ("Gold falls as no ceasefire agreed in Iran", "FXStreet"),
+    ("Gold rises as ceasefire hopes fade", "FXStreet"),
+    ("Gold rises on Israel ceasefire collapse fears", "FXStreet"),
+    ("Implementation Note issued November 2", "Federal Reserve"),
+    ("Minutes of the Federal Open Market Committee", "Federal Reserve"),
+])
+def test_major_event_filter_excludes_routine_and_unconfirmed_news(title, source):
+    assert major_event_key(title, source) is None
+
+
+def test_bbc_world_only_collects_qualifying_major_reports():
+    xml = "<rss><channel>" + feed_item("US launches airstrikes on Iran", "https://www.bbc.com/news/major-event")
+    xml += feed_item("A routine world news update", "https://www.bbc.com/news/routine") + "</channel></rss>"
+    rows = parse_news(xml, "BBC World", NOW)
+    assert len(rows) == 1 and rows[0].important is True
+    assert major_event_key(rows[0].title, rows[0].source) == "CONFLICT_ESCALATION:iran"
+
+
+def test_major_event_alerts_without_price_move_and_deduplicates_cross_source(store):
+    start = NOW.replace(hour=8, minute=0)
+    provider = Provider()
+    with store() as db:
+        asyncio.run(gold.refresh(db, current=start, provider=provider, notify=True))
+        provider.headlines = [headline("fx-fed", start + timedelta(minutes=5), title="Gold gains after Fed cuts interest rates")]
+        assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=15), provider=provider, notify=True))["queued"] == 1
+        provider.headlines.append(headline("official-fed", start + timedelta(minutes=20),
+            title="Federal Reserve issues FOMC statement", source="Federal Reserve"))
+        assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=30), provider=provider, notify=True))["queued"] == 0
+        jobs = list(db.scalars(select(TelegramDelivery)))
+        assert len(jobs) == 1 and jobs[0].notification["brief_kind"] == "major_news"
+        assert jobs[0].notification["major_event_keys"] == ["FED_POLICY_DECISION:us"]
+        assert "MAJOR GOLD EVENT" in jobs[0].message
+
+
+def test_major_event_and_price_move_are_combined_in_one_alert(store):
+    start = NOW.replace(hour=8, minute=0)
+    provider = Provider()
+    with store() as db:
+        asyncio.run(gold.refresh(db, current=start, provider=provider, notify=True))
+        provider.price = "4044"
+        provider.headlines = [headline("fed", start + timedelta(minutes=5), title="Gold gains after Fed cuts interest rates")]
+        assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=15), provider=provider, notify=True))["queued"] == 1
+        jobs = list(db.scalars(select(TelegramDelivery)))
+        assert len(jobs) == 1 and jobs[0].notification["brief_kind"] == "move"
+        assert jobs[0].notification["major_event_keys"]
+        assert "Fed cuts interest rates" in jobs[0].message and "+1.10%" in jobs[0].message
+        assert db.scalar(select(GoldHeadline)).alerted_at is not None
+
+
+def test_scheduled_brief_absorbs_major_event_without_duplicate(store):
+    with store() as db:
+        provider = Provider()
+        asyncio.run(gold.refresh(db, current=NOW - timedelta(hours=1), provider=provider, notify=True))
+        provider.headlines = [headline("fed", NOW - timedelta(minutes=5), title="Gold gains after Fed cuts interest rates")]
+        assert asyncio.run(gold.refresh(db, current=NOW, provider=provider, notify=True))["queued"] == 1
+        assert asyncio.run(gold.refresh(db, current=NOW + timedelta(minutes=15), provider=provider, notify=True))["queued"] == 0
+        job = db.scalar(select(TelegramDelivery))
+        assert job.notification["brief_kind"] == "morning" and job.notification["major_event_keys"]
+
+
+def test_major_event_enablement_does_not_replay_earlier_news(store, monkeypatch):
+    start = NOW.replace(hour=8, minute=0)
+    monkeypatch.setattr(settings, "gold_major_event_alerts_since", start)
+    provider = Provider()
+    with store() as db:
+        asyncio.run(gold.refresh(db, current=start - timedelta(hours=1), provider=provider, notify=True))
+        provider.headlines = [headline("old-fed", start - timedelta(minutes=1), title="Gold gains after Fed cuts interest rates")]
+        assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=15), provider=provider, notify=True))["queued"] == 0
+        provider.headlines.append(headline("new-fed", start + timedelta(minutes=20), title="Federal Reserve issues FOMC statement", source="Federal Reserve"))
+        assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=30), provider=provider, notify=True))["queued"] == 1
+        job = db.scalar(select(TelegramDelivery))
+        assert "Federal Reserve issues FOMC statement" in job.message
+        assert "Gold gains after Fed cuts interest rates" not in job.message
+
+
+def test_distinct_major_events_are_batched_without_marking_unshown_items(store):
+    start = NOW.replace(hour=8, minute=0)
+    provider = Provider()
+    with store() as db:
+        asyncio.run(gold.refresh(db, current=start, provider=provider, notify=True))
+        provider.headlines = [headline("fed", start + timedelta(minutes=1), title="Gold gains after Fed cuts interest rates"),
+            headline("cpi", start + timedelta(minutes=2), title="Gold falls after US CPI rises above expectations"),
+            headline("war", start + timedelta(minutes=3), title="Gold rises after US launches airstrikes on Iran")]
+        assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=15), provider=provider, notify=True))["queued"] == 1
+        assert sum(row.alerted_at is not None for row in db.scalars(select(GoldHeadline))) == 2
+        assert asyncio.run(gold.refresh(db, current=start + timedelta(minutes=30), provider=provider, notify=True))["queued"] == 1
+        assert all(row.alerted_at is not None for row in db.scalars(select(GoldHeadline)))
+    assert not gold.major_keys_overlap("CONFLICT_ESCALATION:iran", "CONFLICT_ESCALATION:russia,ukraine")
+    assert not gold.major_keys_overlap("CEASEFIRE_AGREEMENT:israel", "CEASEFIRE_BREAKDOWN:israel")
+
+
+def test_pausing_major_events_supersedes_a_pending_major_alert(store, monkeypatch):
+    start = NOW.replace(hour=8, minute=0)
+    provider = Provider()
+    with store() as db:
+        asyncio.run(gold.refresh(db, current=start, provider=provider, notify=True))
+        provider.headlines = [headline("fed", start + timedelta(minutes=5), title="Gold gains after Fed cuts interest rates")]
+        asyncio.run(gold.refresh(db, current=start + timedelta(minutes=15), provider=provider, notify=True))
+    monkeypatch.setattr(settings, "gold_major_event_alerts_enabled", False)
+    monkeypatch.setattr(telegram_alerts, "now", lambda: gold.utc(start + timedelta(minutes=16)))
+    assert not asyncio.run(telegram_alerts.deliver_one(store))
+    with store() as db:
+        assert db.scalar(select(TelegramDelivery)).status == "SUPERSEDED"
 
 
 def test_source_failure_retains_last_quote_and_exposes_staleness(store):
@@ -319,15 +484,17 @@ def test_gold_api_is_independent_of_portfolio(client, monkeypatch):
     assert latest["prices"]["india"]["city"] == "India"
     assert latest["prices"]["hyderabad"]["city"] == "Hyderabad"
     assert latest["prices"]["india"]["inr_24k_per_g"] != latest["prices"]["hyderabad"]["inr_24k_per_g"]
-    assert [slot["time"] for slot in view["status"]["schedule"]] == ["10:45", "13:00", "21:00"]
+    assert [slot["time"] for slot in view["status"]["schedule"]] == ["11:00", "17:00"]
     assert client.get("/api/companies").json() == []
 
 
 def test_schedule_configuration_rejects_ambiguous_or_duplicate_times():
     with pytest.raises(ValueError):
-        Settings(gold_alert_times_ist="10:45,10:45,21:00", _env_file=None)
+        Settings(gold_alert_times_ist="11:00,11:00", _env_file=None)
     with pytest.raises(ValueError):
-        Settings(gold_alert_times_ist="25:00,13:00,21:00", _env_file=None)
+        Settings(gold_alert_times_ist="25:00,17:00", _env_file=None)
+    with pytest.raises(ValueError):
+        Settings(gold_alert_times_ist="10:45,13:00,21:00", _env_file=None)
 
 
 def test_daily_brief_does_not_duplicate_its_material_headline(store):
@@ -342,17 +509,18 @@ def test_daily_brief_does_not_duplicate_its_material_headline(store):
         assert len(job.message) < 2500
 
 
-def test_material_batch_never_marks_an_unshown_headline_as_alerted(store):
+def test_material_news_remains_on_dashboard_without_extra_telegram_messages(store):
     start = NOW.replace(hour=8, minute=0)
     with store() as db:
         asyncio.run(gold.refresh(db, current=start, provider=Provider()))
         provider = Provider(headlines=[headline(str(i), start + timedelta(minutes=i + 1), title=f"Demo gold policy update {i}") for i in range(3)])
         asyncio.run(gold.refresh(db, current=start + timedelta(minutes=15), provider=provider, notify=True))
         rows = list(db.scalars(select(GoldHeadline)))
-        assert sum(row.alerted_at is not None for row in rows) == 2
+        assert all(row.alerted_at is None for row in rows)
         asyncio.run(gold.refresh(db, current=start + timedelta(minutes=30), provider=provider, notify=True))
-        assert all(row.alerted_at is not None for row in rows)
-        assert len(list(db.scalars(select(TelegramDelivery)))) == 2
+        assert all(row.alerted_at is None for row in rows)
+        assert len(list(db.scalars(select(TelegramDelivery)))) == 0
+        assert len(gold.dashboard(db, current=start + timedelta(minutes=30))["headlines"]) == 3
 
 
 def test_migration_creates_and_removes_only_gold_tables(tmp_path):

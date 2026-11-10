@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator
@@ -29,10 +30,12 @@ class Settings(BaseSettings):
     ipo_gmp_max_age_hours: int = Field(default=24, ge=1, le=48)
     gold_monitor_enabled: bool = True
     gold_poll_minutes: int = Field(default=15, ge=5, le=60)
-    gold_alert_times_ist: str = "10:45,13:00,21:00"
+    gold_alert_times_ist: str = "11:00,17:00"
     gold_price_move_pct: float = Field(default=1, ge=0.1, le=25)
     gold_move_cooldown_minutes: int = Field(default=60, ge=15, le=1440)
     gold_source_timeout_seconds: float = Field(default=15, ge=3, le=60)
+    gold_major_event_alerts_enabled: bool = True
+    gold_major_event_alerts_since: datetime | None = None
     market_briefs_enabled: bool = True
     market_brief_times_ist: str = "08:45,11:00,12:30,16:00"
     market_brief_source_timeout_seconds: float = Field(default=12, ge=3, le=30)
@@ -97,9 +100,9 @@ class Settings(BaseSettings):
         try:
             parsed = [datetime.strptime(part, "%H:%M").strftime("%H:%M") for part in parts]
         except ValueError as exc:
-            raise ValueError("Gold alert times must be three HH:MM values in IST") from exc
-        if len(parsed) != 3 or parsed != sorted(set(parsed)):
-            raise ValueError("Gold alert times must contain three distinct times in increasing order")
+            raise ValueError("Gold alert times must be two HH:MM values in IST") from exc
+        if len(parsed) != 2 or parsed != sorted(set(parsed)):
+            raise ValueError("Gold alert times must contain two distinct times in increasing order")
         return ",".join(parsed)
 
     @field_validator("market_brief_times_ist")

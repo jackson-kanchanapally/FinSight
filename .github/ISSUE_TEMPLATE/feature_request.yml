@@ -18,3 +18,8 @@ body:
     id: alternatives
     attributes:
       label: Alternatives considered
+  - type: textarea
+    id: sources
+    attributes:
+      label: Source access or configuration changes
+      description: If this needs a new data source or external service, link its documentation and explain any credentials or access terms. Leave blank when not relevant.

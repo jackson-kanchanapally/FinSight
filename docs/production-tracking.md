@@ -4,7 +4,7 @@ The optional macOS launcher runs the API and built dashboard at `http://127.0.0.
 
 ## Install or update
 
-From the repository root, after completing the [local setup](../README.md#local-setup) and building the frontend:
+From the repository root, after completing the [quick start](../README.md#quick-start) and building the frontend:
 
 ```sh
 cd frontend && npm run build && cd ..

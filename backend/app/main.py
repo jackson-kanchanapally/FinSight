@@ -121,7 +121,7 @@ async def lifespan(_app: FastAPI):
                               next_run_time=datetime.now(timezone.utc))
         if settings.gold_monitor_enabled:
             from datetime import datetime, timezone
-            scheduler.add_job(scheduled_gold, "interval", minutes=5,
+            scheduler.add_job(scheduled_gold, "cron", minute="*", timezone="Asia/Kolkata",
                               id="gold_monitor", max_instances=1, coalesce=True,
                               next_run_time=datetime.now(timezone.utc))
         if settings.ipo_monitor_enabled:

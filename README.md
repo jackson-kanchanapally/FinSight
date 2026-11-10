@@ -1,406 +1,279 @@
-# almonds
+<p align="center">
+  <img src="frontend/public/almonds-mark.svg" alt="Almonds" width="72" />
+</p>
 
-**almonds** is a self-hosted investment research and portfolio monitor. It combines transaction-based portfolio accounting with company disclosure monitoring, financial statement extraction, valuation tools, and an optional local AI research assistant.
+# Almonds
 
-The application is designed for a trusted local environment. Several API endpoints do not require authentication; do not expose the service to the public internet without adding and reviewing suitable access controls. The software provides research tools, not investment advice.
+**Your portfolio, company filings, and investment research in one self-hosted workspace.**
 
-## Features
+Almonds helps individual investors follow Indian listed companies from a disclosure to its financial results, valuation, investment thesis, and later outcomes. Record your trades, review evidence linked to original documents, use an optional local AI analyst, and receive selected updates through your own Telegram bot.
 
-- Create and list companies, with case-insensitive symbol normalization to uppercase.
-- Record BUY and SELL transactions and retrieve dated transaction history.
-- Calculate open positions, weighted average acquisition price, remaining cost basis, and realised P&L.
-- Reject a sale when its quantity exceeds the available shares.
-- Use PostgreSQL, SQLAlchemy 2, Pydantic 2, and Alembic migrations.
-- View holdings, cost basis, realised P&L, allocation, transaction history, and registered companies in a dark-themed React dashboard.
-- Add or delete companies and record BUY/SELL transactions through the dashboard.
-- Monitor disclosures for registered NSE companies in live mode, using manual checks or an optional scheduler; fixture mode remains tied to open positions.
-- View classified events, source references, PDF documents, and processing status in the Events section.
-- Store PDFs by SHA-256 and extract embedded text with one-based page numbers.
-- Read the official NSE announcements RSS feed and ESDS investor announcements in live mode; label live, fixture, and manual records by origin.
-- Extract financial statement facts from stored official PDFs with period, scope, units, page provenance, and validation status.
-- Calculate EBITDA, margins, YoY and QoQ in Python, then inspect them in the Financials section.
-- Open any event for a short local AI brief with source citations and a research action. Financial results have a deeper analysis of metrics, management commentary where reported, possible scenarios, and valuation context.
-- Store dated official NSE MCP EOD OHLCV or manual observations, calculate point-in-time valuation from verified facts, inspect price and multiple history, compare imported Market Lens references, and run forward or reverse user-defined scenarios. The results analyst uses a snapshot only while it is at most seven days old.
+The application runs on your machine with a React dashboard, a Python API, and PostgreSQL. Its source is [MIT licensed](LICENSE); dependencies, model weights, and market data have their own terms. It is designed for a trusted local user. The API has unauthenticated operations, so keep it private unless you add suitable access controls. Investment conclusions and forecasts require your own review.
 
-Accounting uses weighted average cost. BUY charges are added to acquisition cost. SELL charges are deducted from proceeds and therefore reduce realised P&L. A SELL removes cost basis at the current weighted average; it does not change the per-share cost of remaining shares. Values use decimal numeric types, never binary floating point.
+[Quick start](#quick-start) · [Features and usage](#features-and-usage) · [Alert schedule](#alert-schedule) · [Documentation](#documentation) · [Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md)
 
-## Architecture
+## Quick start
 
-```text
-registered NSE companies in live mode; open positions in fixture mode
-  -> configured EventSource adapter (one feed fetch per source)
-  -> validated SourceEvent
-  -> company match + deterministic classification
-  -> normalized event
-  -> source identity / PDF hash deduplication
-  -> PostgreSQL events, source references, documents, numbered document pages
-  -> FastAPI event and document endpoints
-  -> React Events list and details
+### Requirements
 
-LIVE financial-results event + verified PDF
-  -> scope/period/table-column extraction
-  -> validated financial periods and source facts
-  -> deterministic Python metrics and comparisons
-  -> FastAPI financial endpoints and React Financials section
+| Component | Requirement |
+| --- | --- |
+| Python | 3.11 or newer, with `venv` and `pip` |
+| Node.js | 20.19+ or 22.12+; Node 22 is a suitable development choice |
+| Database | PostgreSQL; the supplied Compose service uses PostgreSQL 16 |
+| Docker Compose | Needed for the supplied database/Qdrant services; an existing PostgreSQL installation also works |
+| Shell | Bash for `run.sh`; macOS, Linux, or a suitable Windows WSL environment |
+| Optional services | Ollama for AI analysis; Qdrant and an embedding model for Company Memory; Telegram for notifications |
 
-validated period + verified facts + Python metrics + relevant stored PDF lines
-  -> bounded context with evidence IDs
-  -> local Ollama via LLMProvider
-  -> structured JSON, citation and number validation
-  -> separate ai_analyses record
-  -> Financials AI Analysis panel
-```
-
-`EventSource` isolates feed formats and document retrieval from the rest of almonds. The monitor records the last attempt, last successful check, last external ID, error, and failure count per source. A failed source does not stop other sources. Each source observation retains its URL, external ID, origin, and raw payload in `event_references`; matching PDFs merge into one company event while retaining both source references. Different PDFs remain separate even when titles and dates match. Local PDF storage uses content-addressed paths behind a replaceable storage interface.
-
-`MarketDataProvider` isolates price acquisition from valuation. The preferred official NSE MCP Bhavcopy provider retrieves raw daily OHLCV; manual and optional Alpha Vantage providers remain available. Dated observations are stored in `market_snapshots`; the Python engine combines eligible verified facts into `valuation_snapshots`. The AI interprets these calculated values and cites their evidence IDs. User-exported NSE Market Lens metrics are stored separately in `reference_metrics`.
-
-Portfolio calculations and SELL validation remain in the portfolio service. Alembic owns schema changes; the application does not call `create_all()` at startup.
-
-The default `FIXTURE` source replays four **invented ESDS disclosures** and generates one two-page PDF. They are labeled as demo fixtures in the UI and are not real filings. Live mode polls the official NSE announcements RSS feed for every registered NSE-listed company and the public ESDS investor-relations Announcements section for ESDS. NSE's official equity and SME securities CSVs supply exact issuer names for symbol matching. The BSE adapter is disabled because a suitable documented bulk feed was not verified; the generic company IR adapter is a placeholder. Live mode never substitutes fixture records after a source error. See [the source review](docs/data-sources.md) for exact URLs, fields, matching rules, and limitations. The downloader supports HTTPS host allowlists, timeouts, bounded size, limited retries, MIME and PDF signature checks, and no redirects. There is no generic news scraping or OCR. AI interpretation runs only when manually requested for a validated period.
-
-## Prerequisites
-
-- Python 3.11 or newer
-- Docker with Docker Compose
-- Node.js 20.19+ or 22.12+ and npm
-- Git, if you are cloning the project
-
-Ollama and Qdrant are optional. Install them later if you want local AI analysis or Company Memory; the portfolio and disclosure dashboard can run without them.
-
-## Local setup
-
-From the project root:
+### Install and start
 
 ```sh
+git clone https://github.com/jackson-kanchanapally/FinSight.git almonds
+cd almonds
 cp backend/.env.example .env
 python3 -m venv backend/.venv
-backend/.venv/bin/pip install -r backend/requirements.txt
-cd frontend
-npm install
-cd ..
-```
-
-The example credentials are for local development only. Keep `.env` private; it is ignored by Git. To use an existing PostgreSQL database, update the `DATABASE_*` values in `.env` and make sure that database is running. `./run.sh` applies all current database migrations automatically.
-
-## Start the dashboard
-
-After completing local setup, start the database and both app servers from the project root:
-
-```sh
+backend/.venv/bin/python -m pip install -r backend/requirements.txt
+npm --prefix frontend ci
 ./run.sh
 ```
 
-The launcher checks the `.env` and installed dependencies, starts PostgreSQL through Docker Compose if needed, applies Alembic migrations, and starts FastAPI and Vite. Open <http://127.0.0.1:5173>. Press Ctrl+C in this terminal to stop the application servers. Event scanning follows the settings in `.env`.
+Start Docker first if you use the supplied database. `run.sh` checks the configured PostgreSQL connection, starts the Compose database when necessary, applies Alembic migrations, and starts the API and dashboard. It does not overwrite an existing `.env`. Keep the terminal open; press **Ctrl+C** to stop the two development servers. The database volume persists.
 
-The API is at <http://127.0.0.1:8000>; its interactive documentation is <http://127.0.0.1:8000/docs> and its health check is <http://127.0.0.1:8000/health>.
+| Service | Local address |
+| --- | --- |
+| Dashboard | <http://127.0.0.1:5173> |
+| API documentation | <http://127.0.0.1:8000/docs> |
+| Health check | <http://127.0.0.1:8000/health> |
 
-For Phase 6 provider setup, point-in-time rules, formulas, API examples and ESDS integration, see [market data and valuation](docs/market-valuation.md).
-
-For Phase 6.2 commentary, deterministic verdicts, tested P/E scenarios, and the ESDS audit, see [the Phase 6.2 report](docs/phase62-report.md).
-
-For manual development, first start PostgreSQL with `docker compose up -d db`. In one terminal, run `cd backend && .venv/bin/python -m alembic upgrade head && .venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`. In a second terminal, run `cd frontend && npm run dev`. The Vite development server forwards `/api` requests to FastAPI on `127.0.0.1:8000`. For a production build, run `npm run build` from `frontend`; serve `frontend/dist` and route `/api` to FastAPI on the same origin.
-
-Start by adding a company, then record a BUY. Current holdings and allocation are based on remaining cost basis. Realised P&L includes charges and closed positions; no live market values are shown.
-
-## Set up Telegram alerts (optional)
-
-**Market reviews** arrive on regular NSE trading days at **8:45 am, 11:00 am, 12:30 pm and 4:00 pm IST**. They cover Nifty 50, Sensex, Bank Nifty, volatility, breadth and dated domestic/global news. The 11 am alert refreshes the morning brief and its saved news and outlook feed the noon update. Intraday and closing reviews retain a comparison with the original pre-open forecast; closing scenarios feed the next morning. See [market sources, forecast comparisons and delivery rules](docs/market-briefs.md).
-
-The separate **IPOs** section monitors mainboard IPOs, ranks them by GMP percentage, and sends an attractive-only weekly shortlist plus fresh pre-opening reviews through the same Telegram bot. See [IPO schedules, sources and screening rules](docs/ipos.md).
-
-**Gold watch** tracks global USD/troy-ounce prices and India/Hyderabad 22K/24K references per gram. Choose India or Hyderabad on the dashboard; Telegram briefs include both at 10:45 am, 1:00 pm and 9:00 pm IST, with additional material-news and price-move alerts. The dashboard explains reported drivers in plain language and shows source dates, conditional next steps and recorded prices. See [gold sources, timings and alert rules](docs/gold.md).
-
-Telegram alerts send new live disclosures for monitored portfolio companies to a private chat. To enable them:
-
-1. In Telegram, open [@BotFather](https://t.me/BotFather), send `/newbot`, follow its prompts, and keep the bot token private.
-2. Open your new bot and send it `/start` from the account that should receive alerts.
-3. With the app dependencies installed and from the project root, run the setup helper:
-
-   ```sh
-   backend/.venv/bin/python backend/scripts/setup_telegram.py --test
-   ```
-
-   Paste the token when prompted (it is entered without showing it on screen). The helper finds your private chat, saves the token and chat ID in `.env`, and sends a test message. If it says no private chat was found, send `/start` to the bot and run the helper again. Use a dedicated bot that has no webhook configured.
-
-4. If the app is running, stop it with Ctrl+C, then run `./run.sh` from the project root to load the new settings. In the dashboard, open **Company events → Telegram alerts** to check its status or send another test.
-
-The token stays in the ignored, private `.env` file; never share it or commit it. Telegram is optional and disabled until configured. Automatic messages are limited to selected investor-relevant live event types; routine notices remain in the dashboard, and demo fixtures/manual uploads are not sent. Edit `TELEGRAM_IMPORTANT_EVENT_TYPES` in `.env` to customize the filter. See [the complete Telegram guide](docs/telegram.md) for the default types, earnings messages, delivery behavior, retries, and troubleshooting.
-
-## Try the event pipeline
-
-Add ESDS in the dashboard and record a BUY so it has an open position. Then select **Events → Check for events**, or run:
-
-```sh
-curl -X POST http://127.0.0.1:8000/api/events/check
-curl 'http://127.0.0.1:8000/api/events?symbol=ESDS'
-```
-
-The example `.env` uses live sources, so the check contacts the configured public sources and may find no recent ESDS item. To try the four invented demo disclosures instead, set `EVENT_SOURCE_MODE=fixture` in `.env` and restart the app before checking. The first fixture check creates four demo events and one generated PDF with two numbered text pages; the next check reports `new_events: 0`. Select an event to view its source trail, PDF status, hash, and document link. Fixture records are labeled as demos and do not represent real filings.
-
-## Live ESDS setup
-
-First register ESDS using the company API or dashboard. An open position is **not** required for NSE monitoring. Set these values in the root `.env`, then restart FastAPI:
+The example `.env` enables live research and the IPO, Gold, and market-brief schedulers. These features can contact external sources; Telegram delivery stays disabled until you connect a bot. For a quiet portfolio-only setup, edit the following values in `.env` before starting:
 
 ```dotenv
-EVENT_SOURCE_MODE=live
-NSE_SOURCE_ENABLED=true
-BSE_SOURCE_ENABLED=false
-COMPANY_IR_SOURCE_ENABLED=true
+RESEARCH_AUTOMATION_ENABLED=false
 EVENT_MONITOR_ENABLED=false
+EVENT_SOURCE_MODE=none
+MARKET_DATA_ENABLED=false
+IPO_MONITOR_ENABLED=false
+GOLD_MONITOR_ENABLED=false
+MARKET_BRIEFS_ENABLED=false
+COMPANY_MEMORY_ENABLED=false
 ```
 
-Add the ESDS IR mapping once. NSE monitoring now resolves the issuer name automatically from its official securities CSV, so its mapping is optional. The ESDS PDF identifies BSE code `544898` and NSE symbol `ESDS`.
+Use your own database credentials outside a disposable development environment. `.env`, local documents, and runtime data are ignored by Git. See [configuration](docs/configuration.md) for individual settings and [self-hosting](docs/self-hosting.md) for built-dashboard operation, backups, and service management.
+
+### Your first company
+
+1. Open **Companies** or **Add company** and register an NSE symbol and issuer name. Add an ISIN or BSE code when relevant.
+2. Select **Record transaction** to enter a BUY, quantity, price, date, and charges. Use **Holdings** to inspect the position and **Activity** for its transactions.
+3. Open **Events** and select **Check for events** to look for disclosures. You can also upload a PDF you already have permission to use, selecting its company in the upload form.
+4. Open **Financials** after a results document has been processed. Select the company and reporting scope, inspect the latest validated period and source facts, then explore analysis, valuation, forecasts, or the thesis.
+
+Registering a company is enough for live NSE monitoring; you do not need to buy shares to research it. External sources can fail or have no matching disclosures. Empty research panels explain which evidence is still needed.
+
+## Features and usage
+
+The [complete user guide](docs/user-guide.md) provides the detailed workflows and limitations. These are the features available in the current source tree.
+
+### Portfolio accounting and company management
+
+Use **Companies** to maintain the issuer registry and **Record transaction** to add BUY and SELL transactions. **Overview** and **Holdings** show remaining shares, weighted average acquisition cost, cost basis, realised P&L, and cost-based allocation. **Activity** shows dated transaction history.
+
+BUY charges increase acquisition cost; SELL charges reduce sale proceeds. Sales remove shares at weighted average cost, and overselling is rejected. Monetary calculations use decimals. For example, buying 34 shares at ₹429 and selling 24 at ₹1,191, without charges, leaves 10 shares, ₹4,290 cost basis, and ₹18,288 realised P&L. These are recorded trade calculations; share-price data has a separate refresh and source date.
+
+Company deletion asks for confirmation and removes associated records where allowed. Companies with immutable thesis or forecast history must be retained to protect that history.
+
+### Company events and document provenance
+
+In **Events**, run **Check for events**, browse disclosures, and open a record to inspect its classification, source references, PDF, numbered pages, and processing state. Live NSE monitoring covers registered NSE issuers; the implemented company IR source is specific to ESDS. Source failures are visible and do not become invented events.
+
+The ingestion pipeline deduplicates source observations and PDF content, retains the original references, and stores documents by content hash. A fixture mode is available for development and labels its invented ESDS examples clearly. BSE bulk announcements and generic company IR adapters are placeholders; adding a company does not create those integrations. See [source coverage](docs/data-sources.md).
+
+### Manual PDFs and financial extraction
+
+Use the PDF upload action in **Events** for results, presentations, transcripts, or other supported disclosures. For financial results, process the document and review **Financials**. Manual results require issuer matching and table validation; a manual upload alone does not establish that a document is authentic.
+
+Financial facts retain their reporting period, consolidated/standalone scope, units, source document, page, and validation status. Almonds calculates supported metrics such as EBITDA, margins, YoY, and QoQ comparisons in Python. Missing or incompatible inputs remain unavailable. Embedded PDF text is supported; image-only documents need an external OCR workflow. See [financial extraction](docs/financial-extraction.md).
+
+### Local AI analyst and quarterly investor reports
+
+After installing Ollama, pull the configured model and keep its server running:
 
 ```sh
-curl -X POST http://127.0.0.1:8000/api/companies/ESDS/sources \
-  -H 'Content-Type: application/json' \
-  -d '{"source":"ESDS_IR","external_symbol":"ESDS","source_company_id":"544898","ir_url":"https://www.esds.co.in/investor"}'
-
-curl -X POST http://127.0.0.1:8000/api/events/check
-curl 'http://127.0.0.1:8000/api/events?symbol=ESDS'
-curl http://127.0.0.1:8000/api/events/sources/status
+ollama pull qwen3:8b
 ```
 
-If the ESDS IR mapping already exists, use `PUT /api/companies/ESDS/sources/ESDS_IR` with the same JSON body. With the public page observed on 27 September 2026, the first check found two ESDS IR announcements, including the eight-page Q1 FY27 results PDF. The NSE feed was reachable but had no matching ESDS item in its current window. A repeated check reported no new events or PDF downloads. Current feed contents may differ when you run this.
+Set `OLLAMA_MODEL` and `OLLAMA_BASE_URL` in `.env` if needed, then restart the API. Opening an event requests a short event brief. In **Financials**, select the company and scope, then use **Analyze Results** on the latest validated period for the deeper quarterly report; use the regeneration/retry action to request another interpretation. Analysis for older validated periods is available through the API.
 
-The source-check response has per-source counts and errors. `GET /api/events/sources/status` shows each source's last attempt, success, and failure. The Events UI shows a **LIVE** origin badge, source URLs, PDF hash, page count, and a date-only label when the source publishes no clock time. The PDF letter date is **not** treated as an exact publication timestamp. Results metadata includes the reporting period, fiscal year, quarter, and standalone/consolidated basis when found in the official PDF.
+The report brings together result highlights, positives, concerns, an earnings bridge, management commentary, valuation assumptions, risks, and what to watch next. Claims carry evidence references, and financial arithmetic remains in Python. Citation and number checks reject unsupported output. Where supported, a deterministic fallback preserves verified analysis when AI output cannot be accepted. Portfolio accounting and document review work without a model. See [the AI analyst](docs/local-ai-analyst.md).
 
-To check up to the preceding 90 days of the ESDS Announcements section on demand, use the controlled bootstrap. It has a five-minute cooldown per symbol and does not bypass source validation:
+### Management commentary and investor checkpoints
+
+Attach an appropriate management presentation or transcript to the relevant company and period, then review the commentary in **Financials**. The quarterly report separates attributed management statements from calculated financial evidence, records dated guidance, and surfaces milestones or assumptions that need checking.
+
+Use source-page links and **View full commentary** to inspect the original wording. Investor checkpoints track whether later evidence supports the stated expectations; uncertainty and missing evidence remain visible. [The user guide](docs/user-guide.md) explains the commentary and checkpoint controls.
+
+### Valuation, historical prices, and scenarios
+
+Open **Valuation**, or the valuation panel inside **Financials**, and select a company and scope. **Refresh EOD price** requests a dated observation through the configured provider. You can also save a sourced, dated manual close in Financials.
+
+Almonds combines eligible verified financials with dated prices to calculate supported TTM multiples and yields, including P/E, P/S, EV ratios, P/B, earnings yield, and FCF yield when their inputs exist. Expand a metric to inspect its formula and evidence. Price/multiple history and valuation-change explanations retain the underlying dates.
+
+Use scenario controls for assumed EPS growth, future P/E, and return assumptions; reverse calculations show the earnings growth needed to support a chosen outcome. The investor report also exposes editable three-case valuation assumptions. Imported NSE Market Lens CSV references are available through the API and remain separate from Almonds' calculations. Historical EOD prices are unadjusted for corporate actions. See [valuation methodology and APIs](docs/market-valuation.md).
+
+### Company Memory
+
+Start the optional retrieval services:
 
 ```sh
-curl -X POST http://127.0.0.1:8000/api/events/bootstrap \
-  -H 'Content-Type: application/json' \
-  -d '{"symbol":"ESDS","days":90}'
+docker compose up -d qdrant
+ollama pull nomic-embed-text
 ```
 
-You can inspect the stored records directly in PostgreSQL:
+Open **Company Memory**, select a company, and use **Index / update documents**. Search indexed document passages and follow their page references. Relevant historical passages can enrich company analysis, while PostgreSQL remains the authoritative store for structured facts and guidance. Retrieval can be unavailable without preventing ordinary financial analysis. See [Company Memory details](docs/phase7-report.md).
+
+### Living investment thesis and monitoring
+
+In **Financials → Investment Thesis**, review the investment case, thesis pillars, supporting evidence, risks, and the next test. Sufficient verified quarterly research can generate a grouped thesis automatically; **Edit thesis** lets you maintain your own requirements and corrections.
+
+**Thesis Monitoring** records material developments, unresolved questions, evidence confidence, catalysts, and assessment history. Compare two saved assessments to see how the evidence changed. Thesis revisions and state transitions retain their history, and quarterly reports show the effect on the thesis. See [the user guide](docs/user-guide.md) for the editing and comparison workflows.
+
+### Expectations, forecasts, and accuracy
+
+In **Financials → Almonds Forecasts & Accuracy**, capture a dated expectation, inspect its revisions, and compare it with later reported results. The expectation ledger tracks source, capture/publication timing, reporting scope, tolerances, and evaluation reasons.
+
+The **Forecast Accuracy** panel filters forecast-versus-actual comparisons by metric and horizon, distinguishes original scores from later corrections, and shows historical summaries and calibration when the sample supports them. Historical imports do not become predictions made before their actual capture time. Small samples and unscored cases are explicitly identified. See [forecast methodology](PHASE_8_3B_REPORT.md).
+
+### Automatic company research
+
+With `RESEARCH_AUTOMATION_ENABLED=true`, registering a company creates durable research jobs. The worker checks available sources, processes supported results, refreshes market evidence, and prepares eligible forecasts and valuation context when the required history exists.
+
+In **Financials → Almonds Forecasts & Accuracy**, inspect **Research automation status** for job state, source freshness, blockers, and retry controls. Automatic forecasts depend on verified historical coverage; Almonds does not fill missing quarters with invented numbers. The legacy event and market timers are used when automatic research is disabled; see [configuration](docs/configuration.md).
+
+### Telegram company and earnings alerts
+
+Create a bot through Telegram's BotFather, open the bot, and send `/start`. Then run the setup helper from the repository root:
 
 ```sh
-docker compose exec db psql -U finsight -d finsight -c \
-  "SELECT id, title, data_origin, publication_precision, period_end_date, fiscal_year, quarter FROM company_events WHERE company_id = (SELECT id FROM companies WHERE symbol = 'ESDS') ORDER BY id;"
-
-docker compose exec db psql -U finsight -d finsight -c \
-  "SELECT d.id, d.sha256_hash, d.processing_status, count(p.id) AS pages FROM documents d LEFT JOIN document_pages p ON p.document_id = d.id GROUP BY d.id ORDER BY d.id;"
+backend/.venv/bin/python backend/scripts/setup_telegram.py --test
 ```
 
-Use the result event detail's `documents[].download_url` to retrieve the stored PDF through the API. Replace `1` below with that document ID if yours differs:
+The helper prompts for the token without echoing it, discovers the destination chat, saves the Telegram settings in `.env`, and sends the requested connection test. Restart your running API or update its installed runtime to load the new configuration. **Events → Telegram alerts** shows connection and delivery status.
 
-```sh
-curl http://127.0.0.1:8000/api/documents/1/file -o /tmp/esds-results.pdf
-shasum -a 256 /tmp/esds-results.pdf
-curl http://127.0.0.1:8000/api/documents/1/pages
-```
+Selected new live company disclosures are queued automatically. Earnings briefs show supported financial highlights and a result interpretation; other material events receive a short summary, impact, and conditional next steps. Routine categories and old archive imports are filtered, and delivery receipts/retries are persisted. Existing historical/manual events are not automatically replayed. See [Telegram setup and delivery rules](docs/telegram.md).
 
-Compare the hash with `documents.sha256_hash` and confirm the pages response has numbered text pages. The downloaded file is served from content-addressed local storage. The ESDS source page, PDF and exchange feed URLs are documented in [data-sources.md](docs/data-sources.md).
+Optional signed earnings-report links require your own HTTPS route exposing only the report endpoints and a separate access secret. Leave those settings empty for local-only use; see [report access and confidence](docs/intelligent-earnings-alerts.md).
 
-## Financial results
+### Morning, noon, and closing market briefs
 
-Phase 4 processes a stored **LIVE FINANCIAL_RESULTS** PDF. For existing ESDS event 1, select **Process financial results** in its event detail or call:
+Market-wide Telegram briefs cover available Nifty 50, Sensex, Bank Nifty, volatility, breadth, sectors, and dated Indian/global news. The **11:00 AM brief refreshes the morning news and outlook; its saved context feeds the 12:30 PM update**, including headlines that have left the live feeds.
 
-```sh
-curl -X POST http://127.0.0.1:8000/api/financials/process/1
-curl http://127.0.0.1:8000/api/companies/ESDS/financials/latest
-curl http://127.0.0.1:8000/api/companies/ESDS/financials
-curl http://127.0.0.1:8000/api/financials/process/1
-```
+The original 8:45 AM forecast remains traceable for the pre-open direction comparison. Noon reviews the updated morning brief with current evidence, while the closing report records the final comparison and conditional scenarios for the next session. Missing sources or a missing morning brief are identified. History, status, and non-sending previews are available through `/api/market-briefs`; this feature currently has no dedicated sidebar screen. See [market brief rules](docs/market-briefs.md).
 
-The event ID can differ on a fresh database. Processing the same event again returns `periods_created: 0`. Newly downloaded live financial-result PDFs are processed automatically after event ingestion; extraction errors do not roll back the event. Open **Financials** in React to switch between consolidated and standalone periods. Click any displayed number to see its PDF, page, source row, original unit or Python formula and input facts. `GET /api/companies/{symbol}/financials/{period_id}` returns one period with full provenance; `GET /api/companies/{symbol}/financials/latest?scope=STANDALONE` selects the latest validated standalone period.
+### Mainboard IPO research
 
-The database has separate `financial_periods`, `financial_facts`, `financial_metrics` and `financial_processing_runs` tables. Period identity includes company, end date, period type and scope. Facts use controlled metric codes and `Decimal` values. Currency totals are normalized to INR crore while original printed values and units are preserved; EPS stays INR per share. Calculated EBITDA is PBT + finance costs + depreciation and amortisation, explicitly labeled calculated because ESDS does not report EBITDA directly. YoY compares the same period last fiscal year, QoQ the immediately prior quarter, always with the same scope and period type. Growth is (current − prior) / abs(prior) × 100; margins divide by revenue; margin differences multiply percentage-point changes by 100 for basis points. Missing comparisons and zero denominators remain unavailable, never 0%.
+Open **IPOs** to inspect discovered issues, opening dates, research, source gaps, and screening results. Automatic discovery checks supported public sources and refreshes each issue. The default attractive-issue screen requires fresh GMP of at least 10% and a usable positive P/E of at most 40, together with the other source/date checks.
 
-The ESDS Q1 FY2027 consolidated PDF table on page 7 shows revenue ₹1,336.57 million, PAT ₹292.77 million and basic EPS ₹2.92. almonds stores ₹133.657 crore revenue and ₹29.277 crore PAT, with the PDF page and original values. Current-quarter consolidated revenue YoY is 7.28% and QoQ is −20.20%. The current standalone table is on page 3. Some comparison and annual columns have damaged PDF text and remain `NEEDS_REVIEW`; questionable values are excluded from the displayed history and calculations. `VALIDATED` means table extraction checks passed, **not** that the company statements were audited. See [financial-extraction.md](docs/financial-extraction.md) for the field model, source comparison, formulas, and known limits.
+Qualifying issues can produce a weekly Telegram shortlist and a fresh pre-opening review. GMP is an unofficial indication and can change; the screen is a configurable research filter, not a listing-gain prediction. Unconfirmed dates or failed source checks prevent alerts. See [IPO sources, screening, and timing](docs/ipos.md).
 
-The financial processing endpoint, like the event check, has no authentication and is intended for trusted local use.
+### Gold prices, news, and alerts
 
-`POST /api/events/check` and document endpoints have no authentication. Use this deployment only in a trusted local environment. Add authentication and access control before exposing it to other users or the internet.
+Open **Gold** for global USD-per-troy-ounce prices, India/Hyderabad 22K and 24K references per gram, dated USD/INR context, recorded history, and the news read. The **India / Hyderabad** choice is remembered in the browser and also updates the local-history view.
 
-### Event settings
+Telegram briefs arrive at 11 AM and 5 PM IST by default. Extra alerts require a qualifying global price move or a qualifying major reported event; routine news stays in the dashboard and regular briefs. Displayed retail references and source timestamps may differ from a dealer's executable quote. See [Gold sources and alert rules](docs/gold.md).
 
-| Variable | Default | Purpose |
+## Alert schedule
+
+All times below are **India Standard Time (`Asia/Kolkata`)** and are the example configuration defaults.
+
+| Alert | Schedule | Conditions |
 | --- | --- | --- |
-| `EVENT_SOURCE_MODE` | `fixture` | `live` polls configured primary sources; `fixture` replays demo disclosures; `none` disables all sources. |
-| `EVENT_MONITOR_ENABLED` | `false` | Enable periodic checks. Manual checks work independently. |
-| `EVENT_MONITOR_INTERVAL_MINUTES` | `30` | Scheduler interval when enabled. |
-| `NSE_SOURCE_ENABLED` | `true` | Poll official NSE announcements for registered NSE-listed companies in live mode. |
-| `BSE_SOURCE_ENABLED` | `false` | Disabled placeholder; no verified bulk feed is implemented. |
-| `COMPANY_IR_SOURCE_ENABLED` | `true` | Poll the ESDS investor Announcements section in live mode. |
-| `LIVE_SOURCE_TIMEOUT_SECONDS` | `15` | Timeout for live source requests. |
-| `DOCUMENT_STORAGE_PATH` | `backend/data/documents` | Local PDF store; downloaded files are ignored by Git. |
+| Pre-open market outlook | 8:45 AM | Regular NSE trading days; delivery window ends at 9:10 AM |
+| Updated morning brief | 11:00 AM | Regular NSE trading days; saved news and outlook feed noon |
+| Noon market update | 12:30 PM | Regular NSE trading days; includes the updated morning context |
+| Closing market review | 4:00 PM | Regular NSE trading days |
+| Gold briefs | 11:00 AM and 5:00 PM | Independent Gold monitoring settings |
+| IPO research | Daily pass after 8:00 AM; weekly shortlist and pre-opening checks | Confirmed dates, qualifying issues, and source availability |
+| Company disclosures | As eligible new live disclosures are ingested | Important-category and publication-age filters |
+| Extra Gold alerts | On a qualifying move/event | Defaults include a 1% global price-move threshold and cooldown |
 
-The scheduler runs in each API process when enabled, so use one API worker for local scheduling. Source failures are logged and retried on the next cycle; the API remains available.
+These schedules run inside the application. The API, database, and host must be running and awake; a repository checkout does not create a cloud scheduler. Collection and analysis can delay a message within its allowed window, and expired messages are not replayed as fresh alerts. See each feature's guide for catch-up and retry rules.
 
-### Event and source APIs
+## Architecture and data handling
 
-| Endpoint | Use |
+| Layer | Implementation |
 | --- | --- |
-| `GET /api/events` | Recent events; filters: `symbol`, `event_type`, `source`, `from_date`, `to_date`, `limit` (1–100). |
-| `GET /api/events/{id}` | Event details, source references, and documents. |
-| `GET /api/companies/{symbol}/events` | Events for a registered company. |
-| `POST /api/companies/{symbol}/events/upload-pdf` | Attach a local PDF as a manual test event. |
-| `POST /api/events/check` | One monitoring cycle with counts and source errors. |
-| `GET /api/events/sources/status` | Source health, last attempt/success, and last error. |
-| `POST /api/events/bootstrap` | Bounded ESDS IR lookback (1–90 days; five-minute cooldown). |
-| `GET /api/documents/{id}/file` | Download a stored PDF. |
-| `GET /api/documents/{id}/pages` | Read extracted text with one-based page numbers. |
-| `GET/POST /api/companies/{symbol}/sources` | Read/add company source mappings. |
-| `PUT /api/companies/{symbol}/sources/{source}` | Update a mapping or enable/disable it. |
+| Dashboard | React 19, TypeScript, Vite |
+| API and jobs | FastAPI, Pydantic 2, APScheduler |
+| Persistence | PostgreSQL, SQLAlchemy 2, Alembic migrations |
+| Documents | Content-addressed PDF storage and numbered text extraction |
+| Optional AI | Ollama with structured output and evidence validation |
+| Optional retrieval | Qdrant with local document embeddings |
+| Notifications | Telegram Bot API with a persistent delivery queue |
 
-Company source mappings hold an external symbol, source company ID, IR URL, and enabled flag. For example, `POST /api/companies/ESDS/sources` with `{"source":"FIXTURE","enabled":false}` disables the fixture feed for ESDS. In live mode, every registered company whose exchange contains `NSE` is monitored automatically, with or without an open position or explicit mapping. An explicit NSE mapping can override the issuer name or disable monitoring for that company. Company-specific IR sources still require their own mapping.
+Source adapters collect dated observations. The application stores their provenance, computes financial/accounting values in Python, and supplies bounded evidence to the optional analyst. Verified facts, model interpretation, user assumptions, and later evaluations remain distinguishable. Alembic owns application schema changes.
 
-The [NSE securities directory](https://www.nseindia.com/static/market-data/securities-available-for-trading) provides the symbol, issuer name, and ISIN needed to match RSS items. For example, the CSV resolves `ETERNAL` to `ETERNAL LIMITED` even if the dashboard company name is just `ETERNAL`. An [official NSE filing](https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_153832_28042026202149_iXBRL_WEB.html) confirms that issuer identity. An optional override can still be set:
+Portfolio records, database files, documents, and model indexes remain on your configured infrastructure. Live collection contacts data providers; AI requests go to your configured Ollama endpoint; Telegram receives the messages you enable. Configuring a remote model or external review tool can send context outside your machine. The [security policy](SECURITY.md) and [third-party notices](THIRD_PARTY_NOTICES.md) explain the relevant boundaries.
 
-```sh
-curl -X POST http://127.0.0.1:8000/api/companies/ETERNAL/sources \
-  -H 'Content-Type: application/json' \
-  -d '{"source":"NSE","external_symbol":"ETERNAL","source_company_id":"ETERNAL LIMITED","enabled":true}'
+```text
+backend/app/          API, models, source adapters, analysis, jobs, and accounting
+backend/alembic/      Database migrations
+backend/tests/        Unit, API, fixture, and opt-in integration tests
+frontend/src/         Dashboard and feature panels
+frontend/scripts/     Isolated browser checks
+ops/                  Optional local service and update tools
+docs/                 User, setup, methodology, and architecture documentation
+.github/              CI and contribution templates
 ```
 
-Use `GET /api/companies/ETERNAL/sources` to inspect explicit overrides; an empty list no longer means NSE monitoring is disabled. Use `PUT /api/companies/ETERNAL/sources/NSE` with the same JSON to correct an override. `POST /api/events/check` reports `company_matches` and `unresolved_symbols` if a registered symbol is missing or ambiguous in the official directory, or if its supplied ISIN disagrees. The older `portfolio_matches` response field remains as a compatibility alias. NSE's announcements RSS lists recent filings only, so adding a company may yield no immediate PDF when it has no item in the current feed. The ESDS IR adapter is company-specific and does not crawl Eternal's investor-relations site. `POST /api/events/bootstrap` currently applies only to ESDS.
+## Development and tests
 
-### Add an ETERNAL PDF manually for testing
-
-Register ETERNAL as a company if it is not already in the dashboard. In **Company events**, open **Upload a company PDF for testing**, choose **ETERNAL**, enter the PDF title and publication date, select its event type, and choose the local file. An HTTPS source URL is optional. The saved manual event opens automatically; its PDF and extracted text pages can be reviewed there. The upload accepts PDFs up to 10 MB and is idempotent by PDF content for that company.
-
-The equivalent API call sends the PDF as the raw request body:
-
-```sh
-curl -X POST 'http://127.0.0.1:8000/api/companies/ETERNAL/events/upload-pdf?title=Q2%20FY27%20results&published_on=2026-09-28&event_type=FINANCIAL_RESULTS&file_name=eternal.pdf' \
-  -H 'Content-Type: application/pdf' --data-binary '@/absolute/path/to/eternal.pdf'
-```
-
-Uploads are labeled `MANUAL` and are available for document review and event analysis. Image-only PDFs show `NO_TEXT` because OCR is not enabled. They do not become verified financial facts or add a share price: the financial extractor accepts live official filings, while the valuation page uses a separate dated market snapshot. Use the live NSE source and **Check for events** when testing the verified financial-results path; use **Refresh EOD price** or enter a dated sourced close for the price input.
-
-## Tests
-
-The automated tests use an isolated in-memory SQLite database, so PostgreSQL does not need to be running for them.
+Normal backend tests use disposable SQLite databases and fake providers. They do not require PostgreSQL, Ollama, Qdrant, Telegram credentials, or live market access:
 
 ```sh
 cd backend
-pytest -q
-alembic check
-```
-
-`alembic check` connects to PostgreSQL and should be run after `alembic upgrade head`. The frontend type and production build check is:
-
-The AI unit and API tests use a fake `LLMProvider`, so the normal suite never needs Ollama. To run the optional real local model check against a seeded ESDS period, run `OLLAMA_TEST_ENABLED=true .venv/bin/python -m pytest -q -s tests/test_ai_live_optional.py` after starting Ollama and PostgreSQL. The check prints a per-question evaluation report.
-
-The optional official-PDF integration check uses a previously downloaded local ESDS PDF and never fetches a live site:
-
-```sh
-cd backend
-ALMONDS_ESDS_PDF=data/documents/6f/6fffc199c424ce799f656041afa5a4b5e9897104fe769565e5da4c6449e222fa.pdf .venv/bin/python -m pytest -q tests/test_esds_real_pdf.py
-```
-
-```sh
-cd frontend
+.venv/bin/python -m pytest -q
+cd ../frontend
+npm ci
 npm run build
-```
-
-To run the isolated Chromium browser check, first install the browser once:
-
-```sh
-cd frontend
 npx playwright install chromium
 npm run test:browser
 ```
 
-This starts temporary FastAPI and Vite servers with an in-memory SQLite database, fixture source mode, and temporary document storage. It checks company creation, the ESDS BUY/SELL example, oversell feedback, event ingestion and deduplication, event details and PDF, the dark theme, and mobile layout. It does not write to your PostgreSQL database or contact live sources. Desktop, mobile, and event-detail screenshots are saved in ignored `frontend/e2e-artifacts/`. The Python virtual environment described above must already be installed.
+The frontend build checks TypeScript and creates the production bundle. Browser checks start temporary fixture-backed servers. Live-service and official-PDF checks are opt-in; migration checks against PostgreSQL are separate. The [development guide](docs/development.md) documents the complete checks, fixture setup, and how to contribute migrations. GitHub Actions runs the checks defined in [CI](.github/workflows/ci.yml) on pushes and pull requests.
 
-## API examples
+## API access
 
-Create a company:
+Open the local [interactive API documentation](http://127.0.0.1:8000/docs) after starting Almonds. It describes request bodies, query parameters, and response types. Common entry points include:
 
-```sh
-curl -X POST http://127.0.0.1:8000/api/companies \
-  -H 'Content-Type: application/json' \
-  -d '{"symbol":"ESDS","name":"ESDS Software Solution","exchange":"NSE"}'
-```
+| Area | Examples |
+| --- | --- |
+| Companies and trades | `/api/companies`, `/api/transactions`, `/api/portfolio` |
+| Events and financials | `/api/events`, `/api/companies/{symbol}/financials` |
+| Valuation and research | `/api/companies/{symbol}/valuation`, `/api/companies/{symbol}/research/status` |
+| Expectations and forecasts | `/api/companies/{symbol}/expectations`, `/api/companies/{symbol}/forecasts/accuracy` |
+| Thesis and memory | `/api/companies/{symbol}/thesis`, `/api/companies/{symbol}/memory` |
+| Alerts and independent research | `/api/telegram/status`, `/api/market-briefs`, `/api/ipos`, `/api/gold` |
 
-Record transactions:
+Treat API mutation endpoints as trusted-user operations. The [user guide](docs/user-guide.md) and linked feature references include examples for the controls that are API-only.
 
-```sh
-curl -X POST http://127.0.0.1:8000/api/transactions \
-  -H 'Content-Type: application/json' \
-  -d '{"symbol":"ESDS","transaction_type":"BUY","quantity":"34","price":"429","transaction_date":"2026-09-01","charges":"0"}'
+## Documentation
 
-curl -X POST http://127.0.0.1:8000/api/transactions \
-  -H 'Content-Type: application/json' \
-  -d '{"symbol":"ESDS","transaction_type":"SELL","quantity":"24","price":"1191","transaction_date":"2026-09-10","charges":"0"}'
-```
+| Guide | What it covers |
+| --- | --- |
+| [User guide](docs/user-guide.md) | Every feature, navigation, workflows, and limitations |
+| [Configuration](docs/configuration.md) | Database, sources, jobs, AI, retrieval, alerts, and example settings |
+| [Self-hosting](docs/self-hosting.md) | Built dashboard, local service, upgrades, backups, and troubleshooting |
+| [Development](docs/development.md) | Development servers, test suites, browser checks, migrations, and CI |
+| [Documentation index](docs/README.md) | Feature references, methodology, architecture, and historical implementation reports |
+| [Contributing](CONTRIBUTING.md) | Issues, pull requests, validation, and review expectations |
+| [Security](SECURITY.md) | Private reporting, trusted-local deployment, and secret handling |
+| [Support](SUPPORT.md) | Where to ask for help and how to submit a useful report |
 
-Read transaction history with `GET /api/transactions` or `GET /api/transactions/ESDS`. Read all portfolio positions with `GET /api/portfolio` or one symbol with `GET /api/portfolio/ESDS`. Company endpoints are `GET /api/companies`, `GET /api/companies/ESDS`, and `DELETE /api/companies/ESDS`. Deleting a company permanently removes its trades, event and source records, financial results, market snapshot, and AI analyses. The dashboard asks for confirmation before deletion. Locally stored PDFs are removed when no remaining document references them.
+## Contributing
 
-## ESDS expected result
+Contributions to documentation, accessibility, tests, extraction coverage, source adapters, and research tools are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), follow the [Code of Conduct](CODE_OF_CONDUCT.md), and open a focused [issue](https://github.com/jackson-kanchanapally/FinSight/issues) or pull request. Include reproducible evidence for data-source or financial-calculation changes. Never attach personal holdings, bot tokens, database dumps, or private documents to a public issue.
 
-After buying 34 shares at ₹429 and selling 24 at ₹1,191, with no charges:
+For bugs and usage questions, see [support](SUPPORT.md). Report vulnerabilities through the private routes described in [SECURITY.md](SECURITY.md).
 
-- Remaining quantity: 10
-- Average acquisition price: ₹429
-- Remaining cost basis: ₹4,290
-- Realised P&L: (₹1,191 − ₹429) × 24 = ₹18,288
+## License and third-party terms
 
-## Local AI analyst
-
-Install [Ollama](https://ollama.com/), run `ollama pull qwen3:8b`, and start its local server (`ollama serve` if it is not already running). The default model was chosen from the models installed on this development machine; set `OLLAMA_MODEL` to any compatible local model in `.env`. Set `OLLAMA_BASE_URL`, `OLLAMA_TIMEOUT_SECONDS`, `OLLAMA_NUM_CTX`, `AI_TEMPERATURE`, `AI_MAX_CONTEXT_CHARS`, and `AI_MAX_DOCUMENT_CHARS` there as needed. `OLLAMA_NUM_CTX` defaults to 8192 so the model can see the full results context and citation guide. No cloud model or paid API is used. The local Ollama HTTP endpoint is intended for a trusted local machine.
-
-Open any event to request its short local AI brief automatically. Successful briefs are cached by event content, model, and prompt; **Regenerate** requests another. Open **Financial performance → AI Analysis** for a validated period and select **Analyze Results** for a deeper review. Financial analysis is manual. Results and failures are stored separately from financial facts. The deeper view shows a summary, positives, concerns, a cited positive/negative/neutral view of the results, management statements when found, conditional scenarios, valuation context, research action, and evidence links.
-
-For a valuation comparison, enter a dated closing price, optional source P/E reference and market cap, and an HTTPS source link in **Financial performance**. You may also enter a sourced forward annual EPS growth estimate and its source type. Almonds calculates its own P/E from verified trailing EPS, then calculates forward PEG from that P/E and the growth estimate in percentage points. The source P/E and legacy PEG are reference values only. A snapshot over seven days old is excluded from new AI analysis. The result review explains both annual and sequential performance and treats valuation conclusions as provisional when forecasts, cash flow or balance-sheet inputs are missing.
-
-```sh
-curl -X POST http://127.0.0.1:8000/api/companies/ESDS/financials/42/analyze
-curl http://127.0.0.1:8000/api/companies/ESDS/analysis
-curl http://127.0.0.1:8000/api/analysis/1
-curl -X POST 'http://127.0.0.1:8000/api/companies/ESDS/financials/42/analyze?regenerate=true'
-curl -X POST http://127.0.0.1:8000/api/events/1/analyze
-curl http://127.0.0.1:8000/api/companies/ESDS/market-snapshot
-```
-
-Replace `42` with a real validated period ID from `GET /api/companies/ESDS/financials`. Invalid model output is retried once. If both responses fail validation, the API returns `VERIFIED_FALLBACK` with a cited summary assembled from verified facts and calculated metrics; the dashboard labels it and offers **Retry AI analysis**. The last validation reason remains in `failure_reason`. Provider failures return `FAILED` with a reason such as `OLLAMA_UNAVAILABLE` or `OLLAMA_TIMEOUT`. See [the analyst design and evaluation](docs/local-ai-analyst.md) for the schema, provenance rules, and limitations.
-
-## Phase 6.3 investor report
-
-The results report separates business results, scenario valuation and investor stance. It includes a reconciled earnings bridge, reverse required EPS growth and three editable P/E scenarios with explicit provenance. **Save assumptions and update report** uses the existing valuation and analysis APIs; all calculations and final judgments remain deterministic. Model failures preserve a complete report and structured validation diagnostics.
-
-Apply migration `0014_investor_scenarios` with `alembic upgrade head`. See [Phase 6.3 implementation and regression results](docs/phase63-report.md) for the assumptions, ESDS/Eternal outcomes, tests and limitations.
-
-## Phase 7 company memory
-
-Company Memory indexes existing parsed document pages into local Qdrant with `nomic-embed-text` embeddings. PostgreSQL remains authoritative for structured facts and guidance. Company/date filters, source-page references and bounded historical context feed the existing analyst; financial analysis remains usable when retrieval is unavailable.
-
-Apply migration `0015_company_memory` with `alembic upgrade head`. Start a local Qdrant instance (`docker compose up -d qdrant` for a fresh setup), run `ollama pull nomic-embed-text`, then select **Company Memory → Index / update documents**. The existing local Qdrant instance can be reused through `QDRANT_BASE_URL`; do not start a second service on the same port. See [Phase 7 architecture, APIs, evaluation and corpus limitations](docs/phase7-report.md).
-
-## Phase 7.2 quarterly investor review
-
-In **Financial performance → company → consolidated/standalone period → AI analysis**, the primary report is now a concise quarterly investor review. **View full commentary** retains the complete transcript and page links; calculations and valuation scenarios remain in a separate disclosure panel.
-
-Apply migration `0017_investor_checkpoints` with `alembic upgrade head`. Results/commentary updates refresh the deterministic review and source-backed checkpoints. Use the existing AI analysis action for Qwen interpretation; rejected model output preserves the deterministic review. See [Phase 7.2 implementation, ESDS checkpoints and validation](docs/phase72-report.md).
-
-## Phase 7.3 evidence-safe synthesis
-
-The existing AI analysis action now sends Qwen a compact, attributed investor packet and checks each quarterly-review item independently. Supported interpretation survives when another item fails; one bounded repair attempts to fix rejected items. The saved analysis includes item diagnostics and a `review_trace`. Financial values, checkpoint outcomes and valuation verdicts remain Python outputs. `QUARTERLY_REVIEW_TIMEOUT_SECONDS` defaults to 360 for the local quarterly model. See [Phase 7.3 diagnosis, ESDS comparison and tests](docs/phase73-report.md).
-
-## Phase 7.4 investor materiality
-
-The quarterly review now prioritizes dated milestones, capex, funding, demand, and unusual management assumptions before Qwen. “What Changed” describes supported investment-story revisions. The existing validator rejects invented target periods and uncited delays. See [the Phase 7.4 ESDS comparison and tests](docs/phase74-report.md).
-
-## Phase 8 living investment thesis
-
-Financial performance includes **Investment Thesis** for the selected company and scope. When sufficient verified quarterly research exists, Almonds creates a grouped thesis and evaluates it from the saved review automatically. The main view shows the investment case, pillar cards, what is working, what needs proof, risks, and the next big test. **Edit thesis** retains the optional Phase 8 controls for corrections and investor-defined requirements. Revisions and evidence-backed state changes are append-only; historical views read stored records without backdating beliefs. Quarterly reviews include **Thesis Impact**.
-
-Apply `alembic upgrade head` in `backend` for migration `0018_living_thesis`. Companies with retained thesis history must keep that audit trail; deactivate their pillars instead of deleting the company. Run the isolated UI regression with `cd frontend && node scripts/thesis-check.mjs`. See the [Phase 8 implementation report](docs/phase8-report.md) and [Phase 8.1 zero-touch validation](docs/phase81-report.md).
-
-## Phase 8.2 thesis monitoring
-
-Verified results, metric corrections, attributed commentary, guidance and material official disclosures now refresh existing theses automatically. **Thesis Monitoring** shows material developments, evidence confidence, unresolved questions, catalysts, source pages and an immutable assessment timeline. Choose any two assessments to compare their stored evidence. Numerical comparisons use deterministic Python; automatic monitoring makes no AI calls.
-
-Apply migration `0019_thesis_monitoring` with `alembic upgrade head`. Run `node scripts/monitoring-check.mjs` in `frontend` for the isolated browser regression. See [Phase 8.2 validation and limits](docs/phase82-report.md).
-
-## Phase 8.3B: forecast accuracy and calibration
-
-The Forecast Accuracy panel retains primary forecast-versus-actual scores while showing later corrections separately. It provides metric/horizon summaries, publication-ordered rolling history, typed paginated comparisons, data-quality reasons and confidence/interval calibration with explicit sample uncertainty. No historical predictions or probabilities are backfilled.
-
-Apply `alembic upgrade head` from `backend` for the reversible `0022_forecast_accuracy` history index. `GET /api/companies/{symbol}/forecasts/accuracy` provides summaries and calibration; `GET /api/companies/{symbol}/forecasts/comparisons` provides observations and exclusions; `POST /api/companies/{symbol}/forecasts/evaluate` queues deterministic scoring through the existing scheduler. Automatic financial-evidence evaluation remains enabled through the existing processing hooks.
-
-See [the Phase 8.3B report](PHASE_8_3B_REPORT.md) for methodology, endpoints, migration/test results, the ESDS/Eternal data limitations, and Phase 8.3C next steps. Run `backend/scripts/verify_forecast_accuracy.py` with the backend virtual environment for a read-only audit of the configured PostgreSQL corpus. The new browser regression is `node scripts/forecast-accuracy-check.mjs` from `frontend`.
+Almonds' project source is distributed under the [MIT License](LICENSE). Third-party libraries, model weights, and externally collected documents/data retain their own licenses and usage conditions; the project license does not grant rights to redistribute those materials. The required PyMuPDF PDF library uses separate AGPL/commercial licensing. Review [third-party notices](THIRD_PARTY_NOTICES.md) before packaging or redistributing an installation.

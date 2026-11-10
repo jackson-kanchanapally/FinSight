@@ -27,9 +27,11 @@ HYDERABAD_URL = "https://groww.in/gold-rates/gold-rate-today-in-hyderabad"
 NEWS_FEEDS = {
     "FXStreet": "https://www.fxstreet.com/rss/news",
     "Federal Reserve": "https://www.federalreserve.gov/feeds/press_monetary.xml",
+    "BBC World": "https://feeds.bbci.co.uk/news/world/rss.xml",
 }
 NEWS_HOSTS = {"FXStreet": {"www.fxstreet.com", "fxstreet.com"},
-              "Federal Reserve": {"www.federalreserve.gov", "federalreserve.gov"}}
+              "Federal Reserve": {"www.federalreserve.gov", "federalreserve.gov"},
+              "BBC World": {"www.bbc.com", "bbc.com", "www.bbc.co.uk", "bbc.co.uk"}}
 
 
 def utc(value):
@@ -113,6 +115,58 @@ def important_headline(title, source):
         lower))
 
 
+def major_event_key(title, source):
+    """Conservative reported-event filter; routine price commentary stays out."""
+    text = title.casefold()
+    if re.search(r"(?:gold|bullion).{0,14}(?:forecast|prediction)|price forecast|price target|technical analysis|weekly outlook|preview|ahead of|"
+                 r"\bif\b|\bunless\b|\bcould\b|\bmight\b|\bexpected to\b|\bmay (?:cut|hike|raise|rise|fall|hold|resume)\b", text):
+        return None
+    if re.search(r"\b(?:will|to) (?:cut|hike|raise|hold|keep|resume|launch)\b|rumou?r|unconfirmed|rate.cut bets|fed.{0,20}bets", text):
+        return None
+    if re.search(r"\b(?:no|not|never)\b.{0,20}(?:ceasefire|rate cut|rate hike|war|invasion)", text):
+        return None
+    if re.search(r"\b(?:not|never|denies?|fails? to)\b.{0,18}\b(?:cut|hike|raise|hold|resume|launch|agree)\b", text):
+        return None
+    family = None
+    if source == "Federal Reserve":
+        # The implementation note accompanies the statement; do not alert twice.
+        if "implementation note" in text:
+            return None
+        if re.search(r"\bfomc statement\b|(?:federal reserve|fomc).{0,35}(?:cuts?|raises?|holds?|keeps?).{0,25}(?:rates?|target range)", text):
+            family = "FED_POLICY_DECISION"
+    elif re.search(r"\b(?:fed|fomc|federal reserve)\b.{0,25}\b(?:cuts?|raises?|hikes?|holds?|keeps?)\b.{0,25}(?:rates?|target range)", text):
+        family = "FED_POLICY_DECISION"
+    surprise = re.search(r"unexpected|surpris|hotter.than|cooler.than|above.{0,12}(?:forecast|expect)|below.{0,12}(?:forecast|expect)|"
+                         r"beats?.{0,12}(?:forecast|expect)|miss(?:es)?.{0,12}(?:forecast|expect)", text)
+    reported = re.search(r"(?:cpi|pce|us inflation|non[- ]?farm payrolls?|nfp|us (?:jobs|employment)).{0,45}"
+                         r"(?:\b(?:rises?|falls?|rose|fell|cools?|accelerates?|jumps?|slows?|prints?|surges?|plunges?|beats?|miss(?:es)?|surprises?|comes?|came)\b|\bat\s+\d)", text)
+    if family is None and surprise and reported:
+        if re.search(r"\b(?:us|united states)\b.{0,25}(?:cpi|pce|inflation)", text):
+            family = "US_INFLATION_SURPRISE"
+        elif re.search(r"nonfarm payroll|non-farm payroll|\bnfp\b|\bus\b.{0,15}(?:jobs|employment)", text):
+            family = "US_JOBS_SURPRISE"
+    if family is None:
+        if re.search(r"ceasefire.{0,12}(?:collaps(?:es|ed)|breaks? down|broke down|ends|ended|violated)", text):
+            family = "CEASEFIRE_BREAKDOWN"
+        elif re.search(r"ceasefire.{0,12}(?:agreed|signed|announced|takes effect|took effect)|(?:agree|announc|sign).{0,15}(?:to |a )?ceasefire", text):
+            family = "CEASEFIRE_AGREEMENT"
+        elif re.search(r"war (?:breaks out|declared)|declares? war|launch(?:es|ed).{0,25}(?:airstrikes?|missile strikes?|military strikes?|invasion)|major (?:military |war )?escalation", text):
+            family = "CONFLICT_ESCALATION"
+        elif re.search(r"(?:india|government).{0,35}(?:cuts?|raises?|hikes?|changes?|abolishes?).{0,30}(?:gold.{0,12}(?:duty|tariff)|import duty)|"
+                       r"gold import duty.{0,20}(?:cut|raised|hiked|changed|abolished)", text):
+            family = "INDIA_GOLD_POLICY"
+        elif re.search(r"(?:central.bank|pboc|people.s bank).{0,35}(?:resumes?|halts?|suspends?|stops?).{0,20}(?:gold buying|gold purchases)|"
+                       r"central.bank gold (?:buying|purchases).{0,20}(?:record|halt|suspend)", text):
+            family = "CENTRAL_BANK_GOLD_POLICY"
+    if family is None:
+        return None
+    entities = sorted({name for name in ("iran", "israel", "ukraine", "russia", "china", "india")
+                       if re.search(r"\b" + name + r"\b", text)})
+    if family == "FED_POLICY_DECISION" or family.startswith("US_"):
+        entities = ["us"]
+    return family + ":" + ",".join(entities)
+
+
 def parse_news(xml, source, current):
     if re.search(r"<!\s*(?:DOCTYPE|ENTITY)", xml, re.IGNORECASE):
         raise SourceUnavailableError("GOLD_NEWS_XML_DECLARATION_REJECTED")
@@ -125,6 +179,8 @@ def parse_news(xml, source, current):
         if not title:
             continue
         if source == "FXStreet" and not re.search(r"\bgold\b|xau[/ -]?usd|bullion", title, re.IGNORECASE):
+            continue
+        if source == "BBC World" and not major_event_key(title, source):
             continue
         try:
             url = urlsplit((item.findtext("link") or "").strip())
@@ -149,7 +205,7 @@ def parse_news(xml, source, current):
         identity = sha256(f"{source}|{published.date()}|{normalized}".encode()).hexdigest()
         result.append(GoldNewsData(identity=identity, title=title, summary=summary, source=source,
             url=urlunsplit(("https", url.netloc, url.path, "", "")), published_at=published,
-            impact=impact, impact_reason=reason, important=important_headline(title, source)))
+            impact=impact, impact_reason=reason, important=important_headline(title, source) or bool(major_event_key(title, source))))
     return result
 
 

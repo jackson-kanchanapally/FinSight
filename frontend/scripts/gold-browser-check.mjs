@@ -88,16 +88,16 @@ const fixture = {
   ],
   status: {
     enabled: true,
+    major_event_alerts_enabled: true,
     telegram_connected: true,
     last_refresh_at: "2026-11-02T05:15:00Z",
     last_success_at: "2026-11-02T05:15:00Z",
     errors: [],
     schedule: [
-      { name: "morning", time: "10:45" },
-      { name: "noon", time: "13:00" },
-      { name: "evening", time: "21:00" },
+      { name: "morning", time: "11:00" },
+      { name: "evening", time: "17:00" },
     ],
-    next_alert_at: "2026-11-02T07:30:00Z",
+    next_alert_at: "2026-11-02T11:30:00Z",
     timezone: "Asia/Kolkata",
     poll_minutes: 15,
     move_threshold_pct: 1,
@@ -183,16 +183,14 @@ try {
   );
   assert.match(
     await section.locator(".gold-schedule").innerText(),
-    /10:45 IST/,
+    /11:00 IST/,
   );
   assert.match(
     await section.locator(".gold-schedule").innerText(),
-    /13:00 IST/,
+    /17:00 IST/,
   );
-  assert.match(
-    await section.locator(".gold-schedule").innerText(),
-    /21:00 IST/,
-  );
+  await section.getByRole("heading", { name: "Two daily updates" }).waitFor();
+  await section.getByText("Major events and large price moves", { exact: true }).waitFor();
   await page.locator('.side-nav a[href="#overview"]').click();
   const compact = page.locator("#gold-overview");
   await compact.getByText("$4,000.00", { exact: true }).waitFor();

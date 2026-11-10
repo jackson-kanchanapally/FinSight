@@ -1,4 +1,4 @@
-"""Three daily gold briefs and deduplicated material updates through Telegram."""
+"""Two daily gold briefs, major reported events and large price-move alerts."""
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from html import escape
@@ -9,14 +9,15 @@ from app.config import settings
 from app.models.gold import GoldHeadline, GoldSnapshot, GoldState
 from app.models.telegram import TelegramDelivery
 from app.schemas.gold import IndiaGoldQuote
-from app.services.gold_sources import GoldFetch, GoldProvider, IST, utc
+from app.services.gold_sources import GoldFetch, GoldProvider, IST, major_event_key, utc
 from app.services.gold_reasoning import build_analysis, explain_headline
 from app.services.result_sources import digest
 from app.services.telegram_client import configured
 
 VERSION = "gold-v1"
-SLOT_NAMES = ("morning", "noon", "evening")
-SLOT_WINDOWS = (15, 60, 90)
+SLOT_NAMES = ("morning", "evening")
+SLOT_WINDOWS = (30, 60)
+MAJOR_NEWS_POLICY = "gold-major-events-v1"
 
 
 def now():
@@ -109,7 +110,7 @@ def stamp(value):
 
 def brief(snapshot, current, kind, *, headlines=None, move=None):
     labels = {"morning": "MORNING GOLD BRIEF", "noon": "NOON GOLD UPDATE", "evening": "EVENING GOLD UPDATE",
-              "news": "IMPORTANT GOLD NEWS", "move": "GOLD PRICE MOVE"}
+              "news": "IMPORTANT GOLD NEWS", "major_news": "MAJOR GOLD EVENT", "move": "GOLD PRICE MOVE"}
     prices = prices_view(snapshot.prices, current)
     lines = [f"<b>ALMONDS · {labels[kind]}</b>", stamp(current), "", "<b>Prices</b>"]
     global_quote = prices["global"]
@@ -142,7 +143,7 @@ def brief(snapshot, current, kind, *, headlines=None, move=None):
             lines.append(f"{label} 22K / 24K: unavailable")
     if move is not None:
         lines += ["", f"<b>Material move:</b> {num(move['pct'], signed=True)}% since {stamp(move['since'])}"]
-    analysis = analyze(snapshot.prices, headlines, current) if kind == "news" and headlines else snapshot.analysis
+    analysis = analyze(snapshot.prices, headlines, current) if headlines else snapshot.analysis
     mood = {"POSITIVE": "Positive", "NEGATIVE": "Negative", "MIXED": "Mixed", "UNCLEAR": "Unclear"}[analysis["bias"]]
     lines += ["", f"<b>News read: {mood}</b>"]
     reasons = analysis.get("drivers", [])
@@ -157,6 +158,8 @@ def brief(snapshot, current, kind, *, headlines=None, move=None):
         title = item.title if isinstance(item, GoldHeadline) else item["title"]
         url = item.url if isinstance(item, GoldHeadline) else item["url"]
         source = item.source if isinstance(item, GoldHeadline) else item["source"]
+        if kind == "major_news" and isinstance(item, GoldHeadline):
+            source += " · " + stamp(item.published_at)
         short = title if len(title) <= 145 else title[:142].rsplit(" ", 1)[0] + "…"
         lines.append(f'• <a href="{escape(url, quote=True)}">{escape(short)}</a> ({escape(source)})')
     if not chosen:
@@ -169,7 +172,7 @@ def brief(snapshot, current, kind, *, headlines=None, move=None):
     return "\n".join(lines)
 
 
-def queue_message(db, snapshot, current, kind, key, expires, *, headlines=None, move=None):
+def queue_message(db, snapshot, current, kind, key, expires, *, headlines=None, move=None, major_keys=None):
     chat = settings.telegram_chat_id.strip()
     identity = digest(["gold", kind, key, chat])
     if db.scalar(select(TelegramDelivery.id).where(TelegramDelivery.idempotency_key == identity)):
@@ -177,6 +180,9 @@ def queue_message(db, snapshot, current, kind, key, expires, *, headlines=None, 
     message = brief(snapshot, current, kind, headlines=headlines, move=move)
     db.add(TelegramDelivery(event_id=None, version=VERSION, idempotency_key=identity,
         notification={"kind": "GOLD", "brief_kind": kind, "snapshot_id": snapshot.id,
+                      "scheduled_times": settings.gold_alert_times_ist if kind in SLOT_NAMES else None,
+                      "major_event_policy": MAJOR_NEWS_POLICY if major_keys else None,
+                      "major_event_keys": major_keys or [], "prepared_at": utc(current).isoformat(),
                       "headline_ids": [row.id for row in (headlines or [])],
                       "expires_at": utc(expires).isoformat()},
         chat_id=chat, status="PENDING", attempts=0, next_attempt_at=utc(current),
@@ -184,33 +190,65 @@ def queue_message(db, snapshot, current, kind, key, expires, *, headlines=None, 
     return True
 
 
+def major_keys_overlap(left, right):
+    left_family, _, left_entities = left.partition(":")
+    right_family, _, right_entities = right.partition(":")
+    if left_family != right_family:
+        return False
+    return not left_entities or not right_entities or bool(set(left_entities.split(",")) & set(right_entities.split(",")))
+
+
+def pending_major_events(db, state, current):
+    if not settings.gold_major_event_alerts_enabled:
+        return []
+    cutoff = max(utc(state.started_at), utc(current) - timedelta(hours=6))
+    if settings.gold_major_event_alerts_since:
+        cutoff = max(cutoff, utc(settings.gold_major_event_alerts_since))
+    previous_keys = []
+    jobs = db.scalars(select(TelegramDelivery).where(TelegramDelivery.version == VERSION,
+        TelegramDelivery.created_at >= utc(current) - timedelta(days=1), TelegramDelivery.status != "SUPERSEDED"))
+    for job in jobs:
+        note = job.notification or {}
+        if note.get("major_event_policy") == MAJOR_NEWS_POLICY and note.get("prepared_at"):
+            prepared = utc(datetime.fromisoformat(note["prepared_at"]))
+            if utc(current) - timedelta(hours=6) <= prepared <= utc(current):
+                previous_keys.extend(note.get("major_event_keys", []))
+    rows = db.scalars(select(GoldHeadline).where(GoldHeadline.alerted_at.is_(None),
+        GoldHeadline.published_at >= cutoff, GoldHeadline.published_at <= utc(current),
+        GoldHeadline.first_seen_at >= cutoff).order_by(GoldHeadline.published_at).limit(100))
+    selected = []
+    for row in rows:
+        key = major_event_key(row.title, row.source)
+        if key and not any(major_keys_overlap(key, existing) for existing in previous_keys):
+            selected.append((row, key))
+            previous_keys.append(key)
+            if len(selected) == 2:
+                break
+    return selected
+
+
 def enqueue_due(db, state, snapshot, current):
     if not settings.gold_monitor_enabled or not settings.telegram_enabled or not configured() or snapshot is None:
         return 0
     queued = 0
     daily_queued = False
+    major_events = pending_major_events(db, state, current)
+    major_rows = [row for row, key in major_events]
+    major_keys = [key for row, key in major_events]
     if (slot := active_slot(current)) and reportable(snapshot.prices, current):
-        daily_queued = queue_message(db, snapshot, current, slot["name"], f"{slot['date']}:{slot['name']}", slot["expires"])
+        daily_queued = queue_message(db, snapshot, current, slot["name"], f"{slot['date']}:{slot['name']}", slot["expires"],
+                                     headlines=major_rows or None, major_keys=major_keys)
         queued += int(daily_queued)
         if daily_queued:
-            for item in snapshot.analysis.get("drivers", [])[:2]:
-                row = db.get(GoldHeadline, item["headline_id"])
-                if row and row.important:
+            if major_rows:
+                for row in major_rows:
                     row.alerted_at = utc(current)
+            else:
+                for item in snapshot.analysis.get("drivers", [])[:2]:
+                    row = db.get(GoldHeadline, item["headline_id"])
+                    if row and row.important:
+                        row.alerted_at = utc(current)
             db.flush()
-    # The initial fetch establishes a baseline; never replay old feed archives.
-    headlines = list(db.scalars(select(GoldHeadline).where(
-        GoldHeadline.important.is_(True), GoldHeadline.alerted_at.is_(None),
-        GoldHeadline.published_at >= max(utc(state.started_at), utc(current) - timedelta(hours=6)),
-        GoldHeadline.published_at <= utc(current))
-        .order_by(GoldHeadline.published_at.desc()).limit(2)))
-    if headlines:
-        expires = min(utc(current) + timedelta(hours=2), min(utc(row.published_at) for row in headlines) + timedelta(hours=6))
-        if queue_message(db, snapshot, current, "news", ":".join(sorted(row.identity for row in headlines)),
-                         expires, headlines=headlines):
-            queued += 1
-            for row in headlines:
-                row.alerted_at = utc(current)
     quote = prices_view(snapshot.prices, current)["global"]
     if quote and quote["freshness"] == "FRESH":
         value = Decimal(quote["usd_per_oz"])
@@ -221,9 +259,20 @@ def enqueue_due(db, state, snapshot, current):
             cooldown = state.last_move_alert_at is None or utc(current) - utc(state.last_move_alert_at) >= timedelta(minutes=settings.gold_move_cooldown_minutes)
             if abs(change) >= Decimal(str(settings.gold_price_move_pct)) and cooldown:
                 move = {"pct": change, "since": state.move_anchor_at}
-                if queue_message(db, snapshot, current, "move", str(snapshot.id), utc(current) + timedelta(minutes=45), move=move):
+                if queue_message(db, snapshot, current, "move", str(snapshot.id), utc(current) + timedelta(minutes=45),
+                                 move=move, headlines=major_rows or None, major_keys=major_keys):
                     queued += 1
                     state.move_anchor, state.move_anchor_at, state.last_move_alert_at = value, utc(current), utc(current)
+                    for row in major_rows:
+                        row.alerted_at = utc(current)
+                    major_events = []
+    if major_events and not daily_queued:
+        expires = min(utc(current) + timedelta(hours=2), min(utc(row.published_at) for row in major_rows) + timedelta(hours=6))
+        if queue_message(db, snapshot, current, "major_news", ":".join(row.identity for row in major_rows), expires,
+                         headlines=major_rows, major_keys=major_keys):
+            queued += 1
+            for row in major_rows:
+                row.alerted_at = utc(current)
     return queued
 
 
@@ -317,6 +366,23 @@ def validate_delivery(db, job, current):
     note = job.notification
     if utc(datetime.fromisoformat(note["expires_at"])) <= utc(current):
         return "Gold brief expired"
+    if note["brief_kind"] == "news":
+        return "Separate gold news alerts are disabled"
+    if note["brief_kind"] == "major_news":
+        if not settings.gold_major_event_alerts_enabled or note.get("major_event_policy") != MAJOR_NEWS_POLICY:
+            return "Gold major-event alert policy is inactive"
+        rows = [db.get(GoldHeadline, identity) for identity in note.get("headline_ids", [])]
+        cutoff = utc(current) - timedelta(hours=6)
+        if settings.gold_major_event_alerts_since:
+            cutoff = max(cutoff, utc(settings.gold_major_event_alerts_since))
+        if not rows or any(row is None or not cutoff <= utc(row.published_at) <= utc(current) or
+                           not major_event_key(row.title, row.source) for row in rows):
+            return "Gold event no longer qualifies as fresh major news"
+    if note["brief_kind"] in {"morning", "noon", "evening"}:
+        slot = active_slot(current)
+        if (note["brief_kind"] not in SLOT_NAMES or note.get("scheduled_times") != settings.gold_alert_times_ist or
+                slot is None or slot["name"] != note["brief_kind"]):
+            return "Gold alert belongs to an inactive schedule"
     snapshot = db.get(GoldSnapshot, note["snapshot_id"])
     if snapshot is None:
         return "Gold snapshot is no longer available"
@@ -346,6 +412,7 @@ def dashboard(db, *, current=None):
             "headlines": [headline_view(row) for row in recent_headlines(db, current)],
             "history": list(reversed(list(history.values()))),
             "status": {"enabled": settings.gold_monitor_enabled,
+                "major_event_alerts_enabled": settings.gold_major_event_alerts_enabled,
                 "telegram_connected": settings.telegram_enabled and configured(),
                 "last_attempt_at": state.last_attempt_at if state else None,
                 "last_success_at": state.last_success_at if state else None,

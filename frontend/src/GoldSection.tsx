@@ -71,6 +71,7 @@ type GoldResponse = {
   history: { recorded_on: string; fetched_at: string; prices: Prices }[];
   status: {
     enabled: boolean;
+    major_event_alerts_enabled?: boolean;
     telegram_connected: boolean;
     last_refresh_at: string | null;
     last_success_at: string | null;
@@ -446,7 +447,7 @@ function GoldView({ compact = false }: { compact?: boolean }) {
                 </article>
                 <article className="gold-alert-plan">
                   <p className="eyebrow">YOUR TELEGRAM ROUTINE</p>
-                  <h3>Three daily updates</h3>
+                  <h3>Two daily updates</h3>
                   <p className="muted">
                     {data.status.enabled
                       ? "Monitoring enabled"
@@ -479,13 +480,19 @@ function GoldView({ compact = false }: { compact?: boolean }) {
                     })}
                   </div>
                   <div className="gold-material">
-                    <strong>Important updates between briefs</strong>
+                    <strong>
+                      {data.status.major_event_alerts_enabled
+                        ? "Major events and large price moves"
+                        : "Large price moves between briefs"}
+                    </strong>
                     <p>
-                      Gold and policy news is checked every{" "}
-                      {data.status.poll_minutes} minutes. New material headlines
-                      and global price moves of at least{" "}
+                      Prices and news are checked every {data.status.poll_minutes}{" "}
+                      minutes. Global gold price moves of at least{" "}
                       {data.status.move_threshold_pct}% can trigger an extra
-                      alert. Repeated stories are filtered.
+                      alert.{" "}
+                      {data.status.major_event_alerts_enabled
+                        ? "Major reported policy decisions, economic-data surprises and geopolitical events can also trigger alerts. Routine headlines stay in the daily briefs."
+                        : "News is included in the daily briefs."}
                     </p>
                   </div>
                   <p className="gold-check-time">

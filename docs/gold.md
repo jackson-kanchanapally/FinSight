@@ -6,11 +6,10 @@ The daily Telegram routine uses **Asia/Kolkata**:
 
 | Brief | Time | Catch-up window |
 | --- | --- | --- |
-| Morning prices, news and outlook | 10:45 am | Until 11:00 am |
-| Noon update | 1:00 pm | Until 2:00 pm |
-| Late evening update | 9:00 pm | Until 10:30 pm |
+| Morning prices, news and outlook | 11:00 am | Until 11:30 am |
+| Evening update | 5:00 pm | Until 6:00 pm |
 
-The scheduler checks every five minutes. Sources are normally refreshed every 15 minutes, with a fresh pass when a daily brief becomes due. A missed brief is not sent after its catch-up window. Each date/time/chat combination is queued once. The existing Telegram worker stores receipts, retries recoverable failures, and does not replay uncertain sends.
+The scheduler checks on each clock minute. Sources are normally refreshed every 15 minutes, with a fresh pass when a daily brief becomes due. A missed brief is not sent after its catch-up window. Each date/time/chat combination is queued once. The existing Telegram worker stores receipts, retries recoverable failures, and does not replay uncertain sends. Pending news-only alerts and messages prepared under an older schedule are superseded before delivery.
 
 Almonds and PostgreSQL must be running and the Mac must be awake. This uses the local application's scheduler, with no cloud wake-up service. Telegram must already be connected and enabled. Pausing gold monitoring also prevents pending gold messages from being sent.
 
@@ -24,28 +23,33 @@ The single retail page contains both location entries. It is cached for an hour 
 
 ## News and important updates
 
-The monitor reads [FXStreet's public news RSS](https://www.fxstreet.com/rss/news) for gold/XAU headlines and the [Federal Reserve monetary policy RSS](https://www.federalreserve.gov/feeds/press_monetary.xml). The dashboard covers the past 24 hours. This is coverage of those feeds, rather than an exhaustive global newswire.
+The monitor reads [FXStreet's public news RSS](https://www.fxstreet.com/rss/news) for gold/XAU headlines, the [Federal Reserve monetary policy RSS](https://www.federalreserve.gov/feeds/press_monetary.xml), and [BBC World RSS](https://feeds.bbci.co.uk/news/world/rss.xml) for qualifying major developments. The dashboard covers the past 24 hours. This is coverage of those feeds, rather than an exhaustive global newswire.
 
 The explanation follows **what was reported → why it may matter → what could change next**. Dated headlines and their short published summaries identify reported dollar, rates, yield, buying/selling or uncertainty factors. Each factor gets a simple mechanism: for example, gold pays no interest, so higher expected US rates can make interest-paying assets more attractive. This reflects the [World Gold Council's broader driver framework](https://www.gold.org/goldhub/research/gold-market-commentary-july-2026), while retaining uncertainty about the particular move. Inflation is explicitly two-sided; it is never automatically labelled positive or negative. Conditional predictions, negated moves and failed ceasefires are not treated as confirmed positive/negative developments in the opposite direction.
 
 Conflicting reported moves and mechanisms yield a mixed read. When a report only says that gold rose or fell, the explanation says that the cause is not established. Next steps use conditional scenarios tied to the identified factor, with no numerical price forecast. India and Hyderabad get a separate local context: a measured rise in USD/INR indicates a weaker rupee that can raise the INR cost of imported gold, while a fall indicates a stronger rupee that can ease it, all else equal. This does not attribute a published retail-rate move to FX; local premiums and other factors remain unmeasured. Old or missing FX readings cannot establish current rupee direction. Global stored-quote changes and previous-day retail changes are labelled as different comparison periods.
 
-Extra Telegram alerts cover new material gold headlines (policy, inflation, jobs, dollar/yields, geopolitical events or major price records/moves), new official Fed policy releases, and a **1% global price change** from the last notified/initial reference quote. Price-move alerts have a 60-minute cooldown. Scheduled price briefs reset that reference. Initial news collection establishes a baseline and does not replay an old news archive. Material news must be newly published after monitoring began and no more than six hours old. Repeated headline edits with changed price numbers share an identity within the source day. News already included in a scheduled brief is not sent again separately.
+The regular **11 am and 5 pm** briefs always arrive when usable price data is available. Extra alerts can be triggered by a **global USD gold-price change of at least 1% in either direction** from the last notified/initial reference quote, or a **new major reported event**. Price-move alerts retain a 60-minute cooldown, and scheduled briefs reset the price reference.
 
-Daily, news and price-move messages expire before delivery. A late queue worker supersedes expired messages. Manual dashboard refresh collects prices and news without sending a test or extra scheduled brief; the normal monitor evaluates pending material updates on its next cycle.
+The major-event filter recognizes reported Fed policy decisions/statements, significant US inflation or jobs surprises, major conflict escalations and ceasefire agreements/breakdowns, Indian gold-import-duty changes, and central-bank gold-buying policy shifts. It excludes routine dollar/yield commentary, price-only headlines, speeches/minutes, companion Fed implementation notes, forecasts, previews, rumours and conditional/negated events. It uses conservative headline rules; it is not a comprehensive event wire or independent verification of reporting. A major event can alert even if gold has not yet moved 1%.
+
+Events must be newly published since monitoring/policy enablement, first seen after that cutoff, and no more than six hours old. The first live upgrade records an enablement cutoff in the private environment without copying or printing its credentials. Closely related stories from different sources share an event family and overlapping geographic scope for six hours; ceasefire agreements and breakdowns are distinct events. This limits repeated coverage while allowing separate conflicts. Up to two major events are shown per alert, and only shown items are marked notified. A simultaneous price move or scheduled brief includes those events in the same message. Routine news remains in the dashboard and scheduled briefs. Detection follows the normal 15-minute source-refresh cycle.
+
+Daily, major-event and price-move messages expire before delivery. A late queue worker supersedes expired messages. Manual dashboard refresh collects prices and news without sending a test or extra scheduled brief; the normal monitor evaluates new major events and large price moves on its next cycle.
 
 ## Settings and API
 
 ```dotenv
 GOLD_MONITOR_ENABLED=true
 GOLD_POLL_MINUTES=15
-GOLD_ALERT_TIMES_IST=10:45,13:00,21:00
+GOLD_ALERT_TIMES_IST=11:00,17:00
 GOLD_PRICE_MOVE_PCT=1
 GOLD_MOVE_COOLDOWN_MINUTES=60
 GOLD_SOURCE_TIMEOUT_SECONDS=15
+GOLD_MAJOR_EVENT_ALERTS_ENABLED=true
 ```
 
-No additional paid data key is needed. Telegram uses the existing backend bot configuration. Alert times must be three distinct increasing HH:MM values in IST. Source failures and unavailable news remain visible on the dashboard.
+No additional paid data key is needed. Telegram uses the existing backend bot configuration. Alert times must be two distinct increasing HH:MM values in IST. Source failures and unavailable news remain visible on the dashboard.
 
 - `GET /api/gold?version=2`: global, India and Hyderabad quotes with separate freshness, current explanations, dated headlines, seven days of recorded daily snapshots, schedule and recent gold deliveries. Version 1 remains the default for already-open older dashboards: its historical `prices.india` field continues to mean Hyderabad, while `prices.national` exposes India. This avoids relabelling prices before an older browser reloads.
 - `POST /api/gold/refresh`: collect current evidence; no direct send. Returns `OK`, `PARTIAL`, `FAILED`, `CACHED` (checked within the last minute), or `BUSY`.

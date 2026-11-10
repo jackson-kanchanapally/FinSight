@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import time
@@ -49,6 +50,8 @@ def prepare():
     installed, ours = (RUNTIME / relative).read_text(), (ROOT / relative).read_text()
     installed = replace_once(installed, "from pydantic import Field, SecretStr\n",
                             "from pydantic import Field, SecretStr, field_validator\n")
+    if not re.search(r"^from datetime import datetime$", installed, re.MULTILINE):
+        installed = replace_once(installed, "from pathlib import Path\n", "from pathlib import Path\nfrom datetime import datetime\n")
     fields = "    gold_monitor_enabled:" + ours.split("    gold_monitor_enabled:", 1)[1].split("    telegram_bot_token:", 1)[0]
     installed = replace_once(installed, "    telegram_bot_token:", fields + "    telegram_bot_token:")
     validator = '    @field_validator("gold_alert_times_ist")' + ours.split('    @field_validator("gold_alert_times_ist")', 1)[1].split("    @property", 1)[0]
@@ -106,17 +109,36 @@ def prepare_incremental():
     shutil.copy2(RUNTIME / "backend/alembic.ini", STAGE / "backend/alembic.ini")
     for relative in NEW:
         shutil.copy2(ROOT / relative, STAGE / relative)
+    relative = "backend/app/config.py"
+    installed, ours = (RUNTIME / relative).read_text(), (ROOT / relative).read_text()
+    if not re.search(r"^from datetime import datetime$", installed, re.MULTILINE):
+        installed = replace_once(installed, "from pathlib import Path\n", "from pathlib import Path\nfrom datetime import datetime\n")
+    end = "    market_briefs_enabled:" if "    market_briefs_enabled:" in installed else "    telegram_bot_token:"
+    old_fields = "    gold_monitor_enabled:" + installed.split("    gold_monitor_enabled:", 1)[1].split(end, 1)[0]
+    fields = "    gold_monitor_enabled:" + ours.split("    gold_monitor_enabled:", 1)[1].split("    market_briefs_enabled:", 1)[0]
+    installed = replace_once(installed, old_fields, fields)
+    start = '    @field_validator("gold_alert_times_ist")'
+    end = '    @field_validator("market_brief_times_ist")' if '    @field_validator("market_brief_times_ist")' in installed else "    @property"
+    old_validator = start + installed.split(start, 1)[1].split(end, 1)[0]
+    validator = start + ours.split(start, 1)[1].split('    @field_validator("market_brief_times_ist")', 1)[0]
+    (STAGE / relative).write_text(replace_once(installed, old_validator, validator))
+    relative = "backend/app/main.py"
+    installed, ours = (RUNTIME / relative).read_text(), (ROOT / relative).read_text()
+    start, end = "        if settings.gold_monitor_enabled:", "        if settings.ipo_monitor_enabled:"
+    old_scheduler = start + installed.split(start, 1)[1].split(end, 1)[0]
+    scheduler = start + ours.split(start, 1)[1].split(end, 1)[0]
+    (STAGE / relative).write_text(replace_once(installed, old_scheduler, scheduler))
     bundle = ROOT / "frontend/dist"
     if not any("Indian rate location" in path.read_text() for path in (bundle / "assets").glob("*.js")):
         raise RuntimeError("Build the India/Hyderabad frontend before preparing the update")
     if (STAGE / "frontend/dist").exists():
         shutil.rmtree(STAGE / "frontend/dist")
     shutil.copytree(bundle, STAGE / "frontend/dist")
-    files = NEW + [str(path.relative_to(STAGE)) for path in (STAGE / "frontend/dist").rglob("*") if path.is_file()]
+    files = NEW + ["backend/app/config.py", "backend/app/main.py"] + [str(path.relative_to(STAGE)) for path in (STAGE / "frontend/dist").rglob("*") if path.is_file()]
     manifest = {"original": {name: fingerprint(RUNTIME / name) for name in files},
                 "prepared": {name: fingerprint(STAGE / name) for name in files}}
     (STAGE / "gold-overlay.json").write_text(json.dumps(manifest, indent=2))
-    print(f"Prepared {len(files)} incremental gold files at {STAGE}; existing integration files retained")
+    print(f"Prepared {len(files)} incremental gold files at {STAGE}; installed Codex/inbox and market-review settings retained")
 
 
 def wait_for_gold():
@@ -149,6 +171,19 @@ def install():
             shutil.copy2(RUNTIME / relative, target)
     backup.mkdir(parents=True, exist_ok=True)
     shutil.copy2(STAGE / "gold-overlay.json", backup / "gold-overlay.json")
+    # Begin the new event policy now rather than replaying earlier feed history.
+    config_path = "backend/app/config.py"
+    if ("gold_major_event_alerts_since" in (STAGE / config_path).read_text() and
+            "gold_major_event_alerts_since" not in (RUNTIME / config_path).read_text()):
+        environment = RUNTIME / ".env"
+        content = environment.read_text()
+        if not re.search(r"^\s*(?:export\s+)?GOLD_MAJOR_EVENT_ALERTS_SINCE\s*=", content, re.MULTILINE):
+            cutoff = datetime.now(timezone.utc).isoformat()
+            descriptor = os.open(environment, os.O_WRONLY | os.O_APPEND)
+            try:
+                os.write(descriptor, ("\nGOLD_MAJOR_EVENT_ALERTS_SINCE=" + cutoff + "\n").encode())
+            finally:
+                os.close(descriptor)
     service = f"gui/{os.getuid()}/com.almonds.portfolio"
     definition = Path.home() / "Library/LaunchAgents/com.almonds.portfolio.plist"
     subprocess.run(["launchctl", "bootout", service], check=True, capture_output=True)

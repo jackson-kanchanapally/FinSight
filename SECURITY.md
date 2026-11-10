@@ -1,15 +1,30 @@
 # Security policy
 
-## Supported versions
-
-Security fixes are made against the latest version on the default branch. No other release line is currently maintained.
-
 ## Reporting a vulnerability
 
-Please do not report vulnerabilities in a public issue. Use GitHub's **Report a vulnerability** option in the repository Security tab when private vulnerability reporting is enabled. If it is unavailable, contact the maintainers privately before disclosing the issue publicly.
+Do not post exploit details or sensitive information in a public issue, pull request, or discussion. Open the [repository's Security tab](https://github.com/jackson-kanchanapally/FinSight/security) and use **Report a vulnerability** if private vulnerability reporting is enabled. The presence of this file does not enable that GitHub setting.
 
-Include the affected version or commit, impact, and steps to reproduce. Do not include real credentials, portfolio records, or other personal data in the report.
+If that option is unavailable, use a private contact route published on the [repository owner's GitHub profile](https://github.com/jackson-kanchanapally). If no private route is published, [open an issue](https://github.com/jackson-kanchanapally/FinSight/issues) asking only how to send a private security report; omit the affected endpoint, exploit, and impact details until a private route is established. This project does not publish a dedicated security email address or a guaranteed response time.
 
-## Deployment note
+A useful private report contains:
 
-This project is intended for trusted local use by default. Some API endpoints are unauthenticated. Review the deployment and access-control requirements in the README before exposing an instance to a network.
+- The affected commit or version, operating system, and deployment configuration.
+- A description of the impact and the access an attacker needs.
+- Minimal reproduction steps using synthetic data.
+- Any suggested fix or mitigation, if available.
+
+Do not include real bot tokens, database credentials, signed report links, portfolio records, or downloaded private documents. Coordinate disclosure with the maintainers so a fix or mitigation can be assessed before exploit details are made public.
+
+## Supported code
+
+Security fixes target the current default branch. No separate supported release branches or security response service are declared. When reporting an issue, include the exact commit so maintainers can identify the affected code.
+
+## Deployment boundaries
+
+Almonds is designed for trusted local use. Several API endpoints are unauthenticated and can read or change stored research and portfolio data. Keep the API, PostgreSQL, Qdrant, and Ollama on trusted interfaces. Running the application behind an internet-accessible reverse proxy requires an independent access-control and deployment review; the development setup does not provide multi-user isolation.
+
+Telegram credentials belong on the backend. Optional signed earnings-report links grant access to the linked report until expiry; treat those links as sensitive. Enabling public report links is separate from exposing the rest of the API.
+
+Keep `.env`, database backups, uploaded documents, logs, and generated reports private. If a credential is exposed, revoke or rotate it with its issuing service; deleting it from the current working tree does not remove it from Git history or previously shared copies.
+
+See the [self-hosting guide](docs/self-hosting.md) and [configuration reference](docs/configuration.md) for setup and operational details.

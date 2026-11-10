@@ -1,10 +1,10 @@
 # Financial extraction and validation
 
-Phase 4 uses stored official financial-result PDFs. It calls neither a secondary-data service nor an AI model. The [ESDS Q1 FY27 results PDF](https://www.esds.co.in/assets/images/investor-relations/Announcements/ESDS_BM_Outcome_BSE_NSE_Intimation.pdf) is the first integration case. Source access is reviewed in [data-sources.md](data-sources.md).
+Financial extraction uses stored financial-result PDFs. It calls neither a secondary-data service nor an AI model. Live official filings and eligible manual uploads can be processed; manual uploads require the supported issuer and table checks, and table validation remains separate from source-authenticity verification. The [user guide](user-guide.md#4-extract-and-inspect-financial-statements) describes the current workflow. The [ESDS Q1 FY27 results PDF](https://www.esds.co.in/assets/images/investor-relations/Announcements/ESDS_BM_Outcome_BSE_NSE_Intimation.pdf) was the first integration case. Source access is reviewed in [data-sources.md](data-sources.md).
 
 ## Data path
 
-    LIVE financial-results event + processed, SHA-256 checked PDF
+    LIVE or eligible MANUAL financial-results event + processed, SHA-256 checked PDF
       → detect financial-statement pages
       → read explicit scope, column dates, units, labels and word coordinates
       → parse individual cells without guessing damaged OCR text
@@ -60,7 +60,7 @@ The filing also has columns that its text layer does not read reliably. The cons
 
 ## Run and inspect
 
-After running Alembic upgrade head, process an existing live financial-results event:
+After running Alembic upgrade head, process an existing eligible financial-results event:
 
     curl -X POST http://127.0.0.1:8000/api/financials/process/1
     curl http://127.0.0.1:8000/api/companies/ESDS/financials/latest
