@@ -67,12 +67,17 @@ async def call_bot(method: str, payload: dict | None = None, *, transport=None):
                             uncertain=method == "sendMessage") from None
 
 
-async def send_message(chat_id: str, message: str, *, transport=None, parse_mode=None) -> int:
+async def send_message(chat_id: str, message: str, *, transport=None, parse_mode=None,
+                       reply_to_message_id: int | None = None) -> int:
     payload = {
         "chat_id": chat_id,
         "text": message,
         "link_preview_options": {"is_disabled": True},
     }
+    if reply_to_message_id is not None:
+        # Thread under the original alert; still deliver if it was deleted.
+        payload["reply_parameters"] = {"message_id": int(reply_to_message_id),
+                                       "allow_sending_without_reply": True}
     if parse_mode is not None:
         if parse_mode != "HTML":
             raise ValueError("Unsupported Telegram parse mode")

@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.event import CompanyEvent, EventType, PublicationPrecision
+from app.models.event import CompanyEvent, Document, EventType, PublicationPrecision
 from app.models.financial import (
     FactStatus,
     FinancialFact,
@@ -223,6 +223,16 @@ def _ttm_eps(
             formula,
             "Four consecutive validated quarters or a verified annual bridge are required",
         )
+    earliest = min(period.period_start for period in chain)
+    eps = [_fact(period, MetricCode.DILUTED_EPS) for period in chain]
+    pat = [_fact(period, MetricCode.PAT) for period in chain]
+    from app.services.corporate_actions import share_basis
+
+    basis = share_basis(db, chain[0].company_id)
+    if basis is not None and basis.covers(earliest, market_date):
+        # NSE corporate actions confirm the split/bonus history for this window, so
+        # each EPS can be restated from its filing's share basis to the market date's.
+        return _ttm_eps_on_basis(db, chain, eps, pat, market_date, bridge, formula, basis)
     actions = list(
         db.scalars(
             select(CompanyEvent).where(
@@ -231,7 +241,6 @@ def _ttm_eps(
             )
         )
     )
-    earliest = min(period.period_start for period in chain)
     if any(
         earliest
         <= (
@@ -251,8 +260,47 @@ def _ttm_eps(
             "A split or bonus event requires an adjusted EPS history",
             "NEEDS_REVIEW",
         )
-    eps = [_fact(period, MetricCode.DILUTED_EPS) for period in chain]
-    pat = [_fact(period, MetricCode.PAT) for period in chain]
+    return _ttm_eps_checked(chain, eps, pat, [Decimal(1)] * len(eps), bridge, formula)
+
+
+def _basis_date(db: Session, fact: FinancialFact, period: FinancialPeriod) -> date | None:
+    """Date of the filing a fact came from: its EPS is on that day's share basis."""
+    document = db.get(Document, fact.source_document_id)
+    event_id = document.event_id if document is not None else period.source_event_id
+    event = db.get(CompanyEvent, event_id) if event_id else None
+    if event is None:
+        return None
+    published = event.published_at if event.published_at.tzinfo else event.published_at.replace(tzinfo=INDIA)
+    return published.astimezone(INDIA).date()
+
+
+def _ttm_eps_on_basis(db, chain, eps, pat, market_date, bridge, formula, basis) -> dict:
+    factors = []
+    applied = []
+    for fact, period in zip(eps, chain):
+        if fact is None:
+            factors.append(Decimal(1))
+            continue
+        published = _basis_date(db, fact, period)
+        if published is None:
+            if basis.between(period.period_start, market_date):
+                return _detail(None, [], formula,
+                               "A split or bonus occurred but the EPS filing date is unknown", "NEEDS_REVIEW")
+            factors.append(Decimal(1))
+            continue
+        factors.append(basis.factor_between(published, market_date))
+        applied.extend(basis.between(published, market_date))
+    result = _ttm_eps_checked(chain, eps, pat, factors, bridge, formula)
+    if applied and result["value"] is not None:
+        unique = sorted(set(applied), key=lambda a: a.ex_date)
+        result["formula"] += (
+            "; EPS restated to the " + market_date.isoformat()
+            + " share basis for NSE " + basis.describe(unique)
+        )
+    return result
+
+
+def _ttm_eps_checked(chain, eps, pat, factors, bridge, formula) -> dict:
     if any(fact is None or fact.unit != FinancialUnit.INR_PER_SHARE for fact in eps):
         return _detail(
             None,
@@ -272,7 +320,8 @@ def _ttm_eps(
             "Nonpositive quarterly PAT or EPS prevents a share-count check",
             "NEEDS_REVIEW",
         )
-    implied = [b.value * ONE_CRORE / a.value for a, b in zip(eps, pat)]
+    values = [fact.value * factor for fact, factor in zip(eps, factors)]
+    implied = [b.value * ONE_CRORE / a for a, b in zip(values, pat)]
     if max(implied) / min(implied) > Decimal("1.10"):
         return _detail(
             None,
@@ -281,11 +330,7 @@ def _ttm_eps(
             "Implied diluted share counts vary by more than 10%; review EPS comparability",
             "NEEDS_REVIEW",
         )
-    value = (
-        eps[0].value + eps[1].value - eps[2].value
-        if bridge
-        else sum((fact.value for fact in eps), Decimal(0))
-    )
+    value = values[0] + values[1] - values[2] if bridge else sum(values, Decimal(0))
     if value <= 0:
         return _detail(
             None,
@@ -664,6 +709,7 @@ def valuation_change(
     new: ValuationSnapshot,
     old_market: MarketSnapshot,
     new_market: MarketSnapshot,
+    basis=None,
 ) -> dict:
     if (
         old.company_id != new.company_id
@@ -676,15 +722,32 @@ def valuation_change(
         or min(old.ttm_eps, new.ttm_eps, old.pe_ttm, new.pe_ttm) <= 0
     ):
         raise ValueError("VALUATION_CHANGE_NOT_COMPARABLE")
-    price_growth = (new_market.close_price / old_market.close_price - 1) * HUNDRED
-    eps_growth = (new.ttm_eps / old.ttm_eps - 1) * HUNDRED
+    # Per-share values on the old date are restated to the new date's share basis
+    # when NSE confirms a split or bonus in between; P/E needs no restatement.
+    factor = Decimal(1)
+    adjustment = None
+    if basis is not None and basis.covers(old_market.as_of_date, new_market.as_of_date):
+        events = basis.between(old_market.as_of_date, new_market.as_of_date)
+        if events:
+            factor = basis.factor_between(old_market.as_of_date, new_market.as_of_date)
+            adjustment = {
+                "factor": _number(factor),
+                "events": basis.describe(events),
+                "raw_old_price": _number(old_market.close_price),
+                "raw_old_eps": _number(old.ttm_eps),
+            }
+    old_price = old_market.close_price * factor
+    old_eps = old.ttm_eps * factor
+    price_growth = (new_market.close_price / old_price - 1) * HUNDRED
+    eps_growth = (new.ttm_eps / old_eps - 1) * HUNDRED
     pe_growth = (new.pe_ttm / old.pe_ttm - 1) * HUNDRED
     return {
         "old_date": old_market.as_of_date.isoformat(),
         "new_date": new_market.as_of_date.isoformat(),
-        "old_price": _number(old_market.close_price),
+        "share_basis_adjustment": adjustment,
+        "old_price": _number(old_price),
         "new_price": _number(new_market.close_price),
-        "old_eps": _number(old.ttm_eps),
+        "old_eps": _number(old_eps),
         "new_eps": _number(new.ttm_eps),
         "old_pe": _number(old.pe_ttm),
         "new_pe": _number(new.pe_ttm),

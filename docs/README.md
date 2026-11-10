@@ -11,6 +11,7 @@ Start with the [project README](../README.md) for installation and a feature ove
 | [Self-hosting](self-hosting.md) | Built dashboard, service operation, upgrades, backups, and troubleshooting |
 | [Development](development.md) | Local servers, isolated tests, browser checks, migrations, and CI |
 | [Telegram](telegram.md) | Bot connection, company alerts, receipts, retries, and publication filters |
+| [NSE market data](nse-mcp.md) | Official NSE MCP: Markets page, live holdings value, stock research, symbol check, and limits |
 | [Market briefs](market-briefs.md) | Pre-open and updated morning briefs, noon context, closing reviews, and scoring limits |
 | [IPOs](ipos.md) | Discovery, sources, screening, weekly and pre-opening alerts |
 | [Gold](gold.md) | Global and India/Hyderabad prices, news, source dates, and alert rules |

@@ -80,6 +80,21 @@ Start Qdrant with `docker compose up -d qdrant`, pull the embedding model with `
 | `MARKET_LENS_TOLERANCE_PCT` | `5` | Comparison tolerance for imported reference metrics. |
 | `ALPHA_VANTAGE_API_KEY` | Empty | Optional secondary provider credential. |
 
+## NSE market data (official MCP)
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `NSE_MCP_ENABLED` | `true` | Markets page, live holdings value, add-company symbol check, and market-brief index fallback. |
+| `NSE_MCP_BHAVCOPY_URL` / `NSE_MCP_LIVE_URL` | NSE's published endpoints | Override only if NSE moves them; HTTPS required. |
+| `NSE_MCP_TIMEOUT_SECONDS` | `12` | Per-request timeout. |
+| `NSE_MCP_LIVE_CACHE_SECONDS` / `NSE_MCP_EOD_CACHE_MINUTES` | `60` / `30` | Result reuse windows for live and Bhavcopy data. |
+| `NSE_MCP_MAX_CONCURRENCY` | `4` | Concurrent NSE requests per process. |
+| `PRICE_REACTIONS_ENABLED` | `true` | Background NSE corporate-action sync (share basis for valuation) and event price-reaction measurement. |
+| `PRICE_REACTION_POLL_MINUTES` / `PRICE_REACTION_BATCH_SIZE` | `30` / `150` | Job interval and maximum events per run. |
+| `PRICE_REACTION_EVENT_TYPES` | Material types | Comma-separated event types measured for price reaction. |
+
+See [NSE market data](nse-mcp.md) for what each view shows and its limits.
+
 Manual observations must retain their dates and sources. Provider coverage and data-use terms apply independently of the application's MIT license. See [market valuation](market-valuation.md).
 
 ## Telegram and report links
@@ -92,6 +107,10 @@ Manual observations must retain their dates and sources. Provider coverage and d
 | `TELEGRAM_POLL_SECONDS` | `5` | Delivery-worker cadence. |
 | `TELEGRAM_MAX_EVENT_AGE_HOURS` | `48` | Maximum disclosure publication age for automatic alerts. |
 | `TELEGRAM_IMPORTANT_EVENT_TYPES` | Approved investor-relevant event list | Narrow the approved categories sent automatically. The exact default list is in the example file. |
+| `TELEGRAM_HOLDINGS_IN_CLOSE_BRIEF` | `true` | Add a **Your holdings** section to the 4 PM closing brief (needs NSE MCP). |
+| `TELEGRAM_VOLUME_SPIKE_RATIO` | `2.0` | Volume multiple of the 30-session average that the closing brief flags. |
+| `TELEGRAM_REACTION_FOLLOWUPS` / `TELEGRAM_REACTION_FOLLOWUP_SESSIONS` | `true` / `5` | Reply under a held company's results alert after 1, 5 or 20 sessions with its move vs the Nifty 50. |
+| `TELEGRAM_BIG_MOVE_ALERTS` / `TELEGRAM_BIG_MOVE_PCT` | `false` / `7` | Intraday alert when a holding moves this many points against the Nifty 50; once per holding, direction and day. |
 | `REPORT_PUBLIC_BASE_URL` | Empty | Optional HTTPS origin for restricted remote earnings-report links. |
 | `REPORT_ACCESS_SECRET` | Empty | Separate secret of at least 32 characters for report-link signatures. |
 | `REPORT_LINK_TTL_SECONDS` | `86400` | Signed-link lifetime; 300–86400 seconds. |

@@ -23,6 +23,8 @@ from app.api import (
     ipos,
     gold,
     market_briefs,
+    nse,
+    market_events,
 )
 from app.config import settings
 from app.database import SessionLocal
@@ -101,6 +103,22 @@ async def scheduled_gold():
         logger.warning("gold.scheduler_failed error=%s", type(exc).__name__)
 
 
+async def scheduled_price_reactions():
+    from app.services.price_reactions import run_due
+    try:
+        await run_due(SessionLocal)
+    except Exception as exc:
+        logger.warning("price_reactions.scheduler_failed error=%s", type(exc).__name__)
+
+
+async def scheduled_big_moves():
+    from app.services.holdings_alerts import run_big_moves
+    try:
+        await run_big_moves(SessionLocal)
+    except Exception as exc:
+        logger.warning("holdings.big_move_check_failed error=%s", type(exc).__name__)
+
+
 async def scheduled_market_briefs():
     from app.services.market_briefs import run_due
     try:
@@ -112,13 +130,22 @@ async def scheduled_market_briefs():
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     scheduler = None
-    if settings.research_automation_enabled or settings.event_monitor_enabled or settings.market_data_enabled or settings.telegram_enabled or settings.ipo_monitor_enabled or settings.gold_monitor_enabled or settings.market_briefs_enabled:
+    if settings.research_automation_enabled or settings.event_monitor_enabled or settings.market_data_enabled or settings.telegram_enabled or settings.ipo_monitor_enabled or settings.gold_monitor_enabled or settings.market_briefs_enabled or (settings.price_reactions_enabled and settings.nse_mcp_enabled):
         scheduler = AsyncIOScheduler(timezone="UTC")
         if settings.market_briefs_enabled:
             from datetime import datetime, timezone
             scheduler.add_job(scheduled_market_briefs, "cron", minute="*", timezone="Asia/Kolkata",
                               id="market_briefs", max_instances=1, coalesce=True,
                               next_run_time=datetime.now(timezone.utc))
+        if settings.telegram_big_move_alerts and settings.telegram_enabled and settings.nse_mcp_enabled:
+            scheduler.add_job(scheduled_big_moves, "cron", day_of_week="mon-fri", hour="9-15",
+                              minute="*/5", timezone="Asia/Kolkata", id="holding_big_moves",
+                              max_instances=1, coalesce=True)
+        if settings.price_reactions_enabled and settings.nse_mcp_enabled:
+            from datetime import datetime, timedelta, timezone
+            scheduler.add_job(scheduled_price_reactions, "interval", minutes=settings.price_reaction_poll_minutes,
+                              id="price_reactions", max_instances=1, coalesce=True,
+                              next_run_time=datetime.now(timezone.utc) + timedelta(seconds=90))
         if settings.gold_monitor_enabled:
             from datetime import datetime, timezone
             scheduler.add_job(scheduled_gold, "cron", minute="*", timezone="Asia/Kolkata",
@@ -163,6 +190,11 @@ async def lifespan(_app: FastAPI):
     finally:
         if scheduler:
             scheduler.shutdown(wait=False)
+        from app.market.nse_mcp import get_nse_mcp
+        try:
+            await get_nse_mcp().aclose()
+        except Exception:  # Closing a client bound to another loop is harmless.
+            pass
 
 
 app = FastAPI(
@@ -188,6 +220,8 @@ app.include_router(reports.router)
 app.include_router(ipos.router)
 app.include_router(gold.router)
 app.include_router(market_briefs.router)
+app.include_router(nse.router)
+app.include_router(market_events.router)
 
 
 @app.get("/health", tags=["health"])

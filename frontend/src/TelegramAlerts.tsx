@@ -8,6 +8,14 @@ type TelegramStatus = {
   last_sent_at: string | null;
   last_error: string | null;
   latest_ai_status: string | null;
+  alert_types?: {
+    holdings_in_close_brief: boolean;
+    reaction_followups: boolean;
+    reaction_followup_sessions: number;
+    big_move_alerts: boolean;
+    big_move_pct: number;
+    nse_mcp_enabled: boolean;
+  };
 };
 
 export function TelegramAlerts() {
@@ -53,6 +61,11 @@ export function TelegramAlerts() {
     <p className="events-intro">New portfolio disclosures arrive in your Telegram chat with a short AI thesis. Earnings alerts include source-backed financials, profit drivers, valuation, confidence and result freshness. When AI or secure remote report access is unavailable, the alert says so.</p>
     {status && <>
       {!connected && <p className="events-intro">Connect your personal bot using the local Telegram setup command, then restart Almonds.</p>}
+      {status.alert_types && <ul className="events-intro telegram-alert-types">
+        <li>Holdings in the 4 PM closing brief: <strong>{status.alert_types.holdings_in_close_brief && status.alert_types.nse_mcp_enabled ? "on" : "off"}</strong> (value, day change, 52-week extremes, volume spikes)</li>
+        <li>Reply under each results alert after {status.alert_types.reaction_followup_sessions} sessions, for holdings: <strong>{status.alert_types.reaction_followups && status.alert_types.nse_mcp_enabled ? "on" : "off"}</strong></li>
+        <li>Big-move alert when a holding moves ±{status.alert_types.big_move_pct} pts vs the Nifty 50: <strong>{status.alert_types.big_move_alerts && status.alert_types.nse_mcp_enabled ? "on" : "off"}</strong></li>
+      </ul>}
       <p className="events-intro">{status.counts.SENT || 0} sent · {waiting} queued · {status.counts.FAILED || 0} failed</p>
       {!!status.counts.UNCERTAIN && <p role="alert" className="event-error">{status.counts.UNCERTAIN} deliveries have an unknown outcome. Check your Telegram chat before requesting another version.</p>}
       {status.last_sent_at && <p className="events-intro">Last delivered: {new Date(status.last_sent_at).toLocaleString("en-IN")}</p>}

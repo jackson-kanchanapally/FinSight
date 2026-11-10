@@ -103,10 +103,13 @@ def quarterly_packet(context) -> tuple[str, list[str], int]:
         "history_coverage": selected.get("history_note"),
         "execution_summary": selected.get("execution_summary"),
         "valuation": valuation,
+        "market_reaction": original.get("market_reaction"),
         "research_gaps": {"evidence_id": "I_REVIEW", "items": report.get("research_gaps", [])[:4]},
         "evidence_rules": {
             "verified_fact": "Only facts/metrics with F, M or J IDs are observed results.",
             "management_claim": "S statements and K targets are disclosures, not verified outcomes.",
+            "market_reaction": "An X item is the measured share-price move after this filing versus the Nifty 50."
+                " Quote it only as what the market did; never as a cause or as proof of result quality.",
             "investor_interpretation": "Connect cited facts and claims conditionally; do not invent a new result or cause.",
             "causal_attribution": "Management explanations require attribution and an exact quote."
                 " A numeric PAT bridge can explain arithmetic contributions, not an operating cause.",
@@ -116,6 +119,7 @@ def quarterly_packet(context) -> tuple[str, list[str], int]:
         [row["evidence_id"] for row in facts + metrics + seasonality + statements + checkpoints + passages]
         + ["I_REVIEW"] + [row["evidence_id"] for row in valuation["scenarios"]]
         + [valuation["calculated_pe"]["evidence_id"]]
+        + [(original.get("market_reaction") or {}).get("evidence_id")]
         + report["earnings_quality"].get("evidence_ids", [])
         + report["results"].get("evidence_ids", [])
         + [key for row in selected.get("changes", []) for key in row.get("evidence_ids", [])]

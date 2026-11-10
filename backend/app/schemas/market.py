@@ -78,4 +78,7 @@ class MarketSnapshotRead(MarketSnapshotInput):
     low_price: Decimal | None = None
     volume: int | None = None
     peg_ratio: Decimal | None = None
+    # Close restated to the latest date's share basis using NSE splits/bonuses.
+    adjusted_close: Decimal | None = None
+    adjustment_factor: Decimal | None = None
     model_config = ConfigDict(from_attributes=True)

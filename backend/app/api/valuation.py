@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.services.corporate_actions import share_basis
 from app.database import get_db
 from app.market.service import latest_snapshot, market_history
 from app.market.valuation import recalculate, scenario, reverse_growth, valuation_change
@@ -371,7 +372,7 @@ def valuation_change_api(
     try:
         return {
             "status": "CALCULATED",
-            **valuation_change(old, new, old_market, new_market),
+            **valuation_change(old, new, old_market, new_market, share_basis(db, company.id)),
         }
     except ValueError:
         return {

@@ -67,3 +67,6 @@ def disable_background_research(monkeypatch):
     monkeypatch.setattr(settings, "ipo_monitor_enabled", False)
     monkeypatch.setattr(settings, "gold_monitor_enabled", False)
     monkeypatch.setattr(settings, "market_briefs_enabled", False)
+    # NSE MCP tests install a mock transport and enable it explicitly.
+    monkeypatch.setattr(settings, "nse_mcp_enabled", False)
+    monkeypatch.setattr(settings, "price_reactions_enabled", False)

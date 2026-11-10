@@ -23,6 +23,14 @@ import { FinancialsSection } from "./FinancialsView";
 import { CompanyMemory } from "./CompanyMemory";
 import { IPOsSection } from "./IPOsSection";
 import { GoldOverview, GoldSection } from "./GoldSection";
+import { MarketsSection } from "./MarketsSection";
+import {
+  nseApi,
+  signed,
+  tone,
+  useLivePortfolio,
+  type SymbolSearch,
+} from "./nseApi";
 
 type DashboardData = {
   companies: Company[];
@@ -203,6 +211,20 @@ function CompanyDialog({
   const [bseCode, setBseCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [lookup, setLookup] = useState<SymbolSearch | null>(null);
+  const isNse = exchange.trim().toUpperCase() === "NSE";
+  useEffect(() => {
+    const value = symbol.trim();
+    setLookup(null);
+    if (!isNse || value.length < 2) return;
+    const timer = window.setTimeout(() => {
+      nseApi
+        .search(value)
+        .then(setLookup)
+        .catch(() => setLookup(null));
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [symbol, isNse]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -247,6 +269,44 @@ function CompanyDialog({
               value={symbol}
               onChange={(event) => setSymbol(event.target.value.toUpperCase())}
             />
+            {lookup?.exact_match && (
+              <small
+                className={
+                  lookup.exact_match.inactive
+                    ? "negative-value"
+                    : "positive-value"
+                }
+              >
+                {lookup.exact_match.inactive
+                  ? `Not trading: last close on NSE was ${displayDate(lookup.exact_match.last_date)}`
+                  : `✓ Listed on NSE · last close ${money(lookup.exact_match.last_close)}`}
+              </small>
+            )}
+            {lookup &&
+            (!lookup.exact_match || lookup.exact_match.inactive) &&
+            lookup.results.some((match) => !match.inactive) ? (
+              <small>
+                Did you mean{" "}
+                {lookup.results
+                  .filter((match) => !match.inactive)
+                  .slice(0, 3)
+                  .map((match, index) => (
+                    <span key={match.symbol}>
+                      {index ? ", " : ""}
+                      <button
+                        type="button"
+                        className="text-link"
+                        onClick={() => setSymbol(match.symbol)}
+                      >
+                        {match.symbol}
+                      </button>
+                    </span>
+                  ))}
+                ?
+              </small>
+            ) : lookup && !lookup.results.length ? (
+              <small>Not found in NSE Bhavcopy symbols.</small>
+            ) : null}
           </label>
           <label className="field">
             <span>
@@ -687,6 +747,12 @@ function App() {
     : null;
   const showingIPOs = navHash === "#ipos";
   const showingGold = navHash === "#gold";
+  const showingMarkets =
+    navHash === "#markets" || navHash.startsWith("#markets/");
+  const marketSymbol = navHash.startsWith("#markets/")
+    ? decodeURIComponent(navHash.slice("#markets/".length)).toUpperCase() ||
+      null
+    : null;
   const [dialog, setDialog] = useState<Dialog>(null);
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
   const [notice, setNotice] = useState("");
@@ -729,18 +795,24 @@ function App() {
     void refresh();
     void loadEvents();
   }, [refresh, loadEvents]);
+  const live = useLivePortfolio(data?.portfolio);
+  const liveBySymbol = useMemo(
+    () => new Map((live.data?.holdings ?? []).map((row) => [row.symbol, row])),
+    [live.data],
+  );
   useEffect(() => {
     const onHashChange = () => setNavHash(window.location.hash);
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
   useEffect(() => {
-    if (!navHash.startsWith("#") || selectedEventId !== null) return;
+    if (!navHash.startsWith("#") || selectedEventId !== null || showingMarkets)
+      return;
     const frame = window.requestAnimationFrame(() => {
       document.getElementById(navHash.slice(1))?.scrollIntoView();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [navHash, selectedEventId]);
+  }, [navHash, selectedEventId, showingMarkets]);
   useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(""), 4500);
@@ -844,6 +916,9 @@ function App() {
           >
             <Icon name="grid" /> Overview
           </a>
+          <a href="#markets" className={showingMarkets ? "active" : ""}>
+            <Icon name="activity" /> Markets
+          </a>
           <a
             href="#holdings"
             className={navHash === "#holdings" ? "active" : ""}
@@ -910,16 +985,18 @@ function App() {
             <strong>
               {selectedEventId !== null
                 ? "Event details"
-                : showingIPOs
-                  ? "IPOs"
-                  : showingGold
-                    ? "Gold"
-                    : "Overview"}
+                : showingMarkets
+                  ? "Markets"
+                  : showingIPOs
+                    ? "IPOs"
+                    : showingGold
+                      ? "Gold"
+                      : "Overview"}
             </strong>
           </span>
           <div className="topbar-right">
             <span className="today-label">{displayDate(todayLocal())}</span>
-            {!showingIPOs && !showingGold && (
+            {!showingIPOs && !showingGold && !showingMarkets && (
               <button
                 className="icon-button refresh-button"
                 onClick={() => void refresh()}
@@ -937,6 +1014,12 @@ function App() {
               eventId={selectedEventId}
               onBack={closeEvent}
               onViewValuation={viewCompanyValuation}
+            />
+          ) : showingMarkets ? (
+            <MarketsSection
+              companies={companies}
+              symbol={marketSymbol}
+              live={live.data}
             />
           ) : showingIPOs ? (
             <IPOsSection />
@@ -1007,28 +1090,57 @@ function App() {
                     aria-label="Portfolio summary"
                   >
                     <StatCard
-                      label="Open positions"
-                      value={String(holdings.length).padStart(2, "0")}
-                      detail={`${companies.length} registered ${companies.length === 1 ? "company" : "companies"}`}
+                      label="Market value · NSE"
+                      value={
+                        live.data?.totals.market_value
+                          ? money(live.data.totals.market_value)
+                          : "—"
+                      }
+                      detail={
+                        live.data?.totals.day_change_value
+                          ? `Today ${Number(live.data.totals.day_change_value) < 0 ? "−" : "+"}${money(Math.abs(Number(live.data.totals.day_change_value)))} (${signed(live.data.totals.day_change_pct)}%)${
+                              live.data.totals.priced_positions <
+                              holdings.length
+                                ? ` · ${live.data.totals.priced_positions}/${holdings.length} priced`
+                                : ""
+                            }`
+                          : live.error
+                            ? "NSE prices unavailable"
+                            : holdings.length
+                              ? "Fetching NSE prices…"
+                              : "No open positions"
+                      }
                       icon="layers"
+                    />
+                    <StatCard
+                      label="Unrealised P&L"
+                      value={
+                        live.data?.totals.unrealised_pnl
+                          ? money(live.data.totals.unrealised_pnl)
+                          : "—"
+                      }
+                      detail={
+                        live.data?.totals.unrealised_pnl_pct
+                          ? `${signed(live.data.totals.unrealised_pnl_pct)}% on cost${
+                              live.data.totals.beta
+                                ? ` · beta ${live.data.totals.beta}`
+                                : ""
+                            }`
+                          : "Marked to NSE quotes"
+                      }
+                      icon="trend"
+                      tone="green"
                     />
                     <StatCard
                       label="Remaining cost basis"
                       value={money(totalCost)}
-                      detail="Capital tied to current holdings"
+                      detail={`${holdings.length} open ${holdings.length === 1 ? "position" : "positions"} · ${companies.length} ${companies.length === 1 ? "company" : "companies"}`}
                       icon="wallet"
-                      tone="green"
                     />
                     <StatCard
                       label="Realised P&L"
                       value={money(realised)}
-                      detail="After transaction charges"
-                      icon="trend"
-                    />
-                    <StatCard
-                      label="Transactions"
-                      value={String(transactions.length).padStart(2, "0")}
-                      detail="Buys and sells recorded"
+                      detail={`After charges · ${transactions.length} transactions`}
                       icon="receipt"
                     />
                   </section>
@@ -1208,6 +1320,9 @@ function App() {
                                 <th>Quantity</th>
                                 <th>Avg. purchase</th>
                                 <th>Cost basis</th>
+                                <th>Price · NSE</th>
+                                <th>Market value</th>
+                                <th>Unrealised P&L</th>
                                 <th>Realised P&L</th>
                               </tr>
                             </thead>
@@ -1220,7 +1335,9 @@ function App() {
                                         {holding.symbol.slice(0, 2)}
                                       </span>
                                       <span>
-                                        <strong>{holding.symbol}</strong>
+                                        <a href={`#markets/${holding.symbol}`}>
+                                          <strong>{holding.symbol}</strong>
+                                        </a>
                                         <small>{holding.name}</small>
                                       </span>
                                     </div>
@@ -1232,6 +1349,46 @@ function App() {
                                   <td className="cell-strong">
                                     {money(holding.cost_basis)}
                                   </td>
+                                  {(() => {
+                                    const row = liveBySymbol.get(
+                                      holding.symbol,
+                                    );
+                                    const quote = row?.quote;
+                                    return (
+                                      <>
+                                        <td className="live-cell">
+                                          {quote ? money(quote.price) : "—"}
+                                          {quote && (
+                                            <small
+                                              className={tone(quote.change_pct)}
+                                            >
+                                              {signed(quote.change_pct)}% ·{" "}
+                                              {quote.source === "LIVE"
+                                                ? "live"
+                                                : "EOD"}
+                                            </small>
+                                          )}
+                                        </td>
+                                        <td className="cell-strong">
+                                          {row?.market_value
+                                            ? money(row.market_value)
+                                            : "—"}
+                                        </td>
+                                        <td
+                                          className={`live-cell ${tone(row?.unrealised_pnl)}`}
+                                        >
+                                          {row?.unrealised_pnl
+                                            ? money(row.unrealised_pnl)
+                                            : "—"}
+                                          {row?.unrealised_pnl_pct && (
+                                            <small>
+                                              {signed(row.unrealised_pnl_pct)}%
+                                            </small>
+                                          )}
+                                        </td>
+                                      </>
+                                    );
+                                  })()}
                                   <td
                                     className={
                                       Number(holding.realised_pnl) >= 0

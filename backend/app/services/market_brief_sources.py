@@ -90,6 +90,37 @@ def parse_nse(body, current):
     return quotes, breadth
 
 
+async def nse_mcp_indices(current):
+    """Official NSE MCP live index values; used when the public page feed is unavailable."""
+    from app.market.nse_mcp import get_nse_mcp
+
+    payload = await get_nse_mcp().call("live", "cm_get_live_indices", {"group": "", "nameFilter": ""}, ttl=30)
+    raw = str(payload["nseTimestamp"]).strip()
+    for pattern in ("%d-%b-%Y %H:%M:%S", "%d-%b-%Y %H:%M"):
+        try:
+            stamp = datetime.strptime(raw, pattern).replace(tzinfo=IST)
+            break
+        except ValueError:
+            continue
+    else:
+        raise SourceUnavailableError("NSE_MCP_TIMESTAMP_UNVERIFIED")
+    quotes = {}
+    for rows in payload["indices"].values():
+        for row in rows if isinstance(rows, list) else []:
+            name = str(row.get("indexName", "")).upper() if isinstance(row, dict) else ""
+            if name not in INDEX_NAMES or name in quotes:
+                continue
+            try:
+                quote = observation(name, row["last"], row["previousClose"], row["open"], row["high"], row["low"],
+                                    stamp, current, "NSE official MCP (live indices)", NSE_PAGE)
+            except (SourceUnavailableError, KeyError, TypeError):
+                continue
+            quotes[name] = quote
+    if "NIFTY 50" not in quotes:
+        raise SourceUnavailableError("NIFTY_BENCHMARK_UNAVAILABLE")
+    return quotes, None
+
+
 def parse_sensex(html, current):
     soup = BeautifulSoup(html, "html.parser")
     if not soup.title or "SENSEX" not in soup.title.get_text().upper():
@@ -209,6 +240,17 @@ class MarketBriefProvider:
                 return rows
             values = await asyncio.gather(collect("NSE indices", nse), collect("SENSEX", sensex),
                 *(collect(feed[0], lambda f=feed: news(f)) for feed in FEEDS))
+            if not values[0] and settings.nse_mcp_enabled:
+                from app.market.nse_mcp import NSEMCPError
+                try:
+                    values[0] = await nse_mcp_indices(current)
+                    # Index values recovered from NSE's official MCP; only breadth is missing.
+                    result["errors"] = [e for e in result["errors"] if e["source"] != "NSE indices"]
+                    result["index_source"] = "NSE_MCP"
+                except NSEMCPError as exc:
+                    result["errors"].append({"source": "NSE MCP indices", "reason": exc.reason})
+                except (SourceUnavailableError, KeyError, TypeError, ValueError, AttributeError) as exc:
+                    result["errors"].append({"source": "NSE MCP indices", "reason": str(exc)[:90] or "SCHEMA_ERROR"})
             if values[0]:
                 result["indices"], result["breadth"] = values[0]
                 for name in ("NIFTY BANK", "INDIA VIX"):

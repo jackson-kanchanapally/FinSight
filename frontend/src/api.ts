@@ -294,6 +294,12 @@ export type ValuationChange = {
   eps_change_pct: string;
   pe_change_pct: string;
   method: string;
+  share_basis_adjustment?: {
+    factor: string;
+    events: string;
+    raw_old_price: string;
+    raw_old_eps: string;
+  } | null;
 };
 export type ValuationChangeUnavailable = {
   status: "INSUFFICIENT_DATA";

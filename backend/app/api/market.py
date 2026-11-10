@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -20,6 +21,7 @@ from app.models.company import Company
 from app.models.financial import FinancialScope
 from app.models.market import MarketSnapshot
 from app.schemas.market import MarketSnapshotInput, MarketSnapshotRead
+from app.services.corporate_actions import share_basis
 
 router = APIRouter(tags=["market snapshots"])
 
@@ -113,9 +115,22 @@ def price_history(
     end: date | None = None,
     limit: int = Query(default=365, ge=1, le=1000),
     db: Session = Depends(get_db),
-) -> list[MarketSnapshot]:
+) -> list[MarketSnapshotRead]:
     company = _company(db, symbol)
-    return market_history(db, company.id, start, end, limit)
+    rows = market_history(db, company.id, start, end, limit)
+    basis = share_basis(db, company.id)
+    if not rows:
+        return rows
+    latest = max(row.as_of_date for row in rows)
+    result = []
+    for row in rows:
+        item = MarketSnapshotRead.model_validate(row)
+        if basis is not None and basis.covers(row.as_of_date, latest):
+            factor = basis.factor_between(row.as_of_date, latest)
+            item.adjustment_factor = factor
+            item.adjusted_close = (row.close_price * factor).quantize(Decimal("0.0001"))
+        result.append(item)
+    return result
 
 
 @router.post("/api/companies/{symbol}/market/refresh")

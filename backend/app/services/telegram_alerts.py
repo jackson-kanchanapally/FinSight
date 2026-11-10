@@ -146,6 +146,16 @@ def _prepare(session_factory, delivery_id, token):
                 return None
             index = len(job.message_ids or [])
             return (job.chat_id, job.message_parts[index]) if index < len(job.message_parts or []) else None
+        if job.notification and job.notification.get("kind") in {"REACTION_FOLLOWUP", "HOLDING_MOVE"}:
+            from app.services.holdings_alerts import validate_delivery
+            reason = validate_delivery(db, job, now())
+            if reason:
+                job.status, job.last_error = "SUPERSEDED", reason
+                job.lease_token = job.lease_until = None
+                db.commit()
+                return None
+            index = len(job.message_ids or [])
+            return (job.chat_id, job.message_parts[index]) if index < len(job.message_parts or []) else None
         if job.notification and job.notification.get("kind") == "IPO":
             from app.services.ipos import validate_delivery
             reason = validate_delivery(db, job, now())
@@ -242,10 +252,14 @@ async def deliver_one(session_factory):
             if job.lease_token != token:
                 return False
             mode = job.parse_mode
+            reply_to = (job.notification or {}).get("reply_to_message_id") if not job.message_ids else None
             job.sending_part = len(job.message_ids or [])
             db.commit()
         send_started = True
-        receipt = await send_message(*prepared, **({"parse_mode": mode} if mode else {}))
+        options = {"parse_mode": mode} if mode else {}
+        if reply_to is not None:
+            options["reply_to_message_id"] = reply_to
+        receipt = await send_message(*prepared, **options)
     except TelegramError as exc:
         error = exc
     except Exception:
@@ -281,7 +295,9 @@ def delivery_status(db):
     error_job = db.scalar(select(TelegramDelivery).where(TelegramDelivery.last_error.is_not(None))
                           .order_by(TelegramDelivery.id.desc()).limit(1))
     last_sent = db.scalar(select(func.max(TelegramDelivery.sent_at)))
+    from app.services.holdings_alerts import alert_settings
     return {"enabled": settings.telegram_enabled, "configured": configured(),
+            "alert_types": alert_settings(),
             "counts": counts, "last_sent_at": last_sent,
             "latest_status": latest.status if latest else None,
             "last_error": error_job.last_error if error_job else None,

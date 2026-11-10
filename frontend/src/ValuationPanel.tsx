@@ -566,8 +566,10 @@ export function ValuationPanel({
                 {format(change.pe_change_pct, "%")})
               </p>
               <p className="financial-footnote">
-                {change.method}. These are changes in price, trailing earnings
-                and multiple; raw prices may be affected by corporate actions.
+                {change.method}.{" "}
+                {change.share_basis_adjustment
+                  ? `The earlier price and EPS are restated to the later share basis for NSE ${change.share_basis_adjustment.events} (raw earlier close ${change.share_basis_adjustment.raw_old_price}).`
+                  : "No split or bonus between these dates per NSE corporate actions, or the history is not yet confirmed."}
               </p>
             </div>
           )}

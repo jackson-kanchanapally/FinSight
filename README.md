@@ -56,6 +56,8 @@ IPO_MONITOR_ENABLED=false
 GOLD_MONITOR_ENABLED=false
 MARKET_BRIEFS_ENABLED=false
 COMPANY_MEMORY_ENABLED=false
+NSE_MCP_ENABLED=false
+PRICE_REACTIONS_ENABLED=false
 ```
 
 Use your own database credentials outside a disposable development environment. `.env`, local documents, and runtime data are ignored by Git. See [configuration](docs/configuration.md) for individual settings and [self-hosting](docs/self-hosting.md) for built-dashboard operation, backups, and service management.
@@ -117,7 +119,7 @@ Open **Valuation**, or the valuation panel inside **Financials**, and select a c
 
 Almonds combines eligible verified financials with dated prices to calculate supported TTM multiples and yields, including P/E, P/S, EV ratios, P/B, earnings yield, and FCF yield when their inputs exist. Expand a metric to inspect its formula and evidence. Price/multiple history and valuation-change explanations retain the underlying dates.
 
-Use scenario controls for assumed EPS growth, future P/E, and return assumptions; reverse calculations show the earnings growth needed to support a chosen outcome. The investor report also exposes editable three-case valuation assumptions. Imported NSE Market Lens CSV references are available through the API and remain separate from Almonds' calculations. Historical EOD prices are unadjusted for corporate actions. See [valuation methodology and APIs](docs/market-valuation.md).
+Use scenario controls for assumed EPS growth, future P/E, and return assumptions; reverse calculations show the earnings growth needed to support a chosen outcome. The investor report also exposes editable three-case valuation assumptions. Imported NSE Market Lens CSV references are available through the API and remain separate from Almonds' calculations. Stored EOD closes are raw exchange prices. For NSE companies, Almonds confirms splits and bonuses from NSE. It then restates EPS, price history and valuation changes to a common share basis, so a split no longer distorts P/E. See [valuation methodology and APIs](docs/market-valuation.md).
 
 ### Company Memory
 
@@ -161,6 +163,34 @@ The helper prompts for the token without echoing it, discovers the destination c
 Selected new live company disclosures are queued automatically. Earnings briefs show supported financial highlights and a result interpretation; other material events receive a short summary, impact, and conditional next steps. Routine categories and old archive imports are filtered, and delivery receipts/retries are persisted. Existing historical/manual events are not automatically replayed. See [Telegram setup and delivery rules](docs/telegram.md).
 
 Optional signed earnings-report links require your own HTTPS route exposing only the report endpoints and a separate access secret. Leave those settings empty for local-only use; see [report access and confidence](docs/intelligent-earnings-alerts.md).
+
+### Live NSE markets and stock research
+
+Almonds reads NSE's [official MCP servers](https://www.nseindia.com/nse-mcp), which are public and need no key. Open **Markets** for:
+
+- live key indices
+- advance/decline breadth and India VIX with its one-year percentile
+- the Nifty 50 P/E against its five-year range
+- sector rotation over 1D–1Y
+- the day's top movers
+
+Search any NSE stock for a one-page read: quote, three-month price line, 52-week range, 20/50/200-day averages, volume profile, 12-month return and beta versus the Nifty 50, dividend yield, and corporate actions.
+
+**Overview** and **Holdings** now show market value, the day's change, and unrealised P&L, refreshed every minute while the market is open. **Add company** confirms an NSE symbol as you type. Market briefs fall back to the official MCP index values when NSE's public page cannot be read. Bhavcopy prices are unadjusted, and a warning appears when a split or bonus distorts a view.
+
+**Market reaction to events.** After each session, Almonds measures how a company's share price moved 1, 5 and 20 sessions after each material disclosure, against the Nifty 50. Splits and bonuses are removed from these returns.
+- Event details show the reaction.
+- A company's stock card shows its history and median reaction per event type.
+- The quarterly AI analyst may cite the reaction as an observation, never as a cause.
+
+**Telegram for your holdings.**
+- The 4 PM closing brief adds a **Your holdings** section: value, day change, 52-week extremes, and volume spikes with or without a filing.
+- Five sessions after a held company's results, one reply arrives under the original results alert with the move against the Nifty 50.
+- An optional intraday big-move alert is off by default.
+
+See [Telegram](docs/telegram.md#holdings-and-market-reaction-alerts).
+
+See [NSE market data](docs/nse-mcp.md).
 
 ### Morning, noon, and closing market briefs
 
@@ -252,6 +282,8 @@ Open the local [interactive API documentation](http://127.0.0.1:8000/docs) after
 | Expectations and forecasts | `/api/companies/{symbol}/expectations`, `/api/companies/{symbol}/forecasts/accuracy` |
 | Thesis and memory | `/api/companies/{symbol}/thesis`, `/api/companies/{symbol}/memory` |
 | Alerts and independent research | `/api/telegram/status`, `/api/market-briefs`, `/api/ipos`, `/api/gold` |
+| NSE market data (official MCP) | `/api/nse/market-pulse`, `/api/nse/portfolio`, `/api/nse/stocks/{symbol}`, `/api/nse/search` |
+| Corporate actions and reactions | `/api/companies/{symbol}/corporate-actions`, `/api/companies/{symbol}/price-reactions`, `/api/events/{id}/price-reaction` |
 
 Treat API mutation endpoints as trusted-user operations. The [user guide](docs/user-guide.md) and linked feature references include examples for the controls that are API-only.
 

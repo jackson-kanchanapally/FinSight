@@ -71,6 +71,31 @@ class AnalysisContext:
     investor_report: dict
 
 
+def _register_market_reaction(db: Session, registry: dict, event: CompanyEvent) -> str | None:
+    """Observed share-price move after the results filing (Python-measured, NSE data)."""
+    from app.models.market_events import EventPriceReaction
+
+    reaction = db.scalar(select(EventPriceReaction).where(EventPriceReaction.event_id == event.id))
+    if reaction is None or not reaction.windows or reaction.base_date is None:
+        return None
+    key = f"X{reaction.id}"
+    registry[key] = {
+        "kind": "MARKET_REACTION",
+        "status": reaction.status,
+        "benchmark": reaction.benchmark,
+        "base_date": reaction.base_date.isoformat(),
+        "base_close": str(reaction.base_close) if reaction.base_close is not None else None,
+        "windows": {
+            n: {k: w.get(k) for k in ("sessions", "date", "return_pct", "index_return_pct", "excess_return_pct")}
+            for n, w in sorted(reaction.windows.items(), key=lambda kv: int(kv[0]))
+        },
+        "volume_ratio": str(reaction.volume_ratio) if reaction.volume_ratio is not None else None,
+        "interpretation_rule": "What the share price did after the filing versus the benchmark. "
+        "It is not evidence of why, and does not show whether the results were good.",
+    }
+    return key
+
+
 def build_context(
     db: Session,
     company_name: str,
@@ -133,6 +158,7 @@ def build_context(
             "provider": fresh_snapshot.provider,
             "data_origin": fresh_snapshot.data_origin,
         }
+    reaction_key = _register_market_reaction(db, registry, event)
     current_facts = list(
         db.scalars(
             select(FinancialFact)
@@ -383,6 +409,9 @@ def build_context(
             }
             if fresh_snapshot
             else None
+        ),
+        "market_reaction": (
+            {"evidence_id": reaction_key, **registry[reaction_key]} if reaction_key else None
         ),
         "calculated_valuation": valuation_items,
         "investor_reasoning": reasoning,

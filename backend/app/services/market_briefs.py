@@ -1,5 +1,6 @@
 """Four durable market briefs per regular NSE trading session."""
 import asyncio
+import logging
 from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
 from html import escape
@@ -19,6 +20,7 @@ from app.services.telegram_formatter import _bounded_html, units
 SLOTS = ("morning", "midmorning", "noon", "close")
 WINDOWS = (25, 30, 30, 60)
 VERSION = "market-brief-v1"
+logger = logging.getLogger(__name__)
 
 
 def now():
@@ -70,7 +72,7 @@ def stamp(value):
     return utc(value).astimezone(IST).strftime("%d %b %H:%M IST")
 
 
-def format_message(report, *, preview=False):
+def format_message(report, *, preview=False, _holdings_detail=2):
     evidence, analysis, assessment = report.evidence, report.analysis, report.assessment
     title = {"morning": "MORNING MARKET OUTLOOK", "midmorning": "UPDATED MORNING BRIEF",
              "noon": "NOON MARKET CHECK", "close": "MARKET CLOSING REVIEW"}[report.slot]
@@ -128,6 +130,9 @@ def format_message(report, *, preview=False):
         lines.append(f"<b>Next-session bias: {analysis['view']} · {analysis['confidence'].lower()} confidence</b>")
         lines.append("<b>Further ahead:</b> " + _bounded_html(analysis["longer_term"]["text"], 260))
     lines.append("<b>What could change the view:</b> " + _bounded_html(analysis["invalidation"]["text"], 200))
+    if report.slot == "close" and evidence.get("holdings") and _holdings_detail:
+        from app.services.holdings_alerts import format_holdings
+        lines += format_holdings(evidence["holdings"], with_flags=_holdings_detail > 1)
     lines += ["", f"News coverage: {len(evidence['news_sources_ok'])}/{len(FEEDS)} feeds; {len(evidence['news'])} material headlines reviewed."]
     if evidence["errors"]:
         names = ", ".join(error["source"] for error in evidence["errors"])
@@ -154,6 +159,9 @@ def format_message(report, *, preview=False):
             links.append(link)
     message = body + ("\n\n" + " · ".join(links) if links else "")
     if units(message) > 3800:
+        if report.slot == "close" and evidence.get("holdings") and _holdings_detail:
+            # Holdings never cost the brief its market content: drop flags, then the section.
+            return format_message(report, preview=preview, _holdings_detail=_holdings_detail - 1)
         raise ValueError("MARKET_BRIEF_TOO_LONG")
     return message
 
@@ -232,6 +240,14 @@ async def run_due(session_factory, *, current=None, provider=None, ai_provider=N
             return {"status": "EXPIRED", "queued": 0}
         if state.last_error:
             evidence["errors"].append({"source": "NSE calendar", "reason": "USING_CACHED_CALENDAR"})
+        if due["slot"] == "close" and settings.telegram_holdings_in_close_brief and settings.nse_mcp_enabled:
+            # Added after the market analysis so personal positions never enter its prompt.
+            from app.services.holdings_alerts import holdings_block
+            try:
+                evidence["holdings"] = await holdings_block(db, completed)
+            except Exception as exc:
+                evidence["holdings"] = None
+                logger.warning("market_briefs.holdings_failed error=%s", type(exc).__name__)
         report = MarketBrief(session_date=due["session_date"], slot=due["slot"], created_at=completed,
             expires_at=utc(due["expires"]), morning_id=morning.id if morning else None,
             previous_close_id=previous.id if previous else None,

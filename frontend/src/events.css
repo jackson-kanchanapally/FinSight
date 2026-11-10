@@ -385,3 +385,9 @@
   color: var(--muted);
   font-size: 0.84rem;
 }
+.telegram-alert-types {
+  margin: 10px 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}

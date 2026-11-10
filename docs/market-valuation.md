@@ -18,6 +18,16 @@ TTM revenue, PAT, EBITDA, EBIT, operating cash flow and capex normally require f
 
 For a market date, only filings available by the 15:30 IST close are eligible. A date-only publication becomes eligible the next day because its clock time is unknown. A valuation on 15 June may use a 1 April filing but cannot use a 1 July filing. Market date, eligible period IDs, fact IDs, formulas and scope are retained with each metric. Recalculation after a historical fact correction updates the snapshot and its `updated_at` time.
 
+## Splits, bonuses, and share basis
+
+A split or bonus changes the number of shares, so a price and an EPS are comparable only on the same share basis. Almonds stores each NSE-listed company's corporate actions from the official NSE MCP (`get_corporate_actions`), including NSE's adjustment factor (0.5 for a 1:1 bonus, 0.1 for a 10:1 split). It also records the window it confirmed. The background job refreshes this every 20 hours or so, and `POST /api/companies/{symbol}/corporate-actions/refresh` refreshes it on demand.
+
+When the confirmed window covers a valuation date, each quarter's diluted EPS is restated to the market date's share basis. The restatement uses the cumulative factors of splits and bonuses between that EPS figure's **filing date** and the market date. Filings already restated after a split need no further change, and a post-split price is never divided by a pre-split EPS. The implied share-count check then runs on the restated EPS. The P/E formula names each split or bonus applied.
+
+If corporate actions were never confirmed, or a split lacks an NSE factor, the earlier rule stays in force: a split or bonus disclosure inside the TTM window gives `NEEDS_REVIEW`. A confirmed sync is trusted up to 14 days past its run date, because splits are announced weeks ahead.
+
+`GET /api/companies/{symbol}/market/history` adds `adjusted_close` and `adjustment_factor`. Each stored close is restated to the latest date's share basis, while `close_price` stays the raw exchange value.
+
 ## Formulas and statuses
 
 | Metric | Formula and requirements |
@@ -39,7 +49,7 @@ Scenarios use **user assumptions**, not AI forecasts. Future EPS = current relia
 
 The reverse-expectations table evaluates 0%, 10%, 15%, and the entered annual-return target using the user's terminal P/E and horizon. It does not silently choose a terminal multiple. Where two published, verified diluted EPS figures exist for equivalent quarters, Python compares each required CAGR with the latest quarter's EPS YoY growth in percentage points. A single quarter's EPS growth is not a durable forecast; historical CAGR and sourced forward growth remain separate missing inputs. PAT or revenue growth is not substituted for EPS growth. A price more than seven calendar days old receives a dated warning beside the valuation.
 
-Valuation change decomposes two dated, comparable valuations: price change = new price / old price − 1; EPS change = new TTM EPS / old TTM EPS − 1; multiple change = new P/E / old P/E − 1. It reports inputs and dates. Since NSE historical prices are unadjusted, split and bonus windows need extra review before interpreting price change as investor return.
+Valuation change decomposes two dated, comparable valuations: price change = new price / old price − 1; EPS change = new TTM EPS / old TTM EPS − 1; multiple change = new P/E / old P/E − 1. It reports inputs and dates. When NSE confirms a split or bonus between the two dates, the earlier price and EPS are restated to the later share basis, and `share_basis_adjustment` reports the factor, the events, and the raw earlier values. P/E needs no restatement.
 
 The change endpoint returns `status: CALCULATED` when both dates have comparable positive TTM EPS and P/E. If an older price predates an eligible filing, it returns HTTP 200 with `status: INSUFFICIENT_DATA`, a reason, dates, and missing inputs. The UI selects the earliest and latest dates that both have calculated P/E. It explains when there are fewer than two comparable dates instead of repeatedly requesting an impossible comparison. For ESDS, the 4 September price predates the eligible FY2026 annual filing, so it cannot be compared with the 28 September valuation using TTM P/E.
 

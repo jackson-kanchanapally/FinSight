@@ -59,6 +59,27 @@ class Settings(BaseSettings):
     market_data_timeout_seconds: float = Field(default=12, ge=3, le=60)
     market_data_refresh_hour: int = Field(default=18, ge=0, le=23)
     market_data_refresh_minute: int = Field(default=30, ge=0, le=59)
+    nse_mcp_enabled: bool = True
+    nse_mcp_bhavcopy_url: str = "https://mcp.nseindia.in/bhavcopy/cm/mcp"
+    nse_mcp_live_url: str = "https://mcp.nseindia.in/cmmkt/mcp"
+    nse_mcp_timeout_seconds: float = Field(default=12, ge=3, le=60)
+    nse_mcp_live_cache_seconds: int = Field(default=60, ge=0, le=900)
+    nse_mcp_eod_cache_minutes: int = Field(default=30, ge=0, le=720)
+    nse_mcp_max_concurrency: int = Field(default=4, ge=1, le=10)
+    telegram_holdings_in_close_brief: bool = True
+    telegram_volume_spike_ratio: float = Field(default=2.0, ge=1.2, le=20)
+    telegram_reaction_followups: bool = True
+    telegram_reaction_followup_sessions: Literal[1, 5, 20] = 5
+    telegram_big_move_alerts: bool = False
+    telegram_big_move_pct: float = Field(default=7, ge=2, le=50)
+    price_reactions_enabled: bool = True
+    price_reaction_poll_minutes: int = Field(default=30, ge=5, le=1440)
+    price_reaction_batch_size: int = Field(default=150, ge=1, le=2000)
+    price_reaction_event_types: str = (
+        "FINANCIAL_RESULTS,EARNINGS_RELEASE,ORDER_WIN,ORDER_CANCELLATION,ACQUISITION,DIVESTMENT,"
+        "CAPEX,PARTNERSHIP,NEW_PRODUCT,MANAGEMENT_CHANGE,AUDITOR_CHANGE,DIVIDEND,BONUS,STOCK_SPLIT,"
+        "BUYBACK,FUND_RAISE,CREDIT_RATING,PROMOTER_TRANSACTION,PLEDGE,REGULATORY,LITIGATION"
+    )
     market_lens_tolerance_pct: float = Field(default=5, ge=0, le=100)
     expectation_met_tolerance_pct: float = Field(default=5, ge=0, le=10)
     expectation_partial_tolerance_pct: float = Field(default=10, ge=10, le=100)
@@ -91,6 +112,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file="../.env", env_file_encoding="utf-8", extra="ignore"
     )
+
+    @field_validator("nse_mcp_bhavcopy_url", "nse_mcp_live_url")
+    @classmethod
+    def validate_nse_mcp_url(cls, value: str) -> str:
+        if not value.startswith("https://"):
+            raise ValueError("NSE MCP endpoints must use HTTPS")
+        return value.rstrip("/")
 
     @field_validator("gold_alert_times_ist")
     @classmethod

@@ -64,3 +64,4 @@ from app.models.ipo import IPOIssue, IPOCheck
 from app.models.gold import GoldState, GoldSnapshot, GoldHeadline
 from app.models.market_brief import MarketBrief, MarketBriefState
 from app.models.result_evidence import ResultDiscovery, ResultSourceCheck, ResultVerification
+from app.models.market_events import CorporateAction, CorporateActionSync, EventPriceReaction

@@ -775,6 +775,18 @@ def _check_numbers(
                     _add_negative_value(negative_allowed, item[key])
             supported_dates.add(item["as_of_date"])
             allowed.update(Decimal(part) for part in item["as_of_date"].split("-"))
+        if item["kind"] == "MARKET_REACTION":
+            for key in ("base_close", "volume_ratio"):
+                if item.get(key) is not None:
+                    _add_value(allowed, item[key])
+            supported_dates.add(item["base_date"])
+            for window in item.get("windows", {}).values():
+                allowed.add(Decimal(window["sessions"]))
+                supported_dates.add(window["date"])
+                for key in ("return_pct", "index_return_pct", "excess_return_pct"):
+                    if window.get(key) is not None:
+                        _add_value(allowed, window[key])
+                        _add_negative_value(negative_allowed, window[key])
         if item["kind"] == "VALUATION":
             _add_value(allowed, item["value"])
             _add_negative_value(negative_allowed, item["value"])

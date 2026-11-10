@@ -9,6 +9,7 @@ import {
 import { todayLocal } from "./format";
 import "./events.css";
 import { TelegramAlerts } from "./TelegramAlerts";
+import { EventReactionPanel } from "./MarketReaction";
 
 const analysisRequests = new Map<number, Promise<EventAnalysis>>();
 const EVENTS_PER_PAGE = 5;
@@ -557,6 +558,7 @@ export function EventDetails({
                 )}
               </div>
             )}
+          {event.data_origin !== "FIXTURE" && <EventReactionPanel eventId={event.id} />}
           <div className="event-detail-grid">
             <div className="panel">
               <p className="eyebrow">DISCLOSURE</p>
